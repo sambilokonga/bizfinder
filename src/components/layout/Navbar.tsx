@@ -233,24 +233,15 @@ export function Navbar() {
             </SignedIn>
 
             <SignedOut>
-              <div className="flex items-center gap-1 shrink-0">
-                <Link
-                  href="/profile"
-                  className="w-8 h-8 rounded-full bg-accent hover:bg-accent/80 border border-border flex items-center justify-center text-foreground transition-all hover:scale-105 shrink-0"
-                  title="User Profile / Account"
-                >
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold shadow-sm">
-                    {currentUser?.name ? currentUser.name.slice(0, 2).toUpperCase() : "U"}
-                  </div>
-                </Link>
+              <div className="flex items-center gap-1.5 shrink-0">
                 <Link href="/sign-in">
-                  <Button size="sm" variant="ghost" className="h-8 px-2 text-xs font-semibold gap-1">
+                  <Button size="sm" variant="ghost" className="h-8 px-2.5 text-xs font-semibold gap-1.5">
                     <LogIn className="w-3.5 h-3.5" />
                     <span className="hidden lg:inline">Sign In</span>
                   </Button>
                 </Link>
                 <Link href="/sign-up">
-                  <Button size="sm" variant="outline" className="h-8 px-2 text-xs font-semibold border-indigo-200 dark:border-indigo-800">
+                  <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs font-semibold border-indigo-200 dark:border-indigo-800 gap-1.5">
                     <UserPlus className="w-3.5 h-3.5" />
                     <span className="hidden lg:inline">Register</span>
                   </Button>
@@ -292,11 +283,11 @@ export function Navbar() {
           </SignedIn>
           <SignedOut>
             <Link
-              href="/profile"
-              className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0 shadow-sm"
-              title="User Account"
+              href="/sign-in"
+              className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-foreground"
+              title="Sign In"
             >
-              {currentUser?.name ? currentUser.name.slice(0, 2).toUpperCase() : "U"}
+              <LogIn className="w-4 h-4" />
             </Link>
           </SignedOut>
           <button
