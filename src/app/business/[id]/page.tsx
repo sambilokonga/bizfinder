@@ -459,24 +459,6 @@ export default function BusinessProfilePage({
                         Verified Business
                       </Badge>
                     )}
-                    {business.businessType && (
-                      <Badge
-                        variant="outline"
-                        className="gap-1 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/70 dark:bg-indigo-950/40 text-xs font-semibold py-0.5 px-2.5"
-                      >
-                        <Building2 className="w-3.5 h-3.5 text-indigo-500" />
-                        {business.businessType}
-                      </Badge>
-                    )}
-                    {business.yearEstablished && (
-                      <Badge
-                        variant="outline"
-                        className="gap-1 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 bg-slate-100/70 dark:bg-slate-900/50 text-xs font-semibold py-0.5 px-2.5"
-                      >
-                        <Calendar className="w-3.5 h-3.5 text-primary" />
-                        Est. {business.yearEstablished}
-                      </Badge>
-                    )}
                     <Badge
                       variant={
                         liveStatus.statusColor === "emerald"
@@ -512,24 +494,6 @@ export default function BusinessProfilePage({
                       <MapPin className="w-3.5 h-3.5 text-indigo-500" />
                       {business.districtName || business.cityName}
                     </span>
-                    {business.businessType && (
-                      <>
-                        <span>•</span>
-                        <span className="flex items-center gap-1 font-medium text-foreground">
-                          <Building2 className="w-3.5 h-3.5 text-indigo-500" />
-                          {business.businessType}
-                        </span>
-                      </>
-                    )}
-                    {business.yearEstablished && (
-                      <>
-                        <span>•</span>
-                        <span className="flex items-center gap-1 font-medium text-foreground">
-                          <Calendar className="w-3.5 h-3.5 text-primary" />
-                          Est. {business.yearEstablished}
-                        </span>
-                      </>
-                    )}
                   </div>
                 </div>
               </div>
@@ -578,46 +542,6 @@ export default function BusinessProfilePage({
                   </Button>
                 </a>
 
-                {/* Direct Social Media Links */}
-                {business.facebookUrl && (
-                  <a
-                    href={normalizeUrl(business.facebookUrl)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2.5 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50/70 dark:bg-blue-950/40 text-[#1877F2] hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors shadow-sm flex items-center justify-center"
-                    title="Visit Facebook Page"
-                  >
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                  </a>
-                )}
-
-                {business.instagramUrl && (
-                  <a
-                    href={normalizeUrl(business.instagramUrl)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2.5 rounded-xl border border-pink-200 dark:border-pink-900/50 bg-pink-50/70 dark:bg-pink-950/40 text-[#E1306C] hover:bg-pink-100 dark:hover:bg-pink-900/50 transition-colors shadow-sm flex items-center justify-center"
-                    title="Visit Instagram Profile"
-                  >
-                    <svg viewBox="0 0 24 24" className="w-4 h-4">
-                      <defs><linearGradient id="hero-ig-grad" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#FFDC80"/><stop offset="20%" stopColor="#FCAF45"/><stop offset="40%" stopColor="#F77737"/><stop offset="60%" stopColor="#F56040"/><stop offset="80%" stopColor="#FD1D1D"/><stop offset="100%" stopColor="#833AB4"/></linearGradient></defs>
-                      <path fill="url(#hero-ig-grad)" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-                    </svg>
-                  </a>
-                )}
-
-                {business.tiktokUrl && (
-                  <a
-                    href={normalizeUrl(business.tiktokUrl)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-sm flex items-center justify-center"
-                    title="Visit TikTok Profile"
-                  >
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 0 006.34 6.34 6.34 0 006.33-6.34V8.98a8.19 8.19 0 004.79 1.54V7.07a4.85 4.85 0 01-1.03-.38z"/></svg>
-                  </a>
-                )}
-
                 <FavoriteButton
                   businessId={business.id}
                   businessName={business.name}
@@ -656,40 +580,6 @@ export default function BusinessProfilePage({
             <p className="text-sm text-muted-foreground leading-relaxed">
               {business.description}
             </p>
-            {(business.yearEstablished || business.businessType) && (
-              <div className="mt-6 pt-5 border-t border-border/60 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {business.businessType && (
-                  <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                      <Building2 className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                        Business / Legal Type
-                      </div>
-                      <div className="text-sm font-bold text-foreground">
-                        {business.businessType}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {business.yearEstablished && (
-                  <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-primary/5 border border-primary/15">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <Calendar className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                        Year Established
-                      </div>
-                      <div className="text-sm font-bold text-foreground">
-                        Established in {business.yearEstablished}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Services / Menu / Products */}
