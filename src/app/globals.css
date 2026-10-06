@@ -1,0 +1,1298 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 238 84% 59%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 238 84% 59%;
+
+    --radius: 0.85rem;
+  }
+
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
+
+    --card: 224 71% 7%;
+    --card-foreground: 213 31% 91%;
+
+    --popover: 224 71% 7%;
+    --popover-foreground: 213 31% 91%;
+
+    --primary: 238 84% 67%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 222.2 47.4% 11.2%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 223 47% 11%;
+    --muted-foreground: 215.4 16.3% 65%;
+
+    --accent: 216 34% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 216 34% 17%;
+    --input: 216 34% 17%;
+    --ring: 238 84% 67%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* Glassmorphism styling */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+}
+
+/* Smooth custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.8);
+}
+
+/* Leaflet map custom pin styles */
+.custom-leaflet-pin {
+  background: transparent;
+  border: none;
+}
+
+/* ─── Dashboard Page Transition Animations ────────────────────────────────── */
+
+/* Main content panel slide-up + fade-in when switching nav items */
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-enter {
+  animation: pageEnter 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Sidebar subnav slide-down expand animation */
+@keyframes subnavOpen {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 600px;
+  }
+}
+
+.animate-subnav-open {
+  animation: subnavOpen 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Sidebar item active indicator pulse */
+@keyframes navPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Stat card entrance stagger */
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-card-enter {
+  animation: cardEnter 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Shimmer loading skeleton */
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position:  200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--accent)) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* ─── Utility: hide scrollbar but keep scroll ─────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ─── Gradient text utility ───────────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, hsl(var(--primary)), #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Sidebar active nav item left-border glow ────────────────────────────── */
+.nav-item-active {
+  position: relative;
+}
+.nav-item-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20%;
+  height: 60%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.6);
+}
+
+/* --- Auth Page: Floating Orb Animations --------------------------------------- */
+
+@keyframes floatOrb1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(30px, -40px) scale(1.08); }
+  66%       { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+@keyframes floatOrb2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40%       { transform: translate(-35px, 25px) scale(1.05); }
+  70%       { transform: translate(20px, -30px) scale(0.97); }
+}
+
+@keyframes floatOrb3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%       { transform: translate(15px, 40px) scale(1.1); }
+}
+
+@keyframes authFadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes authSlideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 30px rgba(99, 102, 241, 0.3), 0 0 0 1px rgba(99,102,241,0.1), 0 32px 80px rgba(0,0,0,0.5); }
+  50%       { box-shadow: 0 0 60px rgba(99, 102, 241, 0.6), 0 0 100px rgba(139, 92, 246, 0.3), 0 0 0 1px rgba(99,102,241,0.2), 0 32px 80px rgba(0,0,0,0.5); }
+}
+
+.auth-orb-1 { animation: floatOrb1 12s ease-in-out infinite; }
+.auth-orb-2 { animation: floatOrb2 16s ease-in-out infinite; }
+.auth-orb-3 { animation: floatOrb3 10s ease-in-out infinite; }
+.auth-fade-up { animation: authFadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.auth-slide-in { animation: authSlideIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.auth-pulse-glow { animation: pulseGlow 4s ease-in-out infinite; }
+
+.auth-delay-1 { animation-delay: 0.1s; }
+.auth-delay-2 { animation-delay: 0.2s; }
+.auth-delay-3 { animation-delay: 0.3s; }
+.auth-delay-4 { animation-delay: 0.4s; }
+.auth-delay-5 { animation-delay: 0.5s; }
+
+/* =============================================================================
+   AUTH PAGE: Full Dark Immersive Design System
+   ============================================================================= */
+
+/* Page Root */
+.auth-page-root {
+  position: relative; min-height: 100vh; width: 100%;
+  background: linear-gradient(135deg, #06040f 0%, #0e0825 30%, #150d35 60%, #0a0818 100%);
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.auth-page-root.auth-signup {
+  background: linear-gradient(135deg, #080414 0%, #120a2c 30%, #1a0b38 60%, #0c0820 100%);
+}
+
+/* Animated background orbs */
+.auth-bg-orb { position: absolute; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 0; }
+.auth-bg-orb-1 { width: 600px; height: 600px; top: -200px; right: -150px; background: radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%); animation: floatOrb1 18s ease-in-out infinite; }
+.auth-bg-orb-2 { width: 500px; height: 500px; bottom: -150px; left: -100px; background: radial-gradient(circle, rgba(139,92,246,0.2) 0%, transparent 70%); animation: floatOrb2 22s ease-in-out infinite; }
+.auth-bg-orb-3 { width: 350px; height: 350px; top: 40%; left: 35%; background: radial-gradient(circle, rgba(79,70,229,0.15) 0%, transparent 70%); animation: floatOrb3 14s ease-in-out infinite; }
+.auth-bg-orb-4 { width: 250px; height: 250px; top: 15%; left: 20%; background: radial-gradient(circle, rgba(168,85,247,0.12) 0%, transparent 70%); animation: floatOrb1 26s ease-in-out infinite reverse; }
+.auth-orb-purple { background: radial-gradient(circle, rgba(168,85,247,0.25) 0%, transparent 70%) !important; }
+.auth-orb-indigo { background: radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%) !important; }
+.auth-orb-violet { background: radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%) !important; }
+.auth-orb-rose   { background: radial-gradient(circle, rgba(236,72,153,0.1) 0%, transparent 70%) !important; }
+
+/* Grid overlay */
+.auth-grid-overlay { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.04; background-image: linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px); background-size: 40px 40px; }
+
+/* Two-column layout */
+.auth-layout { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 100vh; }
+@media (min-width: 1024px) { .auth-layout { flex-direction: row; } }
+
+/* LEFT PANEL */
+.auth-left { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 28px; padding: 48px 40px; border-right: 1px solid rgba(255,255,255,0.06); }
+@media (min-width: 1280px) { .auth-left { padding: 64px 72px; gap: 32px; } }
+@media (max-width: 1023px) { .auth-left { padding: 40px 24px; gap: 24px; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.06); } }
+
+/* Logo */
+.auth-logo-link { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; width: fit-content; }
+.auth-logo-icon { width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(135deg, #4f46e5, #7c3aed); display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 8px 24px rgba(99,102,241,0.35); transition: transform 0.2s ease; }
+.auth-logo-icon-purple { background: linear-gradient(135deg, #7c3aed, #a855f7) !important; box-shadow: 0 8px 24px rgba(168,85,247,0.35) !important; }
+.auth-logo-link:hover .auth-logo-icon { transform: scale(1.05) rotate(-3deg); }
+.auth-logo-text { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; color: #ffffff; }
+.auth-logo-accent { color: #818cf8; }
+.auth-logo-accent-purple { color: #c084fc; }
+@keyframes sparkleFloat { 0%, 100% { transform: translateY(0) rotate(0deg); opacity: 1; } 50% { transform: translateY(-3px) rotate(15deg); opacity: 0.8; } }
+.auth-logo-sparkle { color: #fbbf24; fill: #fbbf24; animation: sparkleFloat 2.5s ease-in-out infinite; }
+
+/* Hero */
+.auth-hero { display: flex; flex-direction: column; gap: 16px; }
+.auth-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 99px; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; width: fit-content; }
+.auth-badge-purple { background: rgba(168,85,247,0.15) !important; border-color: rgba(168,85,247,0.3) !important; color: #d8b4fe !important; }
+@keyframes badgePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.auth-badge-dot { width: 7px; height: 7px; border-radius: 50%; background: #6366f1; box-shadow: 0 0 8px rgba(99,102,241,0.7); animation: badgePulse 2s ease-in-out infinite; }
+.auth-badge-dot-purple { background: #a855f7 !important; box-shadow: 0 0 8px rgba(168,85,247,0.7) !important; }
+.auth-headline { font-size: clamp(32px, 4vw, 52px); font-weight: 900; line-height: 1.1; letter-spacing: -1px; color: #ffffff; margin: 0; }
+.auth-headline-gradient { background: linear-gradient(135deg, #818cf8 0%, #a78bfa 40%, #c084fc 80%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.auth-headline-gradient-purple { background: linear-gradient(135deg, #c084fc 0%, #e879f9 40%, #f472b6 80%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.auth-subline { font-size: 15px; line-height: 1.65; color: rgba(148,163,184,0.85); max-width: 440px; margin: 0; }
+
+/* Stats */
+.auth-stats { display: flex; align-items: center; gap: 24px; }
+.auth-stat { display: flex; flex-direction: column; gap: 2px; }
+.auth-stat + .auth-stat { padding-left: 24px; border-left: 1px solid rgba(255,255,255,0.1); }
+.auth-stat-value { font-size: 20px; font-weight: 900; color: #a5b4fc; letter-spacing: -0.5px; }
+.auth-stat-value-purple { color: #d8b4fe !important; }
+.auth-stat-label { font-size: 11px; color: rgba(100,116,139,0.9); font-weight: 500; }
+
+/* Feature pills */
+.auth-features { display: flex; flex-wrap: wrap; gap: 8px; }
+.auth-feature-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); font-size: 12px; font-weight: 600; color: rgba(203,213,225,0.85); backdrop-filter: blur(6px); transition: all 0.2s ease; }
+.auth-feature-pill:hover { background: rgba(255,255,255,0.08); border-color: rgba(99,102,241,0.3); color: #e2e8f0; }
+.auth-feature-icon { color: #818cf8; flex-shrink: 0; }
+
+/* Perks grid */
+.auth-perks { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.auth-perk { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(8px); transition: all 0.2s ease; }
+.auth-perk:hover { background: rgba(255,255,255,0.07); border-color: rgba(168,85,247,0.25); }
+.auth-perk-icon-wrap { width: 30px; height: 30px; flex-shrink: 0; border-radius: 8px; background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.25); display: flex; align-items: center; justify-content: center; }
+.auth-perk-icon { color: #c084fc; }
+.auth-perk-title { font-size: 12px; font-weight: 700; color: #e2e8f0; line-height: 1.3; }
+.auth-perk-desc { font-size: 11px; color: rgba(100,116,139,0.9); line-height: 1.4; margin-top: 2px; }
+
+/* Testimonial */
+.auth-testimonial { padding: 16px 20px; border-radius: 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(10px); display: flex; flex-direction: column; gap: 8px; }
+.auth-stars { display: flex; gap: 3px; }
+.auth-star { color: #fbbf24; fill: #fbbf24; }
+.auth-testimonial-text { font-size: 13px; color: rgba(203,213,225,0.85); font-style: italic; line-height: 1.55; margin: 0; }
+.auth-testimonial-author { display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 600; color: rgba(100,116,139,0.9); }
+.auth-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #4f46e5, #7c3aed); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: white; flex-shrink: 0; }
+.auth-avatar-purple { background: linear-gradient(135deg, #7c3aed, #a855f7) !important; }
+
+/* RIGHT PANEL */
+.auth-right { display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 48px 32px; min-width: min(480px, 100%); }
+@media (min-width: 1280px) { .auth-right { padding: 64px 72px; min-width: 520px; } }
+@media (max-width: 1023px) { .auth-right { padding: 40px 24px; } }
+
+/* Glassmorphism Card */
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 28px;
+  padding: 32px 28px;
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.1), 0 32px 80px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+  animation: pulseGlow 4s ease-in-out infinite;
+  overflow: hidden;
+}
+
+@keyframes pulseGlowPurple {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(168,85,247,0.12), 0 32px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 30px rgba(168,85,247,0.12); }
+  50%       { box-shadow: 0 0 0 1px rgba(168,85,247,0.22), 0 32px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 60px rgba(168,85,247,0.22); }
+}
+.auth-card-purple { border-color: rgba(168,85,247,0.15) !important; animation: pulseGlowPurple 4s ease-in-out infinite !important; }
+
+/* Card Header */
+.auth-card-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  width: 100%;
+}
+.auth-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+  margin-bottom: 2px;
+}
+.auth-card-icon-purple {
+  background: linear-gradient(135deg, #7c3aed, #a855f7) !important;
+  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.4) !important;
+}
+.auth-card-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  color: #f8fafc;
+  margin: 0;
+}
+.auth-card-sub {
+  font-size: 13px;
+  color: rgba(148, 163, 184, 0.85);
+  margin: 0;
+}
+.auth-card-link {
+  color: #818cf8;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.auth-card-link:hover {
+  color: #a5b4fc;
+  text-decoration: underline;
+}
+.auth-card-link-purple {
+  color: #c084fc !important;
+}
+.auth-card-link-purple:hover {
+  color: #d8b4fe !important;
+}
+
+/* Clerk wrapper inside auth-card */
+.auth-clerk-wrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Trust footer */
+.auth-trust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(148, 163, 184, 0.7);
+  font-weight: 500;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 16px;
+  margin-top: 4px;
+  width: 100%;
+}
+
+/* =========================================================================
+   CLERK WIDGET: Bulletproof Centered Dark System
+   ========================================================================= */
+
+/* Strip default Clerk container styles, force 100% width and centered */
+.cl-rootBox,
+.cl-signIn-root,
+.cl-signUp-root {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.cl-cardBox:not(.cl-userButtonPopoverCard) {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+.cl-card:not(.cl-userButtonPopoverCard) {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+.cl-main {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 14px !important;
+  background: transparent !important;
+}
+
+/* Hide default Clerk header and footer */
+.cl-header, .cl-headerTitle, .cl-headerSubtitle {
+  display: none !important;
+}
+.cl-footer, .cl-footerAction {
+  display: none !important;
+}
+
+/* Social Login Button (e.g. Continue with Google) */
+.cl-socialButtonsRoot,
+.cl-socialButtons {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.cl-socialButtonsBlockButton {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  height: 44px !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  transition: all 0.2s ease !important;
+}
+.cl-socialButtonsBlockButton:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+.cl-socialButtonsBlockButtonText {
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+}
+
+/* Divider */
+.cl-dividerRow {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 12px 0 !important;
+  box-sizing: border-box !important;
+}
+.cl-dividerLine {
+  flex: 1 1 0% !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  height: 1px !important;
+}
+.cl-dividerText {
+  color: rgba(148, 163, 184, 0.7) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  padding: 0 12px !important;
+  white-space: nowrap !important;
+}
+
+/* Form Container */
+.cl-form {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  background: transparent !important;
+}
+
+.cl-formFieldRow {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.cl-formField {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.cl-formFieldLabel {
+  color: rgba(226, 232, 240, 0.95) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  margin: 0 0 2px 0 !important;
+  text-align: left !important;
+}
+
+.cl-formFieldInputGroup {
+  width: 100% !important;
+  max-width: 100% !important;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+}
+
+.cl-formFieldInput {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  display: block !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 12px !important;
+  color: #f1f5f9 !important;
+  font-size: 14px !important;
+  height: 44px !important;
+  padding: 0 14px !important;
+  transition: all 0.2s ease !important;
+}
+.cl-formFieldInput:focus {
+  border-color: rgba(99, 102, 241, 0.6) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18) !important;
+  outline: none !important;
+}
+.cl-formFieldInput::placeholder {
+  color: rgba(148, 163, 184, 0.5) !important;
+}
+.cl-formFieldInputShowPasswordButton {
+  position: absolute !important;
+  right: 12px !important;
+  color: rgba(148, 163, 184, 0.8) !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  padding: 4px !important;
+}
+.cl-formFieldInputShowPasswordButton:hover {
+  color: #f1f5f9 !important;
+}
+
+/* Primary Button (Continue / Sign In / Sign Up) */
+.cl-formButtonRow,
+.cl-formSubmitRow,
+.cl-formFieldActionRow {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.cl-formButtonPrimary {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 6px 0 0 0 !important;
+  height: 44px !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  letter-spacing: 0.02em !important;
+  transition: all 0.2s ease !important;
+  border: none !important;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35) !important;
+  cursor: pointer !important;
+}
+.cl-formButtonPrimary:hover {
+  background: linear-gradient(135deg, #4338ca, #6d28d9) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 12px 32px rgba(99, 102, 241, 0.45) !important;
+}
+.cl-formButtonPrimary:active {
+  transform: translateY(0) scale(0.98) !important;
+}
+
+/* Sign Up Specific Button Gradient */
+.auth-signup .cl-formButtonPrimary {
+  background: linear-gradient(135deg, #7c3aed, #a855f7) !important;
+  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.35) !important;
+}
+.auth-signup .cl-formButtonPrimary:hover {
+  background: linear-gradient(135deg, #6d28d9, #9333ea) !important;
+  box-shadow: 0 12px 32px rgba(168, 85, 247, 0.45) !important;
+}
+
+/* Error and Alert States */
+.cl-formFieldErrorText {
+  color: #f87171 !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  margin: 2px 0 0 0 !important;
+}
+.cl-alert {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  background: rgba(248, 113, 113, 0.1) !important;
+  border: 1px solid rgba(248, 113, 113, 0.2) !important;
+  border-radius: 12px !important;
+  padding: 10px 14px !important;
+}
+.cl-alertText {
+  color: #fca5a5 !important;
+  font-size: 12px !important;
+}
+
+.cl-formFieldAction {
+  color: #818cf8 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  align-self: flex-end !important;
+}
+.cl-formFieldAction:hover {
+  color: #a5b4fc !important;
+}
+
+.cl-otpCodeFieldInput {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 12px !important;
+  color: white !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+}
+.cl-otpCodeFieldInput:focus {
+  border-color: rgba(99, 102, 241, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+.cl-identityPreview {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  padding: 8px 12px !important;
+}
+.cl-identityPreviewText {
+  color: #e2e8f0 !important;
+}
+.cl-identityPreviewEditButton {
+  color: #818cf8 !important;
+}
+
+.cl-spinner {
+  border-color: rgba(99, 102, 241, 0.3) !important;
+  border-top-color: #6366f1 !important;
+}
+
+/* Legacy wrapper class compat */
+.clerk-dark-glass .cl-card,
+.clerk-dark-glass .cl-cardBox,
+.clerk-dark-glass .cl-rootBox {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
+
+/* =========================================================================
+   USER BUTTON POPOVER (Navbar Profile Dropdown)
+   ========================================================================= */
+
+.cl-userButtonPopoverRootBox {
+  z-index: 99999 !important;
+}
+
+.cl-userButtonPopoverCard,
+.cl-card.cl-userButtonPopoverCard,
+.cl-cardBox.cl-userButtonPopoverCard {
+  background: #0f172a !important; /* solid opaque dark slate */
+  background-color: #0f172a !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  padding: 16px !important;
+  width: 290px !important;
+  max-width: 90vw !important;
+  overflow: hidden !important;
+  opacity: 1 !important;
+}
+
+html:not(.dark) .cl-userButtonPopoverCard,
+html:not(.dark) .cl-card.cl-userButtonPopoverCard,
+html:not(.dark) .cl-cardBox.cl-userButtonPopoverCard {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+}
+
+.cl-userButtonPopoverMain {
+  background: transparent !important;
+  padding: 0 !important;
+  gap: 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* User preview at top of popover */
+.cl-userPreview {
+  padding: 4px 6px 12px 6px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+html:not(.dark) .cl-userPreview {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.cl-userPreviewMainIdentifier {
+  color: #f8fafc !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+}
+html:not(.dark) .cl-userPreviewMainIdentifier {
+  color: #0f172a !important;
+}
+
+.cl-userPreviewSecondaryIdentifier {
+  color: #94a3b8 !important;
+  font-size: 12px !important;
+}
+html:not(.dark) .cl-userPreviewSecondaryIdentifier {
+  color: #64748b !important;
+}
+
+/* Action buttons inside popover */
+.cl-userButtonPopoverActions {
+  padding: 6px 0 0 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+}
+
+.cl-userButtonPopoverActionButton {
+  border-radius: 10px !important;
+  padding: 10px 12px !important;
+  color: #e2e8f0 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  transition: all 0.15s ease !important;
+  background: transparent !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+}
+html:not(.dark) .cl-userButtonPopoverActionButton {
+  color: #334155 !important;
+}
+
+.cl-userButtonPopoverActionButton:hover {
+  background: rgba(255, 255, 255, 0.09) !important;
+  color: #ffffff !important;
+}
+html:not(.dark) .cl-userButtonPopoverActionButton:hover {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: #0f172a !important;
+}
+
+.cl-userButtonPopoverActionButtonIcon {
+  color: #818cf8 !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+html:not(.dark) .cl-userButtonPopoverActionButtonIcon {
+  color: #6366f1 !important;
+}
+
+.cl-userButtonPopoverActionButtonText {
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  color: inherit !important;
+}
+
+/* Sign out button */
+.cl-userButtonPopoverActionButton__signOut {
+  color: #f87171 !important;
+}
+.cl-userButtonPopoverActionButton__signOut:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+}
+.cl-userButtonPopoverActionButton__signOut .cl-userButtonPopoverActionButtonIcon {
+  color: #f87171 !important;
+}
+
+/* Footer (Secured by Clerk) */
+.cl-userButtonPopoverFooter {
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 8px 6px 0 6px !important;
+  margin-top: 4px !important;
+  background: transparent !important;
+}
+html:not(.dark) .cl-userButtonPopoverFooter {
+  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   📱 MOBILE RESPONSIVENESS SYSTEM — Global Utilities
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Safe Area Insets (iOS notch / home indicator) ───────────────────────── */
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+/* Base mobile viewport fix */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Prevent horizontal scroll on mobile */
+body {
+  overflow-x: hidden;
+}
+
+/* ─── Touch Targets (minimum 44×44px per Apple/Google guidelines) ─────────── */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Auto-apply to interactive elements on touch devices */
+@media (max-width: 768px) {
+  button, a[role="button"], [role="button"],
+  input[type="checkbox"], input[type="radio"] {
+    min-height: 40px;
+  }
+
+  /* Form inputs bigger tap area on mobile */
+  input[type="text"], input[type="email"], input[type="password"],
+  input[type="search"], input[type="tel"], select, textarea {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+    min-height: 44px;
+  }
+}
+
+/* ─── Mobile Sidebar Drawer Animation ────────────────────────────────────── */
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutLeft {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.mobile-sidebar-open {
+  animation: slideInLeft 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.mobile-sidebar-close {
+  animation: slideOutLeft 0.22s cubic-bezier(0.55, 0, 1, 0.45) both;
+}
+
+.mobile-overlay-open {
+  animation: fadeInOverlay 0.2s ease both;
+}
+
+/* ─── Bottom Navigation Bar (Mobile) ─────────────────────────────────────── */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: hsl(var(--background) / 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid hsl(var(--border) / 0.8);
+  padding-bottom: var(--safe-area-bottom);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding-top: 8px;
+  padding-bottom: calc(8px + var(--safe-area-bottom));
+}
+
+.mobile-bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  transition: color 0.15s ease;
+  text-decoration: none;
+  border-radius: 12px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+}
+
+.mobile-bottom-nav-item:hover,
+.mobile-bottom-nav-item.active {
+  color: hsl(var(--primary));
+}
+
+.mobile-bottom-nav-item .nav-icon {
+  width: 22px;
+  height: 22px;
+}
+
+/* Space to prevent content hiding behind bottom nav */
+.pb-mobile-nav {
+  padding-bottom: calc(72px + var(--safe-area-bottom));
+}
+
+/* ─── Mobile Card Optimizations ────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Tighter section spacing on mobile */
+  .section-spacing {
+    margin-top: 40px;
+  }
+
+  /* Full-width cards on mobile */
+  .mobile-full-card {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* 2-col grid → 1-col on xs */
+  .xs-grid-1 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Admin sidebar full-screen on mobile */
+  .admin-sidebar-mobile {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    width: 88vw;
+    max-width: 320px;
+    overflow-y: auto;
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* ─── Swipeable / Scrollable Chip Rows ─────────────────────────────────────── */
+.chips-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.chips-scroll::-webkit-scrollbar { display: none; }
+.chips-scroll > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* ─── Responsive Text Utilities ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .text-display {
+    font-size: clamp(1.5rem, 8vw, 2.5rem) !important;
+    line-height: 1.15 !important;
+  }
+  .text-hero {
+    font-size: clamp(1.25rem, 6vw, 2rem) !important;
+    line-height: 1.2 !important;
+  }
+}
+
+/* ─── Admin Dashboard Mobile: Collapsed Sidebar ────────────────────────────── */
+.dashboard-layout {
+  display: flex;
+  min-height: calc(100vh - 64px);
+}
+
+.dashboard-sidebar {
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+              width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (max-width: 767px) {
+  .dashboard-sidebar {
+    position: fixed;
+    top: 64px; /* height of navbar */
+    left: 0;
+    bottom: 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    width: 85vw !important;
+    max-width: 300px;
+    box-shadow: 4px 0 30px rgba(0, 0, 0, 0.15);
+  }
+
+  .dashboard-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .dashboard-overlay {
+    display: block;
+    position: fixed;
+    inset: 64px 0 0 0;
+    z-index: 49;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    animation: fadeInOverlay 0.2s ease both;
+  }
+}
+
+/* ─── Search Page: Mobile Filter Panel ─────────────────────────────────────── */
+@media (max-width: 640px) {
+  .search-filter-drawer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 55;
+    border-radius: 24px 24px 0 0;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding-bottom: var(--safe-area-bottom);
+    animation: slideUpDrawer 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes slideUpDrawer {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+}
+
+/* ─── Business Profile: Mobile Hero ──────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .business-hero-aspect {
+    aspect-ratio: 4/3 !important;
+  }
+
+  .business-info-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ─── Table: Responsive Overflow on Mobile ────────────────────────────────── */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ─── Modal: Full-screen on mobile ───────────────────────────────────────── */
+@media (max-width: 640px) {
+  .dialog-mobile-full {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+  }
+}
+
+/* ─── Map: Full-screen overlay on mobile ─────────────────────────────────── */
+@media (max-width: 1023px) {
+  .map-mobile-full {
+    position: fixed;
+    inset: 64px 0 0 0;
+    z-index: 40;
+    border-radius: 0;
+  }
+}
+
+/* ─── Stat Cards: 2-col then 4-col ───────────────────────────────────────── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (min-width: 640px) {
+  .stat-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 1024px) {
+  .stat-grid { grid-template-columns: repeat(8, 1fr); }
+}
+
+/* ─── Horizontal Scroll Snap for mobile carousels ────────────────────────── */
+.snap-x-scroll {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8px;
+}
+.snap-x-scroll::-webkit-scrollbar { display: none; }
+.snap-x-scroll > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .snap-x-scroll > * {
+    width: 85vw;
+  }
+}
