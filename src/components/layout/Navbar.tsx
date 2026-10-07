@@ -49,6 +49,7 @@ export function Navbar() {
   const isCountryAdmin = currentRole === "country_admin";
   const isSuperAdmin = currentRole === "super_admin";
   const isAdmin = currentRole === "admin" || currentRole === "super_admin" || currentRole === "country_admin";
+  const canUpload = isAdmin || isCityAdmin;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl transition-all">
@@ -187,18 +188,20 @@ export function Navbar() {
             </Link>
           )}
 
-          {/* Quick Upload CTA (Batch / File) */}
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => setIsUploadModalOpen(true)}
-            className="h-8 px-2 text-xs font-semibold gap-1 border-border/80 text-foreground hover:bg-muted inline-flex items-center"
-            title="Upload business listings via CSV, Excel or JSON"
-          >
-            <Upload className="w-3.5 h-3.5 text-indigo-500" />
-            <span className="hidden xl:inline">Upload</span>
-          </Button>
+          {/* Quick Upload CTA (Batch / File) - Only visible to Admins, hidden for owners and normal users */}
+          {canUpload && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setIsUploadModalOpen(true)}
+              className="h-8 px-2 text-xs font-semibold gap-1 border-border/80 text-foreground hover:bg-muted inline-flex items-center"
+              title="Upload business listings via CSV, Excel or JSON"
+            >
+              <Upload className="w-3.5 h-3.5 text-indigo-500" />
+              <span className="hidden xl:inline">Upload</span>
+            </Button>
+          )}
 
           {/* Add / Claim Business CTA */}
           <Link href="/dashboard/listings/new">
@@ -440,23 +443,29 @@ export function Navbar() {
             </div>
           )}
 
-          {/* Primary Action Buttons — cleanly proportioned, NOT huge equal-page-size blocks */}
+          {/* Primary Action Buttons — cleanly proportioned */}
           <div className="pt-2 border-t border-border/60 flex flex-wrap items-center justify-between gap-2.5">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                setIsUploadModalOpen(true);
-              }}
-              className="flex-1 min-w-[130px] h-9 text-xs font-bold gap-1.5 rounded-xl border-border hover:border-indigo-500/40 text-foreground"
-            >
-              <Upload className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Bulk Upload</span>
-            </Button>
+            {canUpload && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsUploadModalOpen(true);
+                }}
+                className="flex-1 min-w-[130px] h-9 text-xs font-bold gap-1.5 rounded-xl border-border hover:border-indigo-500/40 text-foreground"
+              >
+                <Upload className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Bulk Upload</span>
+              </Button>
+            )}
 
-            <Link href="/dashboard/listings/new" onClick={() => setIsMobileMenuOpen(false)} className="flex-1 min-w-[130px]">
+            <Link
+              href="/dashboard/listings/new"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={canUpload ? "flex-1 min-w-[130px]" : "w-full"}
+            >
               <Button size="sm" variant="gradient" className="w-full h-9 text-xs font-bold gap-1.5 rounded-xl shadow-sm">
                 <PlusCircle className="w-3.5 h-3.5" />
                 <span>List Business</span>
