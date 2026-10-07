@@ -285,7 +285,7 @@ export function SearchHero() {
   };
 
   return (
-    <div className="relative py-8 xs:py-10 sm:py-14 md:py-20 flex flex-col items-center text-center px-2 xs:px-3 sm:px-4 overflow-hidden">
+    <div className="relative py-8 xs:py-10 sm:py-14 md:py-20 flex flex-col items-center text-center px-2 xs:px-3 sm:px-4">
       {/* Background Ambient Glow */}
       <div className="absolute inset-0 -z-10 flex items-center justify-center pointer-events-none overflow-hidden">
         <div className="w-[300px] xs:w-[450px] sm:w-[600px] h-[220px] xs:h-[280px] sm:h-[350px] bg-gradient-to-tr from-indigo-500/20 via-purple-500/20 to-pink-500/10 blur-[80px] sm:blur-[100px] rounded-full" />
@@ -309,7 +309,7 @@ export function SearchHero() {
       </p>
 
       {/* Unified Search Bar with Dropdown Container */}
-      <div className="w-full max-w-3xl mt-4 sm:mt-6 relative" ref={dropdownRef}>
+      <div className="w-full max-w-3xl mt-4 sm:mt-6 relative z-50" ref={dropdownRef}>
         <form
           onSubmit={handleSearch}
           className="glass-panel p-1 xs:p-1.5 sm:p-2 rounded-2xl sm:rounded-3xl shadow-xl shadow-indigo-500/10 flex flex-col sm:flex-row items-stretch sm:items-center gap-1 sm:gap-2 transition-all border border-indigo-100 dark:border-indigo-900/40"
@@ -392,7 +392,7 @@ export function SearchHero() {
 
         {/* Live Spelling Results Dropdown Below Search Bar */}
         {showDropdown && results.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-card/95 backdrop-blur-2xl border border-indigo-100 dark:border-indigo-900/60 rounded-2xl shadow-2xl overflow-hidden z-50 text-left divide-y divide-border/50 animate-in fade-in zoom-in-95 duration-150 max-h-[60vh] sm:max-h-[480px] overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border shadow-2xl rounded-2xl z-50 text-left divide-y divide-border/50 animate-in fade-in zoom-in-95 duration-150 max-h-[60vh] sm:max-h-[480px] overflow-y-auto">
             {/* Header info */}
             <div className="px-4 py-2 bg-muted/40 flex items-center justify-between text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
               <div className="flex items-center gap-1.5">

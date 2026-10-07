@@ -61,12 +61,12 @@ export default async function HomePage() {
   return (
     <div className="w-full pb-14 xs:pb-16 sm:pb-20">
       {/* Top Search Hero Section */}
-      <section className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8">
+      <section className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 relative z-30">
         <SearchHero />
       </section>
 
       {/* Category Icons Showcase */}
-      <section className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 mt-10 xs:mt-12 sm:mt-16">
+      <section className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 mt-10 xs:mt-12 sm:mt-16 relative z-10">
         <CategoryChips />
       </section>
 
