@@ -1061,16 +1061,16 @@ function SearchPageContent() {
                   key={biz.id}
                   id={`business-card-${biz.id}`}
                   onMouseEnter={() => setSelectedBusiness(biz)}
-                  className={`group rounded-2xl sm:rounded-3xl bg-card border p-3.5 xs:p-4 sm:p-5 md:p-6 transition-all duration-200 flex flex-col xs:flex-row gap-3.5 xs:gap-4 sm:gap-6 shadow-sm hover:shadow-2xl ${
+                  className={`group rounded-2xl sm:rounded-3xl bg-card border p-3.5 sm:p-5 md:p-6 transition-all duration-200 flex flex-col sm:flex-row gap-3.5 sm:gap-5 md:gap-6 shadow-sm hover:shadow-2xl ${
                     isSelected
                       ? "border-primary ring-2 ring-primary/20 shadow-indigo-500/10 -translate-y-0.5"
                       : "border-border/80 hover:border-primary/40"
                   }`}
                 >
-                  {/* Photo Thumbnail — bigger */}
+                  {/* Photo Thumbnail — clean responsive frame */}
                   <Link
                     href={`/business/${biz.id}`}
-                    className="relative w-full xs:w-44 sm:w-52 md:w-60 h-44 xs:h-36 sm:h-48 md:h-52 rounded-xl xs:rounded-2xl overflow-hidden shrink-0 bg-slate-100 dark:bg-slate-800"
+                    className="relative w-full sm:w-52 md:w-60 h-44 xs:h-52 sm:h-auto sm:min-h-[190px] rounded-xl sm:rounded-2xl overflow-hidden shrink-0 bg-slate-100 dark:bg-slate-800"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -1105,8 +1105,8 @@ function SearchPageContent() {
                   <div className="flex-1 flex flex-col justify-between min-w-0">
                     <div>
                       <div className="flex items-start justify-between gap-3">
-                        <Link href={`/business/${biz.id}`} className="flex items-center gap-2 min-w-0">
-                          <h3 className="font-extrabold text-xl text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                        <Link href={`/business/${biz.id}`} className="flex items-center gap-2 min-w-0 flex-1">
+                          <h3 className="font-extrabold text-lg sm:text-xl text-foreground group-hover:text-primary transition-colors line-clamp-2 break-words leading-snug">
                             {biz.name}
                           </h3>
                           {(biz.isFeatured || index === 0) && (
@@ -1168,7 +1168,7 @@ function SearchPageContent() {
 
                     {/* Footer Actions */}
                     <div className="pt-3 xs:pt-4 mt-3 xs:mt-4 border-t border-border/60 flex items-center justify-between gap-2 xs:gap-3 flex-wrap">
-                      <div className="flex items-center gap-1.5 text-xs xs:text-sm text-muted-foreground min-w-0 max-w-full xs:max-w-[200px] truncate">
+                      <div className="flex items-center gap-1.5 text-xs xs:text-sm text-muted-foreground min-w-0 flex-1 truncate">
                         <MapPin className="w-4 h-4 text-indigo-500 shrink-0" />
                         <span className="truncate">{biz.addressLine}</span>
                       </div>

@@ -436,7 +436,7 @@ export function SearchHero() {
                       {/* Content details */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-bold truncate">
+                          <span className="text-xs xs:text-sm font-bold text-foreground break-words line-clamp-2 leading-snug">
                             {highlightMatch(item.title, query).map((seg, i) =>
                               seg.isMatch ? (
                                 <span
@@ -480,12 +480,12 @@ export function SearchHero() {
                         </div>
 
                         {item.subtitle && (
-                          <div className="text-xs text-muted-foreground truncate mt-0.5">
+                          <div className="text-xs text-muted-foreground line-clamp-2 break-words mt-0.5 leading-snug">
                             {item.subtitle}
                           </div>
                         )}
                         {item.extraInfo && item.extraInfo !== item.subtitle && (
-                          <div className="text-[11px] text-muted-foreground/80 truncate">
+                          <div className="text-[11px] text-muted-foreground/80 line-clamp-2 break-words mt-0.5">
                             {item.extraInfo}
                           </div>
                         )}
