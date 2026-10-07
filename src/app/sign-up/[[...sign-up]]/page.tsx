@@ -1,13 +1,24 @@
 import { SignUp } from "@clerk/nextjs";
 import Link from "next/link";
 import { MapPin, Sparkles, Star, Building2, Shield, TrendingUp, Heart, Zap } from "lucide-react";
+import { fetchAuthStats, formatCount } from "@/lib/auth-stats";
 
 export const metadata = {
   title: "Create Account — BizFinder",
   description: "Join BizFinder free — discover local businesses, claim your listing, and unlock analytics.",
 };
 
-export default function SignUpPage() {
+export default async function SignUpPage() {
+  const stats = await fetchAuthStats();
+
+  const displayStats = [
+    { value: "100% Free", label: "To Register" },
+    { value: formatCount(stats.listingCount), label: "Registered Listings" },
+    { value: "0%", label: "Commission" },
+  ];
+
+  const testimonial = stats.ownerTestimonial;
+
   return (
     <div className="auth-page-root auth-signup">
       {/* ── Animated background orbs ── */}
@@ -72,13 +83,9 @@ export default function SignUpPage() {
             ))}
           </div>
 
-          {/* Stats Row */}
+          {/* Stats Row — real listing count from DB */}
           <div className="auth-stats auth-delay-3">
-            {[
-              { value: "100% Free", label: "To Register" },
-              { value: "10K+", label: "Registered Listings" },
-              { value: "0%", label: "Commission" },
-            ].map((s) => (
+            {displayStats.map((s) => (
               <div key={s.label} className="auth-stat">
                 <span className="auth-stat-value auth-stat-value-purple">{s.value}</span>
                 <span className="auth-stat-label">{s.label}</span>
@@ -86,7 +93,7 @@ export default function SignUpPage() {
             ))}
           </div>
 
-          {/* Testimonial */}
+          {/* Testimonial — real owner review from DB if available */}
           <div className="auth-testimonial auth-delay-4">
             <div className="auth-stars">
               {[...Array(5)].map((_, i) => (
@@ -94,12 +101,11 @@ export default function SignUpPage() {
               ))}
             </div>
             <p className="auth-testimonial-text">
-              &ldquo;Claiming our Bole location took under 5 minutes. We now receive
-              regular customer inquiries directly through BizFinder!&rdquo;
+              &ldquo;{testimonial?.text}&rdquo;
             </p>
             <div className="auth-testimonial-author">
-              <div className="auth-avatar auth-avatar-purple">DA</div>
-              <span>Dr. Dawit Bekele — Managing Director, Bole Med</span>
+              <div className="auth-avatar auth-avatar-purple">{testimonial?.authorInitials}</div>
+              <span>{testimonial?.authorName}</span>
             </div>
           </div>
         </div>

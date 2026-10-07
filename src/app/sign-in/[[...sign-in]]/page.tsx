@@ -1,13 +1,33 @@
 import { SignIn } from "@clerk/nextjs";
 import Link from "next/link";
 import { MapPin, Sparkles, Star, Building2, Shield, TrendingUp, Users } from "lucide-react";
+import { fetchAuthStats, formatCount } from "@/lib/auth-stats";
 
 export const metadata = {
   title: "Sign In — BizFinder",
   description: "Sign in to your BizFinder account.",
 };
 
-export default function SignInPage() {
+export default async function SignInPage() {
+  const stats = await fetchAuthStats();
+
+  const displayStats = [
+    {
+      value: formatCount(stats.listingCount),
+      label: "Listings",
+    },
+    {
+      value: formatCount(stats.userCount),
+      label: "Monthly Visitors",
+    },
+    {
+      value: `${stats.avgRating}★`,
+      label: "Rating",
+    },
+  ];
+
+  const testimonial = stats.featuredReview;
+
   return (
     <div className="auth-page-root">
       {/* ── Animated background orbs ── */}
@@ -40,7 +60,7 @@ export default function SignInPage() {
           <div className="auth-hero auth-delay-1">
             <div className="auth-badge">
               <span className="auth-badge-dot" />
-              Trusted by 50,000+ users
+              Trusted by {formatCount(stats.userCount)} users
             </div>
             <h1 className="auth-headline">
               Welcome back to<br />
@@ -52,13 +72,9 @@ export default function SignInPage() {
             </p>
           </div>
 
-          {/* Stats Row */}
+          {/* Stats Row — live from DB */}
           <div className="auth-stats auth-delay-2">
-            {[
-              { value: "10K+", label: "Listings" },
-              { value: "50K+", label: "Monthly Visitors" },
-              { value: "4.9★", label: "Rating" },
-            ].map((s) => (
+            {displayStats.map((s) => (
               <div key={s.label} className="auth-stat">
                 <span className="auth-stat-value">{s.value}</span>
                 <span className="auth-stat-label">{s.label}</span>
@@ -81,7 +97,7 @@ export default function SignInPage() {
             ))}
           </div>
 
-          {/* Testimonial */}
+          {/* Testimonial — real review from DB if available */}
           <div className="auth-testimonial auth-delay-4">
             <div className="auth-stars">
               {[...Array(5)].map((_, i) => (
@@ -89,12 +105,11 @@ export default function SignInPage() {
               ))}
             </div>
             <p className="auth-testimonial-text">
-              &ldquo;BizFinder makes discovering verified spots in Addis so seamless.
-              The live hours and maps are outstanding.&rdquo;
+              &ldquo;{testimonial?.text}&rdquo;
             </p>
             <div className="auth-testimonial-author">
-              <div className="auth-avatar">ST</div>
-              <span>Sara Tadesse — Local Explorer</span>
+              <div className="auth-avatar">{testimonial?.authorInitials}</div>
+              <span>{testimonial?.authorName}</span>
             </div>
           </div>
         </div>

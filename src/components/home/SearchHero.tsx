@@ -285,64 +285,38 @@ export function SearchHero() {
   };
 
   return (
-    <div className="relative py-12 md:py-20 flex flex-col items-center text-center px-4">
+    <div className="relative py-8 xs:py-10 sm:py-14 md:py-20 flex flex-col items-center text-center px-2 xs:px-3 sm:px-4 overflow-hidden">
       {/* Background Ambient Glow */}
-      <div className="absolute inset-0 -z-10 flex items-center justify-center">
-        <div className="w-[600px] h-[350px] bg-gradient-to-tr from-indigo-500/20 via-purple-500/20 to-pink-500/10 blur-[100px] rounded-full pointer-events-none" />
+      <div className="absolute inset-0 -z-10 flex items-center justify-center pointer-events-none overflow-hidden">
+        <div className="w-[300px] xs:w-[450px] sm:w-[600px] h-[220px] xs:h-[280px] sm:h-[350px] bg-gradient-to-tr from-indigo-500/20 via-purple-500/20 to-pink-500/10 blur-[80px] sm:blur-[100px] rounded-full" />
       </div>
 
-      {/* Main Tagline */}
-      <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold mb-6 shadow-sm">
-        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-        Discover 10,000+ Verified Local Businesses, Branches, Products & Buildings
+      {/* Main Tagline Pill */}
+      <div className="inline-flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1 xs:py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300 text-[11px] xs:text-xs font-bold mb-4 sm:mb-6 shadow-sm max-w-full">
+        <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+        <span className="truncate">Discover 10,000+ Verified Businesses, Branches & Products</span>
       </div>
 
-      <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-foreground max-w-4xl leading-[1.15]">
+      <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-foreground max-w-4xl leading-[1.15] sm:leading-[1.15]">
         Find What You Need,{" "}
         <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
           Right Where You Are.
         </span>
       </h1>
 
-      <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl leading-relaxed">
+      <p className="mt-2.5 sm:mt-4 text-xs xs:text-sm sm:text-base text-muted-foreground max-w-2xl leading-relaxed px-1">
         Search by business name, branches, products, building name, map, country, city, or business type with live spelling results.
       </p>
 
-      {/* Search Scope Option Selector Pills — hidden to reduce home page clutter */}
-      {/* <div className="w-full max-w-3xl mt-8 flex flex-wrap items-center justify-center gap-2 pb-1">
-        {SEARCH_OPTIONS.map((opt) => {
-          const Icon = opt.icon;
-          const isSelected = selectedScope === opt.key;
-          return (
-            <button
-              key={opt.key}
-              type="button"
-              onClick={() => {
-                setSelectedScope(opt.key);
-                inputRef.current?.focus();
-              }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all select-none ${
-                isSelected
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/25 scale-[1.02]"
-                  : "bg-card/80 hover:bg-accent text-muted-foreground hover:text-foreground border border-border/80 backdrop-blur-sm"
-              }`}
-            >
-              <Icon className={`w-3.5 h-3.5 ${isSelected ? "text-white" : "text-muted-foreground"}`} />
-              <span>{opt.label}</span>
-            </button>
-          );
-        })}
-      </div> */}
-
       {/* Unified Search Bar with Dropdown Container */}
-      <div className="w-full max-w-3xl mt-2 relative" ref={dropdownRef}>
+      <div className="w-full max-w-3xl mt-4 sm:mt-6 relative" ref={dropdownRef}>
         <form
           onSubmit={handleSearch}
-          className="glass-panel p-2 rounded-2xl md:rounded-3xl shadow-xl shadow-indigo-500/10 flex flex-col md:flex-row items-center gap-2 transition-all border border-indigo-100 dark:border-indigo-900/40"
+          className="glass-panel p-1 xs:p-1.5 sm:p-2 rounded-2xl sm:rounded-3xl shadow-xl shadow-indigo-500/10 flex flex-col sm:flex-row items-stretch sm:items-center gap-1 sm:gap-2 transition-all border border-indigo-100 dark:border-indigo-900/40"
         >
           {/* Query Input with dynamic icon & placeholder */}
-          <div className="relative flex-1 w-full flex items-center">
-            <currentOption.icon className="w-5 h-5 text-indigo-500 ml-3 shrink-0" />
+          <div className="relative flex-1 w-full flex items-center h-10 xs:h-11 sm:h-12 border-b border-border/40 sm:border-b-0 px-1 sm:px-0">
+            <currentOption.icon className="w-4 h-4 xs:w-4.5 xs:h-4.5 text-indigo-500 ml-2 sm:ml-3 shrink-0" />
             <input
               ref={inputRef}
               type="text"
@@ -355,7 +329,7 @@ export function SearchHero() {
                 }
               }}
               placeholder={currentOption.placeholder}
-              className="w-full bg-transparent border-0 px-3 py-3 text-sm md:text-base font-medium placeholder:text-muted-foreground/60 focus:outline-none text-foreground"
+              className="w-full bg-transparent border-0 px-2 sm:px-3 text-xs xs:text-sm sm:text-base font-medium placeholder:text-muted-foreground/60 focus:outline-none text-foreground"
             />
             {query && (
               <button
@@ -366,55 +340,59 @@ export function SearchHero() {
                   setShowDropdown(false);
                   inputRef.current?.focus();
                 }}
-                className="p-1.5 text-muted-foreground hover:text-foreground mr-2 rounded-full hover:bg-accent"
+                className="p-1 text-muted-foreground hover:text-foreground mr-1 rounded-full hover:bg-accent shrink-0"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          <div className="hidden md:block w-px h-8 bg-border/80" />
+          {/* Vertical Divider on sm+ (Medium, Large, XL) */}
+          <div className="hidden sm:block w-px h-7 bg-border/70 shrink-0" />
 
-          {/* Location Input with GPS detector */}
-          <div className="relative w-full md:w-60 flex items-center">
-            <MapPin className="w-4 h-4 text-indigo-600 dark:text-indigo-400 ml-3 shrink-0" />
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="City, sub-city, district..."
-              className="w-full bg-transparent border-0 px-2 py-3 text-sm font-medium placeholder:text-muted-foreground/60 focus:outline-none text-foreground"
-            />
-            <button
-              type="button"
-              onClick={handleDetectLocation}
-              disabled={isDetectingLocation}
-              title="Use GPS current location"
-              className="p-2 mr-1 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+          {/* Location & Search Button Row (Inline side-by-side on Mobile / Integrated on sm+) */}
+          <div className="flex items-center gap-1 sm:gap-1.5 w-full sm:w-auto h-10 xs:h-11 sm:h-12 px-1 sm:px-0">
+            {/* Location Input with GPS detector */}
+            <div className="relative flex-1 sm:w-48 md:w-56 flex items-center h-full">
+              <MapPin className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-indigo-600 dark:text-indigo-400 ml-1.5 sm:ml-2 shrink-0" />
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="City, area, district..."
+                className="w-full bg-transparent border-0 px-1.5 sm:px-2 text-xs xs:text-sm font-medium placeholder:text-muted-foreground/60 focus:outline-none text-foreground"
+              />
+              <button
+                type="button"
+                onClick={handleDetectLocation}
+                disabled={isDetectingLocation}
+                title="Use GPS current location"
+                className="p-1.5 mr-0.5 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 shrink-0"
+              >
+                {isDetectingLocation ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                ) : (
+                  <Crosshair className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
+
+            {/* Search Button */}
+            <Button
+              type="submit"
+              size="default"
+              variant="gradient"
+              className="h-8 xs:h-9 sm:h-10 md:h-11 px-3.5 xs:px-4 sm:px-5 md:px-6 rounded-xl sm:rounded-2xl gap-1.5 font-bold shrink-0 shadow-md shadow-indigo-500/20 text-xs sm:text-sm"
             >
-              {isDetectingLocation ? (
-                <Loader2 className="w-4 h-4 animate-spin text-primary" />
-              ) : (
-                <Crosshair className="w-4 h-4" />
-              )}
-            </button>
+              <span>Search</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
           </div>
-
-          {/* Search Button */}
-          <Button
-            type="submit"
-            size="lg"
-            variant="gradient"
-            className="w-full md:w-auto px-7 rounded-xl md:rounded-2xl gap-2 font-bold shrink-0 shadow-md shadow-indigo-500/20"
-          >
-            Search
-            <ArrowRight className="w-4 h-4" />
-          </Button>
         </form>
 
         {/* Live Spelling Results Dropdown Below Search Bar */}
         {showDropdown && results.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-card/95 backdrop-blur-2xl border border-indigo-100 dark:border-indigo-900/60 rounded-2xl shadow-2xl overflow-hidden z-50 text-left divide-y divide-border/50 animate-in fade-in zoom-in-95 duration-150 max-h-[480px] overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 mt-2 bg-card/95 backdrop-blur-2xl border border-indigo-100 dark:border-indigo-900/60 rounded-2xl shadow-2xl overflow-hidden z-50 text-left divide-y divide-border/50 animate-in fade-in zoom-in-95 duration-150 max-h-[60vh] sm:max-h-[480px] overflow-y-auto">
             {/* Header info */}
             <div className="px-4 py-2 bg-muted/40 flex items-center justify-between text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
               <div className="flex items-center gap-1.5">

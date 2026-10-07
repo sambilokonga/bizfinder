@@ -425,16 +425,16 @@ export function UnifiedSearchAutocomplete({
             variant === "hero"
               ? "h-12 px-4 rounded-2xl bg-background border-input shadow-md focus-within:ring-2 focus-within:ring-indigo-500/50 focus-within:border-indigo-400"
               : variant === "compact"
-              ? "h-9 px-3 rounded-xl bg-background border-input shadow-sm focus-within:ring-2 focus-within:ring-primary focus-within:border-primary"
-              : "h-9 px-2 rounded-lg bg-background border-input"
+              ? "h-9 pl-2 sm:pl-2.5 pr-1 sm:pr-1.5 rounded-xl bg-background border-input shadow-sm focus-within:ring-2 focus-within:ring-primary focus-within:border-primary"
+              : "h-9 pl-2 pr-1 rounded-lg bg-background border-input"
           }`}
         >
           {/* Active Scope Icon Indicator */}
-          <div className="pl-2 pr-1 shrink-0 flex items-center">
+          <div className="pl-1 sm:pl-1.5 pr-1 shrink-0 flex items-center">
             {isLoading ? (
-              <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
+              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500 animate-spin" />
             ) : (
-              <currentOption.icon className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+              <currentOption.icon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500 dark:text-indigo-400" />
             )}
           </div>
 
@@ -452,7 +452,7 @@ export function UnifiedSearchAutocomplete({
             onKeyDown={handleKeyDown}
             placeholder={activePlaceholder}
             autoFocus={autoFocus}
-            className="w-full bg-transparent border-0 px-2.5 py-2 text-sm md:text-base font-medium placeholder:text-muted-foreground/60 focus:outline-none text-foreground"
+            className="flex-1 min-w-0 bg-transparent border-0 px-1.5 sm:px-2 py-1.5 text-xs sm:text-sm font-medium placeholder:text-muted-foreground/60 focus:outline-none text-foreground"
           />
 
           {/* Clear Button */}
@@ -466,24 +466,26 @@ export function UnifiedSearchAutocomplete({
                 setIsOpen(false);
                 inputRef.current?.focus();
               }}
-              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors shrink-0 mr-1 rounded-full hover:bg-accent"
+              className="p-1 text-muted-foreground hover:text-foreground transition-colors shrink-0 mr-1 rounded-full hover:bg-accent"
               title="Clear search"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
 
-          {/* Search Action Button */}
+          {/* Search Action Button — anchored firmly in the right corner */}
           <button
             type="submit"
-            className={`font-bold shrink-0 transition-all flex items-center justify-center gap-1.5 ${
+            className={`font-bold shrink-0 transition-all flex items-center justify-center gap-1 sm:gap-1.5 ${
               variant === "hero"
                 ? "px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-md shadow-indigo-500/20 hover:opacity-95 text-sm"
-                : "px-3 py-1 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-xs h-7"
+                : "h-7 px-2 xs:px-2.5 sm:px-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-xs shadow-sm shadow-primary/20"
             }`}
+            title="Search"
+            aria-label="Search"
           >
-            <span>Search</span>
-            <ArrowRight className="w-3.5 h-3.5 hidden sm:inline" />
+            <Search className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden xs:inline">Search</span>
           </button>
         </div>
       </form>

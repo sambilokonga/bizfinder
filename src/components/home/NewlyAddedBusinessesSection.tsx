@@ -42,10 +42,10 @@ export function NewlyAddedBusinessesSection({
   }
 
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-20">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
+    <section className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 mt-12 xs:mt-16 sm:mt-20">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 sm:mb-8 gap-3 sm:gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 uppercase tracking-wider mb-2">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 uppercase tracking-wider mb-1.5">
             <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
             Just Listed & Fresh Additions
             {totalNewCount > 0 && (
@@ -54,21 +54,21 @@ export function NewlyAddedBusinessesSection({
               </span>
             )}
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+          <h2 className="text-xl xs:text-2xl sm:text-3xl font-black text-foreground tracking-tight">
             Newly Added Businesses
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
             Explore recent local registrations, fresh establishments, and rising community spots.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-1 sm:pb-0 shrink-0">
           <Button
             variant="outline"
             size="sm"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="gap-2 font-medium rounded-xl text-xs sm:text-sm hover:bg-amber-50 dark:hover:bg-amber-950/30 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+            className="gap-2 font-medium rounded-xl text-xs sm:text-sm hover:bg-amber-50 dark:hover:bg-amber-950/30 hover:text-amber-600 dark:hover:text-amber-400 transition-colors shrink-0"
             title="Refresh latest listings"
           >
             <RotateCw
@@ -79,31 +79,31 @@ export function NewlyAddedBusinessesSection({
             <span>Refresh</span>
           </Button>
 
-          <Link href="/dashboard/listings/new">
+          <Link href="/dashboard/listings/new" className="shrink-0">
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5 font-semibold rounded-xl text-xs sm:text-sm border-dashed border-primary/40 hover:border-primary text-foreground hover:bg-primary/5"
+              className="gap-1.5 font-semibold rounded-xl text-xs sm:text-sm border-dashed border-primary/40 hover:border-primary text-foreground hover:bg-primary/5 shrink-0"
             >
               <PlusCircle className="w-3.5 h-3.5 text-primary" />
-              <span>Add Your Business</span>
+              <span>Add Business</span>
             </Button>
           </Link>
 
-          <Link href="/search?sort=newest">
+          <Link href="/search?sort=newest" className="shrink-0">
             <Button
               variant="default"
               size="sm"
-              className="gap-2 font-semibold rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-sm text-xs sm:text-sm"
+              className="gap-2 font-semibold rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-sm text-xs sm:text-sm shrink-0"
             >
-              <span>View All Newest</span>
+              <span>View All</span>
               <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 transition-opacity duration-300">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 transition-opacity duration-300">
         {businesses.map((biz) => (
           <BusinessFeaturedCard key={biz.id} biz={biz} />
         ))}

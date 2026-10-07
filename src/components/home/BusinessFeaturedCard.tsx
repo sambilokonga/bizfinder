@@ -54,7 +54,7 @@ export function BusinessFeaturedCard({ biz }: BusinessFeaturedCardProps) {
   })();
 
   return (
-    <div className="group relative flex flex-col rounded-3xl bg-card border border-border/80 hover:border-primary/50 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+    <div className="group relative flex flex-col rounded-2xl sm:rounded-3xl bg-card border border-border/80 hover:border-primary/50 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
       {/* Thumbnail Image Container */}
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
         <Link href={`/business/${biz.id}`} className="block w-full h-full">
@@ -68,8 +68,8 @@ export function BusinessFeaturedCard({ biz }: BusinessFeaturedCardProps) {
         </Link>
 
         {/* Category & New Pill Overlay */}
-        <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5 pointer-events-none">
-          <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-black/60 backdrop-blur-md text-white border border-white/20">
+        <div className="absolute top-2.5 left-2.5 xs:top-3 xs:left-3 flex flex-wrap items-center gap-1.5 pointer-events-none">
+          <span className="px-2 xs:px-2.5 py-0.5 xs:py-1 rounded-full text-[10px] xs:text-[11px] font-bold bg-black/60 backdrop-blur-md text-white border border-white/20">
             {biz.categoryName}
           </span>
           {isRecent && (
@@ -81,7 +81,7 @@ export function BusinessFeaturedCard({ biz }: BusinessFeaturedCardProps) {
         </div>
 
         {/* Top-Right Favorite Heart Button */}
-        <div className="absolute top-3 right-3 z-10">
+        <div className="absolute top-2.5 right-2.5 xs:top-3 xs:right-3 z-10">
           <FavoriteButton
             businessId={biz.id}
             businessName={biz.name}
@@ -93,10 +93,10 @@ export function BusinessFeaturedCard({ biz }: BusinessFeaturedCardProps) {
         </div>
 
         {/* Live Status Badge */}
-        <div className="absolute bottom-3 left-3 pointer-events-none">
+        <div className="absolute bottom-2.5 left-2.5 xs:bottom-3 xs:left-3 pointer-events-none">
           <Badge
             variant={liveStatus.isOpen ? "success" : "destructive"}
-            className="backdrop-blur-md font-bold text-[11px] shadow-sm"
+            className="backdrop-blur-md font-bold text-[10px] xs:text-[11px] shadow-sm px-2 py-0.5"
           >
             {liveStatus.statusText}
           </Badge>
@@ -104,10 +104,10 @@ export function BusinessFeaturedCard({ biz }: BusinessFeaturedCardProps) {
       </div>
 
       {/* Card Body */}
-      <Link href={`/business/${biz.id}`} className="p-5 flex-1 flex flex-col justify-between">
+      <Link href={`/business/${biz.id}`} className="p-3.5 xs:p-4 sm:p-5 flex-1 flex flex-col justify-between">
         <div>
           <div className="flex items-start justify-between gap-2 mb-1.5">
-            <h3 className="font-bold text-base text-foreground group-hover:text-primary transition-colors line-clamp-1">
+            <h3 className="font-bold text-sm xs:text-base text-foreground group-hover:text-primary transition-colors line-clamp-1">
               {biz.name}
             </h3>
             {biz.isVerified && (
@@ -120,23 +120,23 @@ export function BusinessFeaturedCard({ biz }: BusinessFeaturedCardProps) {
           </p>
         </div>
 
-        <div className="pt-3 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="pt-2.5 sm:pt-3 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
           {biz.reviewCount > 0 ? (
             <div className="flex items-center gap-1 font-bold text-foreground">
-              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
               <span>{biz.ratingAvg.toFixed(1)}</span>
-              <span className="text-muted-foreground font-normal">
+              <span className="text-muted-foreground font-normal text-[11px]">
                 ({biz.reviewCount})
               </span>
             </div>
           ) : (
             <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-              <Sparkles className="w-3.5 h-3.5" />
+              <Sparkles className="w-3 h-3 shrink-0" />
               <span>Newly Listed</span>
             </div>
           )}
 
-          <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground truncate max-w-[130px]">
+          <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground truncate max-w-[120px] xs:max-w-[140px]">
             <MapPin className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
             <span className="truncate">{biz.districtName || biz.cityName}</span>
           </div>

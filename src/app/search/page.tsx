@@ -523,11 +523,11 @@ function SearchPageContent() {
   return (
     <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col bg-slate-50/50 dark:bg-slate-950/50">
       {/* Top Filter & Search Header Bar */}
-      <div className="border-b border-border bg-card/85 backdrop-blur-xl sticky top-16 z-30 px-4 sm:px-6 pt-3 pb-2.5 shadow-sm">
-        <div className="max-w-7xl mx-auto flex flex-col gap-2.5">
+      <div className="border-b border-border bg-card/90 backdrop-blur-xl sticky top-16 z-30 px-2 xs:px-3 sm:px-6 pt-2 pb-1.5 sm:pb-2 shadow-sm">
+        <div className="max-w-7xl mx-auto flex flex-col gap-1.5 sm:gap-2">
 
-          {/* ── Single Row: Search + Filters + Sort ── */}
-          <div className="flex items-center gap-2 w-full">
+          {/* ── Single Row: Search + Filters + Sort + Views ── */}
+          <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 w-full">
             {/* Search Input — takes all remaining space */}
             <div className="flex-1 min-w-0">
               <UnifiedSearchAutocomplete
@@ -551,7 +551,7 @@ function SearchPageContent() {
                 variant="compact"
                 showOptionPills={false}
                 customBusinesses={allBusinesses}
-                placeholder="Search business name, branches, products, buildings, cities, countries..."
+                placeholder="Search businesses, branches, products, cities..."
               />
             </div>
 
@@ -560,14 +560,14 @@ function SearchPageContent() {
               variant="outline"
               size="sm"
               onClick={() => setShowFiltersModal(!showFiltersModal)}
-              className={`h-9 gap-1.5 text-xs font-bold rounded-xl shrink-0 ${
-                showFiltersModal ? "border-primary text-primary" : ""
+              className={`h-9 px-2 xs:px-2.5 gap-1 xs:gap-1.5 text-xs font-bold rounded-xl shrink-0 transition-all ${
+                showFiltersModal ? "border-primary text-primary bg-primary/5" : ""
               }`}
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Filters</span>
               {hasActiveFilters && (
-                <span className="w-2 h-2 rounded-full bg-primary" />
+                <span className="w-2 h-2 rounded-full bg-primary ring-2 ring-primary/20" />
               )}
             </Button>
 
@@ -592,15 +592,16 @@ function SearchPageContent() {
             <ThemeToggle variant="button" className="hidden sm:flex shrink-0" />
 
             {/* View Mode Toggle (Mobile / Tablet) */}
-            <div className="flex md:hidden items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-border shrink-0">
+            <div className="flex lg:hidden items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-border shrink-0">
               <button
                 onClick={() => setViewMode("list")}
                 className={`p-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  viewMode === "list"
+                  viewMode !== "map"
                     ? "bg-card text-primary shadow-sm"
-                    : "text-muted-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
                 title="List View"
+                aria-label="List View"
               >
                 <List className="w-4 h-4" />
               </button>
@@ -609,9 +610,10 @@ function SearchPageContent() {
                 className={`p-1.5 rounded-lg text-xs font-bold transition-colors ${
                   viewMode === "map"
                     ? "bg-card text-primary shadow-sm"
-                    : "text-muted-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
                 title="Map View"
+                aria-label="Map View"
               >
                 <MapIcon className="w-4 h-4" />
               </button>
@@ -619,8 +621,8 @@ function SearchPageContent() {
           </div>
         </div>
 
-        {/* Multi-Scope Search Options Bar */}
-        <div className="max-w-7xl mx-auto flex items-center gap-1.5 pt-2.5 overflow-x-auto no-scrollbar text-xs">
+        {/* Multi-Scope Search Options Bar (Hidden on XS, S, M to prevent dense header) */}
+        <div className="max-w-7xl mx-auto hidden lg:flex items-center gap-1.5 pt-2.5 overflow-x-auto no-scrollbar text-xs">
           <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mr-1 shrink-0">
             Scope:
           </span>
@@ -712,8 +714,8 @@ function SearchPageContent() {
           </div>
         )}
 
-        {/* Quick Filter Pill Badges */}
-        <div className="max-w-7xl mx-auto flex items-center gap-2 pt-2.5 overflow-x-auto no-scrollbar text-xs">
+        {/* Quick Filter Pill Badges (Hidden on XS, S, M to prevent dense header) */}
+        <div className="max-w-7xl mx-auto hidden lg:flex items-center gap-2 pt-2.5 overflow-x-auto no-scrollbar text-xs">
           <button
             onClick={() => setOpenNowOnly(!openNowOnly)}
             className={`px-3 py-1.5 rounded-full font-bold transition-all shrink-0 border flex items-center gap-1.5 ${
@@ -813,20 +815,139 @@ function SearchPageContent() {
 
         {/* Extended Interactive Filter Drawer */}
         {showFiltersModal && (
-          <div className="max-w-7xl mx-auto mt-4 p-5 rounded-2xl bg-card border border-border shadow-xl grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-top-2 duration-150">
-            {/* Radius Slider */}
+          <div className="max-w-7xl mx-auto mt-4 p-4 sm:p-5 rounded-2xl bg-card border border-border shadow-xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 animate-in fade-in slide-in-from-top-2 duration-150">
+            {/* Search Scope */}
+            <div>
+              <span className="text-xs font-bold text-foreground uppercase tracking-wider block mb-2">
+                Search Scope
+              </span>
+              <select
+                value={selectedScope}
+                onChange={(e) => setSelectedScope(e.target.value as any)}
+                className="w-full h-10 rounded-xl border border-input bg-background px-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+              >
+                {SEARCH_OPTIONS.map((opt) => (
+                  <option key={opt.key} value={opt.key}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status & Verification */}
+            <div>
+              <span className="text-xs font-bold text-foreground uppercase tracking-wider block mb-2">
+                Status & Verification
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOpenNowOnly(!openNowOnly)}
+                  className={`flex-1 h-10 px-3 rounded-xl text-xs font-bold border transition-colors flex items-center justify-center gap-1.5 ${
+                    openNowOnly
+                      ? "bg-emerald-600 text-white border-emerald-700 shadow-sm shadow-emerald-600/20"
+                      : "bg-background text-muted-foreground border-border hover:bg-accent"
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  Open Now
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVerifiedOnly(!verifiedOnly)}
+                  className={`flex-1 h-10 px-3 rounded-xl text-xs font-bold border transition-colors flex items-center justify-center gap-1.5 ${
+                    verifiedOnly
+                      ? "bg-indigo-600 text-white border-indigo-700 shadow-sm shadow-indigo-600/20"
+                      : "bg-background text-muted-foreground border-border hover:bg-accent"
+                  }`}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Verified Only
+                </button>
+              </div>
+            </div>
+
+            {/* Price Tier */}
+            <div>
+              <span className="text-xs font-bold text-foreground uppercase tracking-wider block mb-2">
+                Price Tier
+              </span>
+              <div className="flex items-center gap-1.5">
+                {(["all", "$", "$$", "$$$", "$$$$"] as (PriceTier | "all")[]).map((tier) => (
+                  <button
+                    key={tier}
+                    type="button"
+                    onClick={() => setSelectedPriceTier(tier)}
+                    className={`flex-1 h-10 rounded-xl text-xs font-bold border transition-colors ${
+                      selectedPriceTier === tier
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover:bg-accent"
+                    }`}
+                  >
+                    {tier === "all" ? "Any" : tier}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Minimum Rating */}
+            <div>
+              <span className="text-xs font-bold text-foreground uppercase tracking-wider block mb-2">
+                Minimum Customer Rating
+              </span>
+              <div className="flex items-center gap-2">
+                {[0, 3.5, 4.0, 4.5].map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setMinRating(minRating === r ? 0 : r)}
+                    className={`flex-1 h-10 rounded-xl text-xs font-bold border transition-colors ${
+                      minRating === r
+                        ? "bg-amber-500 text-white border-amber-600 shadow-sm shadow-amber-500/20"
+                        : "bg-background text-muted-foreground border-border hover:bg-accent"
+                    }`}
+                  >
+                    {r === 0 ? "Any" : `${r}★`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Radius & Location */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-foreground uppercase tracking-wider">
                   Near-Me Radius
                 </span>
-                <span className="text-xs font-bold text-primary">
-                  {radiusKm} km
-                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!nearMeActive) {
+                      if (typeof navigator !== "undefined" && navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                          (pos) => {
+                            setUserGpsLat(pos.coords.latitude);
+                            setUserGpsLng(pos.coords.longitude);
+                            setNearMeActive(true);
+                          },
+                          () => setNearMeActive(false)
+                        );
+                      }
+                    } else {
+                      setNearMeActive(false);
+                      setUserGpsLat(null);
+                      setUserGpsLng(null);
+                    }
+                  }}
+                  className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border transition-colors ${
+                    nearMeActive
+                      ? "bg-sky-600 text-white border-sky-700"
+                      : "bg-muted text-muted-foreground border-border hover:text-foreground"
+                  }`}
+                >
+                  {nearMeActive ? `${radiusKm} km active` : "Enable GPS"}
+                </button>
               </div>
-              <p className="text-[10px] text-muted-foreground mb-2">
-                Only applies when &ldquo;Near Me&rdquo; GPS mode is active. Worldwide by default.
-              </p>
               <input
                 type="range"
                 min="1"
@@ -850,7 +971,7 @@ function SearchPageContent() {
               <select
                 value={selectedLocation}
                 onChange={(e) => setSelectedLocation(e.target.value)}
-                className="w-full h-10 rounded-xl border border-input bg-background px-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full h-10 rounded-xl border border-input bg-background px-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
               >
                 <option value="">All Addis Ababa & East Africa</option>
                 {SEED_LOCATIONS.map((loc) => (
@@ -861,36 +982,36 @@ function SearchPageContent() {
               </select>
             </div>
 
-            {/* Minimum Rating */}
-            <div>
-              <span className="text-xs font-bold text-foreground uppercase tracking-wider block mb-2">
-                Minimum Customer Rating
-              </span>
-              <div className="flex items-center gap-2">
-                {[0, 3.5, 4.0, 4.5].map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setMinRating(r)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-colors ${
-                      minRating === r
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background text-muted-foreground border-border hover:bg-accent"
-                    }`}
-                  >
-                    {r === 0 ? "Any" : `${r}★`}
-                  </button>
-                ))}
-              </div>
+            {/* Drawer Footer Actions */}
+            <div className="col-span-1 sm:col-span-2 lg:col-span-3 pt-3 border-t border-border flex items-center justify-between">
+              {hasActiveFilters ? (
+                <button
+                  type="button"
+                  onClick={resetAllFilters}
+                  className="text-xs font-bold text-red-500 hover:text-red-600 transition-colors"
+                >
+                  Reset All Filters
+                </button>
+              ) : (
+                <span className="text-xs text-muted-foreground">Adjust filters to refine results</span>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowFiltersModal(false)}
+                className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors"
+              >
+                Apply & Close
+              </button>
             </div>
           </div>
         )}
       </div>
 
       {/* Main Split Screen Results Content */}
-      <div className="max-w-7xl mx-auto w-full flex-1 px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="max-w-7xl mx-auto w-full flex-1 px-2 xs:px-3 sm:px-4 md:px-6 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
         {/* Left Column: Business Cards List */}
         <div
-          className={`lg:col-span-8 flex flex-col space-y-5 ${
+          className={`lg:col-span-8 flex flex-col space-y-3 sm:space-y-5 ${
             viewMode === "map" ? "hidden lg:flex" : "flex"
           }`}
         >
@@ -940,7 +1061,7 @@ function SearchPageContent() {
                   key={biz.id}
                   id={`business-card-${biz.id}`}
                   onMouseEnter={() => setSelectedBusiness(biz)}
-                  className={`group rounded-3xl bg-card border p-5 sm:p-6 transition-all duration-200 flex flex-col sm:flex-row gap-6 shadow-sm hover:shadow-2xl ${
+                  className={`group rounded-2xl sm:rounded-3xl bg-card border p-3.5 xs:p-4 sm:p-5 md:p-6 transition-all duration-200 flex flex-col xs:flex-row gap-3.5 xs:gap-4 sm:gap-6 shadow-sm hover:shadow-2xl ${
                     isSelected
                       ? "border-primary ring-2 ring-primary/20 shadow-indigo-500/10 -translate-y-0.5"
                       : "border-border/80 hover:border-primary/40"
@@ -949,7 +1070,7 @@ function SearchPageContent() {
                   {/* Photo Thumbnail — bigger */}
                   <Link
                     href={`/business/${biz.id}`}
-                    className="relative w-full sm:w-60 h-52 rounded-2xl overflow-hidden shrink-0 bg-slate-100 dark:bg-slate-800"
+                    className="relative w-full xs:w-44 sm:w-52 md:w-60 h-44 xs:h-36 sm:h-48 md:h-52 rounded-xl xs:rounded-2xl overflow-hidden shrink-0 bg-slate-100 dark:bg-slate-800"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -1046,17 +1167,17 @@ function SearchPageContent() {
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="pt-4 mt-4 border-t border-border/60 flex items-center justify-between gap-3 flex-wrap">
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground min-w-0">
+                    <div className="pt-3 xs:pt-4 mt-3 xs:mt-4 border-t border-border/60 flex items-center justify-between gap-2 xs:gap-3 flex-wrap">
+                      <div className="flex items-center gap-1.5 text-xs xs:text-sm text-muted-foreground min-w-0 max-w-full xs:max-w-[200px] truncate">
                         <MapPin className="w-4 h-4 text-indigo-500 shrink-0" />
                         <span className="truncate">{biz.addressLine}</span>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 xs:gap-2 shrink-0 w-full xs:w-auto justify-end">
                         {biz.telephone && (
                           <a
                             href={`tel:${biz.telephone}`}
-                            className="h-9 w-9 flex items-center justify-center rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors border border-border/60"
+                            className="h-9 w-9 flex items-center justify-center rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors border border-border/60 shrink-0"
                             title="Call Business"
                           >
                             <Phone className="w-4 h-4" />
@@ -1066,7 +1187,7 @@ function SearchPageContent() {
                           href={`https://www.google.com/maps/dir/?api=1&destination=${biz.latitude},${biz.longitude}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="h-9 w-9 flex items-center justify-center rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors border border-border/60"
+                          className="h-9 w-9 flex items-center justify-center rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors border border-border/60 shrink-0"
                           title="Get Directions"
                         >
                           <Navigation className="w-4 h-4" />
@@ -1075,7 +1196,7 @@ function SearchPageContent() {
                           <Button
                             size="default"
                             variant="gradient"
-                            className="h-9 text-sm font-bold px-5 rounded-xl shadow-sm"
+                            className="h-9 text-xs xs:text-sm font-bold px-3.5 xs:px-5 rounded-xl shadow-sm"
                           >
                             View Details
                           </Button>

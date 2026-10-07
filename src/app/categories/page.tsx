@@ -370,22 +370,22 @@ export default function CategoriesDirectoryPage() {
   return (
     <div className="w-full bg-slate-50/60 dark:bg-slate-950/80 min-h-screen">
       {/* ─── Modern Hero Section with Ambient Glow ─── */}
-      <section className="relative overflow-hidden pt-12 pb-16 border-b border-border/60 bg-gradient-to-b from-background via-card/50 to-background">
+      <section className="relative overflow-hidden pt-8 xs:pt-10 sm:pt-12 pb-10 sm:pb-16 border-b border-border/60 bg-gradient-to-b from-background via-card/50 to-background">
         {/* Ambient background blur blobs */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-gradient-to-tr from-indigo-500/15 via-purple-500/10 to-pink-500/15 blur-3xl pointer-events-none -z-10" />
         <div className="absolute -top-20 -left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
         <div className="absolute -top-20 -right-20 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto space-y-4">
+        <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto space-y-3 sm:space-y-4">
             {/* Pill Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs font-bold shadow-sm backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
+            <div className="inline-flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1 xs:py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-[11px] xs:text-xs font-bold shadow-sm backdrop-blur-md">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse shrink-0" />
               <span>Worldwide Directory Taxonomy • 70 Core Sectors</span>
             </div>
 
             {/* Title with Gradient Text */}
-            <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-foreground tracking-tight leading-[1.15]">
+            <h1 className="text-2xl xs:text-3xl sm:text-5xl md:text-6xl font-black text-foreground tracking-tight leading-[1.15]">
               Explore Businesses Across <br className="hidden sm:inline" />
               <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                 Every Industry
@@ -393,7 +393,7 @@ export default function CategoriesDirectoryPage() {
             </h1>
 
             {/* Subtitle */}
-            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            <p className="text-xs xs:text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
               Find verified restaurants, medical clinics, corporate services, retail outlets, and specialized vendors categorized under our structured global classification system.
             </p>
 
@@ -466,20 +466,20 @@ export default function CategoriesDirectoryPage() {
 
       {/* ─── Trending / Spotlight Sectors Showcase ─── */}
       {!hasActiveFilters && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              <h2 className="text-lg font-black text-foreground tracking-tight">
-                Trending & Popular Sectors
+        <section className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 pt-7 sm:pt-10">
+          <div className="flex items-center justify-between mb-4 sm:mb-5">
+            <div className="flex items-center gap-1.5 xs:gap-2">
+              <TrendingUp className="w-4 h-4 xs:w-5 xs:h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <h2 className="text-base xs:text-lg font-black text-foreground tracking-tight">
+                Trending &amp; Popular Sectors
               </h2>
             </div>
-            <span className="text-xs font-semibold text-muted-foreground">
+            <span className="text-xs font-semibold text-muted-foreground hidden xs:inline">
               Most requested business categories
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3.5 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2.5 xs:gap-3 sm:gap-4">
             {categoryTree
               .filter((ind) => FEATURED_SECTOR_IDS.includes(ind.id))
               .slice(0, 8)
@@ -489,7 +489,7 @@ export default function CategoriesDirectoryPage() {
                 return (
                   <div
                     key={sector.id}
-                    className={`group relative rounded-2xl border border-border/80 bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${theme.borderHover} flex flex-col justify-between overflow-hidden`}
+                    className={`group relative rounded-2xl border border-border/80 bg-card p-3 xs:p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${theme.borderHover} flex flex-col justify-between overflow-hidden`}
                   >
                     {/* Ambient subtle glow background */}
                     <div
@@ -497,11 +497,11 @@ export default function CategoriesDirectoryPage() {
                     />
 
                     <div>
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center justify-between mb-2.5 xs:mb-3">
                         <div
-                          className={`w-10 h-10 rounded-xl ${theme.iconBg} ${theme.iconColor} flex items-center justify-center font-bold transition-transform group-hover:scale-110 duration-300`}
+                          className={`w-8 h-8 xs:w-10 xs:h-10 rounded-xl ${theme.iconBg} ${theme.iconColor} flex items-center justify-center font-bold transition-transform group-hover:scale-110 duration-300`}
                         >
-                          <CategoryIcon name={sector.icon} className="w-5 h-5" />
+                          <CategoryIcon name={sector.icon} className="w-4 h-4 xs:w-5 xs:h-5" />
                         </div>
                         <button
                           type="button"
@@ -555,13 +555,13 @@ export default function CategoriesDirectoryPage() {
       )}
 
       {/* ─── Main Category Explorer Section ─── */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+      <section className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-4 sm:space-y-6">
         {/* Navigation & Controls Bar */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-2">
+        <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3 xs:gap-4 pb-2">
           <div>
-            <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight flex items-center gap-2.5">
+            <h2 className="text-lg xs:text-xl sm:text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
               <span>All 70 Industry Sectors</span>
-              <Badge variant="outline" className="text-xs font-bold px-2.5 py-0.5">
+              <Badge variant="outline" className="text-xs font-bold px-2 py-0.5">
                 {filteredTree.length} Shown
               </Badge>
             </h2>
@@ -571,51 +571,51 @@ export default function CategoriesDirectoryPage() {
           </div>
 
           {/* View Mode Toggle */}
-          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-card border border-border shadow-sm shrink-0">
+          <div className="flex items-center gap-1 xs:gap-1.5 p-1 rounded-2xl bg-card border border-border shadow-sm shrink-0 self-start xs:self-auto overflow-x-auto no-scrollbar max-w-full">
             <button
               onClick={() => setViewMode("grid")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-1 xs:gap-1.5 px-2.5 xs:px-3 py-1.5 rounded-xl text-[11px] xs:text-xs font-bold transition-all whitespace-nowrap ${
                 viewMode === "grid"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
               title="Visual Cards View"
             >
-              <LayoutGrid className="w-3.5 h-3.5" />
+              <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
               <span>Cards</span>
             </button>
             <button
               onClick={() => setViewMode("list")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-1 xs:gap-1.5 px-2.5 xs:px-3 py-1.5 rounded-xl text-[11px] xs:text-xs font-bold transition-all whitespace-nowrap ${
                 viewMode === "list"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
               title="Alphabetical Directory View"
             >
-              <ListFilter className="w-3.5 h-3.5" />
+              <ListFilter className="w-3.5 h-3.5 shrink-0" />
               <span>A–Z Index</span>
             </button>
             <button
               onClick={() => setViewMode("tree")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-1 xs:gap-1.5 px-2.5 xs:px-3 py-1.5 rounded-xl text-[11px] xs:text-xs font-bold transition-all whitespace-nowrap ${
                 viewMode === "tree"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
               title="Hierarchy Tree View"
             >
-              <ListTree className="w-3.5 h-3.5" />
-              <span>Taxonomy Tree</span>
+              <ListTree className="w-3.5 h-3.5 shrink-0" />
+              <span><span className="hidden sm:inline">Taxonomy </span>Tree</span>
             </button>
           </div>
         </div>
 
         {/* Alphabetical Fast Jump Bar */}
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1 text-xs">
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1 text-xs -mx-3 px-3 xs:-mx-4 xs:px-4 sm:-mx-0 sm:px-0">
           <button
             onClick={() => setSelectedLetter("ALL")}
-            className={`px-3 py-1 rounded-xl font-bold shrink-0 transition-all ${
+            className={`px-2.5 xs:px-3 py-1 rounded-xl font-bold shrink-0 transition-all ${
               selectedLetter === "ALL"
                 ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/20"
                 : "bg-card text-muted-foreground border border-border hover:text-foreground"
@@ -732,7 +732,7 @@ export default function CategoriesDirectoryPage() {
           </div>
         ) : viewMode === "grid" ? (
           /* ─── 1. Modern Cards Grid View ─── */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-4 xs:gap-5 sm:gap-6">
             {filteredTree.map((industry) => {
               const theme = SECTOR_THEMES[industry.id] || DEFAULT_THEME;
               const isExpanded = expandedCards[industry.id] || false;

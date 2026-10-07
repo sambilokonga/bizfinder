@@ -316,40 +316,46 @@ export default function BusinessProfilePage({
   };
 
   return (
-    <div className="w-full bg-slate-50/60 dark:bg-slate-950 pb-24">
+    <div className="w-full bg-slate-50/60 dark:bg-slate-950 pb-28 sm:pb-24">
       {/* Breadcrumb Navigation */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Link href="/" className="hover:text-primary transition-colors">
+      <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+        <div className="flex items-center gap-1 text-xs text-muted-foreground overflow-x-auto no-scrollbar whitespace-nowrap">
+          <Link href="/" className="hover:text-primary transition-colors shrink-0">
             Home
           </Link>
-          <ChevronRight className="w-3.5 h-3.5" />
+          <ChevronRight className="w-3 h-3 shrink-0" />
           <Link
             href={`/search?category=${business.categoryId}`}
-            className="hover:text-primary transition-colors"
+            className="hover:text-primary transition-colors shrink-0"
           >
             {business.categoryName}
           </Link>
           {business.subcategoryName && (
             <>
-              <ChevronRight className="w-3.5 h-3.5" />
-              <span className="text-muted-foreground">
+              <ChevronRight className="w-3 h-3 shrink-0" />
+              <span className="text-muted-foreground shrink-0">
                 {business.subcategoryName}
               </span>
             </>
           )}
-          <ChevronRight className="w-3.5 h-3.5" />
-          <span className="text-foreground font-semibold truncate max-w-xs">
+          <ChevronRight className="w-3 h-3 shrink-0" />
+          <span className="text-foreground font-semibold max-w-[140px] xs:max-w-xs truncate shrink-0">
             {business.name}
           </span>
         </div>
       </div>
 
       {/* Header Banner & Gallery Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl overflow-hidden border border-border bg-card shadow-sm">
-          {/* Main Media Showcase */}
-          <div className="relative aspect-[21/9] sm:aspect-[24/9] w-full bg-slate-900 overflow-hidden group">
+      <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8">
+        <div className="rounded-2xl xs:rounded-3xl overflow-hidden border border-border bg-card shadow-sm">
+          {/* Main Media Showcase — compact on mobile, cinematic on desktop */}
+          <style>{`
+            .biz-hero-media { aspect-ratio: 16/9; }
+            @media (min-width: 476px)  { .biz-hero-media { aspect-ratio: 16/8; } }
+            @media (min-width: 640px)  { .biz-hero-media { aspect-ratio: 21/9; } }
+            @media (min-width: 1024px) { .biz-hero-media { aspect-ratio: 24/9; } }
+          `}</style>
+          <div className="biz-hero-media relative w-full bg-slate-900 overflow-hidden group">
             {activeMediaTab === "photos" ? (
               <div
                 onClick={() => handleOpenGallery(0)}
@@ -362,32 +368,6 @@ export default function BusinessProfilePage({
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-black/10 hover:bg-black/20 transition-colors" />
-
-                {/* View Photos Overlay Button */}
-                <div className="absolute bottom-4 left-4 z-10 flex items-center gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenGallery(0);
-                    }}
-                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-black/70 hover:bg-black/90 text-white backdrop-blur-md text-xs font-bold transition-all border border-white/20 shadow-lg"
-                  >
-                    <ImageIcon className="w-4 h-4 text-indigo-400" />
-                    View All {allPhotos.length} Photos
-                  </button>
-                  {effectiveYoutubeVideoId && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveMediaTab("video");
-                      }}
-                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-red-600 hover:bg-red-700 text-white backdrop-blur-md text-xs font-bold transition-all shadow-lg animate-pulse"
-                    >
-                      <Play className="w-4 h-4 fill-white" />
-                      Play Video Tour
-                    </button>
-                  )}
-                </div>
               </div>
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-black relative">
@@ -406,7 +386,7 @@ export default function BusinessProfilePage({
             )}
 
             {/* Media Toggle Switch (Photos vs Video Tour) */}
-            <div className="absolute bottom-4 right-4 flex items-center gap-1.5 bg-black/70 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 z-10">
+            <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/70 backdrop-blur-md p-1 xs:p-1.5 rounded-xl xs:rounded-2xl border border-white/20 z-10">
               <button
                 onClick={() => setActiveMediaTab("photos")}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
@@ -421,11 +401,7 @@ export default function BusinessProfilePage({
               {effectiveYoutubeVideoId && (
                 <button
                   onClick={() => setActiveMediaTab("video")}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
-                    activeMediaTab === "video"
-                      ? "bg-red-600 text-white shadow-md"
-                      : "text-white/80 hover:text-white"
-                  }`}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all bg-red-600 hover:bg-red-700 text-white shadow-md"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
                   Video Tour
@@ -435,113 +411,118 @@ export default function BusinessProfilePage({
           </div>
 
           {/* Profile Header Info & Action Controls */}
-          <div className="p-6 sm:p-8">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-              {/* Title & Badges */}
-              <div className="flex items-start gap-4">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 border-border overflow-hidden bg-background shadow-md shrink-0 -mt-12 sm:-mt-14 relative z-20">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={business.logoUrl || business.coverUrl || "/placeholder-business.jpg"}
-                    alt={business.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+          <div className="px-3 xs:px-4 sm:px-6 lg:px-8 pt-0 pb-4 xs:pb-5 sm:pb-6">
 
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-                      {business.name}
-                    </h1>
-                    {business.isVerified && (
-                      <Badge variant="verified" className="gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
-                        Verified Business
-                      </Badge>
-                    )}
-                    <Badge
-                      variant={
-                        liveStatus.statusColor === "emerald"
-                          ? "success"
-                          : liveStatus.statusColor === "amber"
-                          ? "warning"
-                          : "destructive"
-                      }
-                      className="font-bold text-xs"
-                    >
-                      {liveStatus.statusText}
-                    </Badge>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3 mt-2 text-xs sm:text-sm text-muted-foreground">
-                    <span className="font-semibold text-primary">
-                      {business.categoryName}
-                    </span>
-                    <span>•</span>
-                    <div className="flex items-center gap-1 font-bold text-foreground">
-                      <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                      <span>{business.ratingAvg.toFixed(1)}</span>
-                      <span className="font-normal text-muted-foreground">
-                        ({reviews.length} reviews)
-                      </span>
-                    </div>
-                    <span>•</span>
-                    <span className="font-bold">
-                      {business.attributes.priceTier || "$$"}
-                    </span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-indigo-500" />
-                      {business.districtName || business.cityName}
-                    </span>
-                  </div>
-                </div>
+            {/* Logo + Name row */}
+            <div className="flex items-end gap-3 xs:gap-4 -mt-7 xs:-mt-8 sm:-mt-10 mb-3 xs:mb-4">
+              {/* Logo floats up from the image */}
+              <div className="w-14 h-14 xs:w-16 xs:h-16 sm:w-20 sm:h-20 rounded-xl xs:rounded-2xl border-2 border-card ring-2 ring-border overflow-hidden bg-background shadow-lg shrink-0 relative z-20">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={business.logoUrl || business.coverUrl || "/placeholder-business.jpg"}
+                  alt={business.name}
+                  className="w-full h-full object-cover"
+                />
               </div>
 
-              {/* Action Buttons Bar */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                {business.telephone && (
-                  <a href={`tel:${business.telephone}`} onClick={() => trackInteraction("click_phone")}>
-                    <Button
-                      variant="gradient"
-                      className="gap-2 font-bold shadow-md"
-                    >
-                      <Phone className="w-4 h-4" />
-                      Call Now
-                    </Button>
-                  </a>
+              {/* Badges — float alongside logo */}
+              <div className="flex flex-wrap items-center gap-1.5 pb-0.5 min-w-0">
+                {business.isVerified && (
+                  <Badge variant="verified" className="gap-1 text-[10px] xs:text-xs">
+                    <CheckCircle2 className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-blue-500" />
+                    Verified
+                  </Badge>
                 )}
-
-                {business.whatsapp && (
-                  <a
-                    href={`https://wa.me/${business.whatsapp}?text=${encodeURIComponent(
-                      `Hello ${business.name}, I found your business on BizFinder!`
-                    )}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <Button
-                      variant="outline"
-                      className="gap-2 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 font-bold"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      WhatsApp
-                    </Button>
-                  </a>
-                )}
-
-                <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${business.latitude},${business.longitude}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => trackInteraction("click_direction")}
+                <Badge
+                  variant={
+                    liveStatus.statusColor === "emerald"
+                      ? "success"
+                      : liveStatus.statusColor === "amber"
+                      ? "warning"
+                      : "destructive"
+                  }
+                  className="font-bold text-[10px] xs:text-xs"
                 >
-                  <Button variant="outline" className="gap-2 font-semibold">
-                    <Navigation className="w-4 h-4 text-indigo-500" />
-                    Directions
+                  {liveStatus.statusText}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Business name */}
+            <h1 className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-black text-foreground tracking-tight leading-tight mb-1.5 xs:mb-2">
+              {business.name}
+            </h1>
+
+            {/* Meta info pills — compact single-line scrollable row */}
+            <div className="flex items-center gap-2 xs:gap-3 text-[11px] xs:text-xs sm:text-sm text-muted-foreground overflow-x-auto no-scrollbar whitespace-nowrap pb-0.5">
+              <span className="font-semibold text-primary shrink-0">{business.categoryName}</span>
+              <span className="shrink-0 text-border">•</span>
+              <div className="flex items-center gap-1 font-bold text-foreground shrink-0">
+                <Star className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-amber-500 fill-amber-500" />
+                <span>{business.ratingAvg.toFixed(1)}</span>
+                <span className="font-normal text-muted-foreground">({reviews.length} reviews)</span>
+              </div>
+              <span className="shrink-0 text-border">•</span>
+              <span className="font-bold shrink-0">{business.attributes.priceTier || "$$"}</span>
+              <span className="shrink-0 text-border">•</span>
+              <span className="flex items-center gap-1 shrink-0">
+                <MapPin className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-indigo-500" />
+                {business.districtName || business.cityName}
+              </span>
+            </div>
+
+            {/* Action Buttons — 2-up grid on XS/S, flex-wrap on MD+ */}
+            <div className="mt-3 xs:mt-4 grid grid-cols-2 xs:grid-cols-2 sm:flex sm:flex-wrap gap-2 xs:gap-2.5">
+              {business.telephone && (
+                <a
+                  href={`tel:${business.telephone}`}
+                  onClick={() => trackInteraction("click_phone")}
+                  className="sm:w-auto"
+                >
+                  <Button
+                    variant="gradient"
+                    className="w-full sm:w-auto gap-1.5 font-bold shadow-md h-9 xs:h-10 text-xs xs:text-sm rounded-xl"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    Call Now
                   </Button>
                 </a>
+              )}
 
+              {business.whatsapp && (
+                <a
+                  href={`https://wa.me/${business.whatsapp}?text=${encodeURIComponent(
+                    `Hello ${business.name}, I found your business on BizFinder!`
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="sm:w-auto"
+                >
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-auto gap-1.5 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 font-bold h-9 xs:h-10 text-xs xs:text-sm rounded-xl"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    WhatsApp
+                  </Button>
+                </a>
+              )}
+
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${business.latitude},${business.longitude}`}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => trackInteraction("click_direction")}
+                className="sm:w-auto"
+              >
+                <Button variant="outline" className="w-full sm:w-auto gap-1.5 font-semibold h-9 xs:h-10 text-xs xs:text-sm rounded-xl">
+                  <Navigation className="w-3.5 h-3.5 text-indigo-500" />
+                  Directions
+                </Button>
+              </a>
+
+              {/* Save + Share — inline, right-aligned on XS */}
+              <div className="flex items-center gap-2 sm:ml-auto">
                 <FavoriteButton
                   businessId={business.id}
                   businessName={business.name}
@@ -550,10 +531,9 @@ export default function BusinessProfilePage({
                   variant="button"
                   size="md"
                 />
-
                 <button
                   onClick={handleShare}
-                  className="p-2.5 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors relative"
+                  className="p-2 xs:p-2.5 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                   title="Share"
                 >
                   {shareCopied ? (
@@ -569,11 +549,11 @@ export default function BusinessProfilePage({
       </div>
 
       {/* Main Two-Column Content Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 mt-5 sm:mt-8 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8">
         {/* Left Column: Details, Services, Amenities, Reviews */}
         <div className="lg:col-span-8 space-y-8">
           {/* About Section */}
-          <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-sm">
+          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-6 sm:p-8 shadow-sm">
             <h2 className="text-lg font-bold text-foreground mb-3">
               About This Business
             </h2>
@@ -584,7 +564,7 @@ export default function BusinessProfilePage({
 
           {/* Services / Menu / Products */}
           {business.services && business.services.length > 0 && (
-            <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-sm">
+            <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-6 sm:p-8 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-foreground">
                   Services & Menu Highlights
@@ -632,7 +612,7 @@ export default function BusinessProfilePage({
 
           {/* Photo Gallery Grid Preview */}
           {allPhotos.length > 1 && (
-            <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-sm">
+            <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-6 sm:p-8 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-foreground">
                   Photo Gallery
@@ -681,11 +661,11 @@ export default function BusinessProfilePage({
           )}
 
           {/* Amenities & Attributes */}
-          <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-sm">
+          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-6 sm:p-8 shadow-sm">
             <h2 className="text-lg font-bold text-foreground mb-4">
               Amenities & Key Features
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-semibold">
+            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2 xs:gap-3 text-xs font-semibold">
               {business.attributes.delivery && (
                 <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
                   <Truck className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -738,7 +718,7 @@ export default function BusinessProfilePage({
           </div>
 
           {/* Customer Reviews Section */}
-          <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-sm space-y-6">
+          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-6 sm:p-8 shadow-sm space-y-5 sm:space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold text-foreground">
@@ -770,10 +750,10 @@ export default function BusinessProfilePage({
             {/* Write a Review Box */}
             <form
               onSubmit={handleAddReview}
-              className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-border/70 space-y-3.5 shadow-inner"
+              className="p-3.5 xs:p-5 rounded-xl xs:rounded-2xl bg-slate-50 dark:bg-slate-900 border border-border/70 space-y-3.5 shadow-inner"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Share Your Experience
                   </span>
@@ -934,9 +914,9 @@ export default function BusinessProfilePage({
         </div>
 
         {/* Right Column: Opening Hours, Location Map, Contact Info, Claim Box, Similar Businesses */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="lg:col-span-4 space-y-5 sm:space-y-6">
           {/* Mini Interactive Map */}
-          <div className="rounded-3xl border border-border bg-card p-5 shadow-sm space-y-3">
+          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-5 shadow-sm space-y-3">
             <div className="flex items-center justify-between text-xs font-bold text-foreground uppercase tracking-wider">
               <span>Location & Pin</span>
               <span className="text-primary font-semibold">Live GPS</span>
@@ -961,7 +941,7 @@ export default function BusinessProfilePage({
           </div>
 
           {/* Opening Hours Widget */}
-          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-5 sm:p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2 font-bold text-base text-foreground">
                 <Clock className="w-4 h-4 text-indigo-500" />
@@ -1005,7 +985,7 @@ export default function BusinessProfilePage({
 
           {/* Business Overview & Registration Card */}
           {(business.businessType || business.yearEstablished || business.businessLevel) && (
-            <div className="rounded-3xl border border-border bg-card p-6 shadow-sm space-y-3.5 text-xs">
+            <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-5 sm:p-6 shadow-sm space-y-3.5 text-xs">
               <h3 className="font-bold text-base text-foreground mb-1">
                 Business Information
               </h3>
@@ -1043,7 +1023,7 @@ export default function BusinessProfilePage({
           )}
 
           {/* Contact & Location Info */}
-          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm space-y-3.5 text-xs">
+          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-5 sm:p-6 shadow-sm space-y-3.5 text-xs">
             <h3 className="font-bold text-base text-foreground mb-1">
               Direct Contact
             </h3>
@@ -1103,7 +1083,7 @@ export default function BusinessProfilePage({
 
           {/* Social Media Card */}
           {(business.facebookUrl || business.instagramUrl || business.tiktokUrl) && (
-            <div className="rounded-3xl border border-border bg-card p-6 shadow-sm space-y-3 text-xs">
+            <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-5 sm:p-6 shadow-sm space-y-3 text-xs">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="font-bold text-base text-foreground">Social Media</h3>
                 <span className="text-[11px] text-muted-foreground font-medium">Official Links</span>
@@ -1182,7 +1162,7 @@ export default function BusinessProfilePage({
           )}
 
           {/* Claim This Business Widget */}
-          <div className="rounded-3xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/60 dark:bg-indigo-950/30 p-6 shadow-sm space-y-2.5">
+          <div className="rounded-2xl xs:rounded-3xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/60 dark:bg-indigo-950/30 p-4 xs:p-5 sm:p-6 shadow-sm space-y-2.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
               Business Owner?
             </span>
@@ -1205,7 +1185,7 @@ export default function BusinessProfilePage({
 
           {/* Similar Businesses Nearby */}
           {similarBusinesses.length > 0 && (
-            <div className="rounded-3xl border border-border bg-card p-6 shadow-sm space-y-4">
+            <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-5 sm:p-6 shadow-sm space-y-4">
               <h3 className="font-bold text-sm text-foreground uppercase tracking-wider">
                 Similar Places Nearby
               </h3>

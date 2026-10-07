@@ -73,26 +73,26 @@ export default function CategoryDetailPage({
   }, [category.id, category.slug, slug]);
 
   return (
-    <div className="w-full bg-slate-50/50 dark:bg-slate-950/50 py-10 min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        {/* Breadcrumb Navigation */}
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Link href="/" className="hover:text-primary transition-colors">
+    <div className="w-full bg-slate-50/50 dark:bg-slate-950/50 py-6 sm:py-10 min-h-screen">
+      <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 space-y-5 sm:space-y-8">
+        {/* Breadcrumb Navigation — horizontally scrollable on mobile */}
+        <div className="flex items-center gap-1 text-xs text-muted-foreground overflow-x-auto no-scrollbar whitespace-nowrap pb-1">
+          <Link href="/" className="hover:text-primary transition-colors shrink-0">
             Home
           </Link>
-          <ChevronRight className="w-3.5 h-3.5" />
-          <Link href="/categories" className="hover:text-primary transition-colors">
+          <ChevronRight className="w-3 h-3 shrink-0" />
+          <Link href="/categories" className="hover:text-primary transition-colors shrink-0">
             Categories
           </Link>
           {breadcrumbs.map((crumb, idx) => (
             <React.Fragment key={crumb.id}>
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronRight className="w-3 h-3 shrink-0" />
               {idx === breadcrumbs.length - 1 ? (
-                <span className="text-foreground font-semibold">{crumb.name}</span>
+                <span className="text-foreground font-semibold shrink-0">{crumb.name}</span>
               ) : (
                 <Link
                   href={`/category/${crumb.slug}`}
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-primary transition-colors shrink-0"
                 >
                   {crumb.name}
                 </Link>
@@ -102,13 +102,13 @@ export default function CategoryDetailPage({
         </div>
 
         {/* Category Hero Header */}
-        <div className="rounded-3xl border border-border bg-card p-6 sm:p-10 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="rounded-2xl sm:rounded-3xl border border-border bg-card p-4 xs:p-6 sm:p-10 shadow-sm flex flex-col gap-5 sm:gap-6">
           <div className="space-y-2">
             <Badge variant="secondary" className="gap-1.5">
               <Layers className="w-3.5 h-3.5 text-primary" />
               Level {category.level} Taxonomy Node
             </Badge>
-            <h1 className="text-3xl sm:text-4xl font-black text-foreground tracking-tight">
+            <h1 className="text-2xl xs:text-3xl sm:text-4xl font-black text-foreground tracking-tight">
               {category.name}
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground max-w-xl leading-relaxed">
@@ -117,8 +117,8 @@ export default function CategoryDetailPage({
           </div>
 
           <div>
-            <Link href={`/search?category=${category.slug}`}>
-              <Button variant="gradient" size="lg" className="font-bold rounded-2xl gap-2 shadow-md">
+            <Link href={`/search?category=${category.slug}`} className="inline-block">
+              <Button variant="gradient" size="lg" className="w-auto inline-flex font-bold rounded-xl gap-2 shadow-md h-10 sm:h-11 px-4 sm:px-6 text-xs sm:text-sm">
                 Search Map for {category.name}
                 <ArrowRight className="w-4 h-4" />
               </Button>
@@ -128,11 +128,11 @@ export default function CategoryDetailPage({
 
         {/* Subcategories Grid (if any) */}
         {subcategories.length > 0 && (
-          <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 space-y-4 shadow-sm">
-            <h2 className="text-base font-bold text-foreground">
+          <div className="rounded-2xl sm:rounded-3xl border border-border bg-card p-4 xs:p-5 sm:p-8 space-y-3 sm:space-y-4 shadow-sm">
+            <h2 className="text-sm xs:text-base font-bold text-foreground">
               Subcategories in {category.name} ({subcategories.length})
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
               {subcategories.map((sub) => (
                 <Link
                   key={sub.id}
@@ -150,13 +150,13 @@ export default function CategoryDetailPage({
         )}
 
         {/* Matching Business Listings */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-bold text-foreground">
+        <div className="space-y-3 sm:space-y-4">
+          <h2 className="text-base xs:text-lg font-bold text-foreground">
             Top Listings in {category.name} ({matchingBusinesses.length})
           </h2>
 
           {matchingBusinesses.length === 0 ? (
-            <div className="p-12 text-center rounded-3xl border border-dashed border-border bg-card">
+            <div className="p-8 sm:p-12 text-center rounded-2xl sm:rounded-3xl border border-dashed border-border bg-card">
               <p className="text-sm text-muted-foreground">
                 No local listings currently registered under this specific category node.
               </p>
@@ -167,7 +167,7 @@ export default function CategoryDetailPage({
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
               {matchingBusinesses.map((biz) => {
                 const liveStatus = getLiveOpeningStatus(biz.openingHours);
 
