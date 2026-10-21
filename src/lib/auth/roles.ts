@@ -9,6 +9,8 @@ export interface DemoUser {
   email: string;
   role: UserRole;
   avatarUrl: string;
+  country?: string;
+  city?: string;
   assignedCountry?: string;
   assignedCity?: string;
   claimedBusinessIds: string[];

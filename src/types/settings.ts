@@ -1,6 +1,11 @@
 export interface ISystemSettingsData {
   id: string;
 
+  // Scope & Territory
+  scope?: "global" | "country" | "city";
+  country?: string;
+  city?: string;
+
   // 1. General
   platformName: string;
   tagline: string;
@@ -14,7 +19,7 @@ export interface ISystemSettingsData {
   defaultLanguage: string;
   supportedLanguages: string[];
 
-  // 2. Business
+  // 2. Business & Municipal Rules
   maxPhotosPerListing: number;
   autoApproveListings: boolean;
   verificationExpiryDays: number;
@@ -23,6 +28,13 @@ export interface ISystemSettingsData {
   featuredListingDurationDays: number;
   allowUserClaiming: boolean;
   maxBranchesPerBusiness: number;
+  requirePhysicalStorefrontPhotos: boolean;
+  mandateSubcityDesignation: boolean;
+  tradeLicenseRequiredForClaims: boolean;
+  bureauOfficeName?: string;
+  bureauOfficePhone?: string;
+  bureauOfficeAddress?: string;
+  countryLeadLiaisonEmail?: string;
 
   // 3. Search
   defaultRadiusKm: number;
@@ -75,6 +87,7 @@ export interface ISystemSettingsData {
 
 export const DEFAULT_SYSTEM_SETTINGS: ISystemSettingsData = {
   id: "global_system_settings",
+  scope: "global",
   platformName: "BizFinder Directory",
   tagline: "The Modern African Business & Service Directory",
   siteUrl: "https://bizfinder.et",
@@ -95,6 +108,13 @@ export const DEFAULT_SYSTEM_SETTINGS: ISystemSettingsData = {
   featuredListingDurationDays: 30,
   allowUserClaiming: true,
   maxBranchesPerBusiness: 15,
+  requirePhysicalStorefrontPhotos: true,
+  mandateSubcityDesignation: true,
+  tradeLicenseRequiredForClaims: true,
+  bureauOfficeName: "Municipal Administration & Trade Bureau",
+  bureauOfficePhone: "+251 11 123 4567",
+  bureauOfficeAddress: "Municipal City Hall, 4th Floor",
+  countryLeadLiaisonEmail: "countrylead@bizfinder.et",
 
   defaultRadiusKm: 25,
   featuredBoostWeight: 1.5,

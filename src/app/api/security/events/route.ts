@@ -19,6 +19,7 @@ export async function GET(request: Request) {
     const actorRole = searchParams.get("actorRole") || undefined;
     const city = searchParams.get("city") || undefined;
     const country = searchParams.get("country") || undefined;
+    const businessId = searchParams.get("businessId") || undefined;
     const sort = (searchParams.get("sort") as "asc" | "desc") || "desc";
 
     const result = await getSecurityEvents({
@@ -31,6 +32,7 @@ export async function GET(request: Request) {
       actorRole,
       city,
       country,
+      businessId,
       sort,
     });
 
@@ -62,6 +64,8 @@ export async function POST(request: Request) {
       ipAddress,
       city,
       country,
+      businessId,
+      businessName,
       device,
       browser,
       os,
@@ -91,6 +95,8 @@ export async function POST(request: Request) {
       ipAddress: ipAddress || "127.0.0.1",
       city: city || "Addis Ababa",
       country: country || "Ethiopia",
+      businessId: businessId || undefined,
+      businessName: businessName || undefined,
       device,
       browser,
       os,

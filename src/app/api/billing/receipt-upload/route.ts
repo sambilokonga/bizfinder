@@ -103,6 +103,22 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    let cityName = (formData.get("cityName") as string) || (formData.get("newBizCity") as string) || "";
+    let countryName = (formData.get("countryName") as string) || (formData.get("newBizCountry") as string) || "";
+
+    if ((!cityName || !countryName) && activeBusinessId) {
+      try {
+        const { BusinessModel } = await import("@/lib/db/models/Business");
+        const bDoc = await BusinessModel.findOne({ id: activeBusinessId }).lean();
+        if (bDoc) {
+          cityName = cityName || (bDoc as any).cityName;
+          countryName = countryName || (bDoc as any).countryName;
+        }
+      } catch (err) {
+        console.warn("[receipt-upload] BusinessModel lookup error:", err);
+      }
+    }
+
     // Generate transaction record
     const prefix = transferType === "telebirr_direct" ? "TEL-DIR" : "CBE-BNK";
     const txId = `TX-${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -111,6 +127,8 @@ export async function POST(req: NextRequest) {
       id: txId,
       businessId: activeBusinessId,
       businessName: activeBusinessName,
+      cityName: cityName || undefined,
+      countryName: countryName || undefined,
       payerName,
       payerPhone,
       amount,
@@ -133,6 +151,8 @@ export async function POST(req: NextRequest) {
         receiptUrl,
         bankReference,
         payerPhone,
+        cityName,
+        countryName,
         submittedAt: new Date().toISOString(),
       },
       registeredBy: userId ? `Owner (${userId})` : "Bank Receipt Upload",

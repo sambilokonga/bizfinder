@@ -35,6 +35,7 @@ import {
   Building2,
   Wifi,
   Radio,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,11 @@ interface SecurityWorkstationProps {
   currentUserName?: string;
   currentUserRole?: "super_admin" | "admin" | "country_admin" | "city_admin" | "owner" | "user";
   initialSubnav?: string;
+  city?: string;
+  country?: string;
+  businessId?: string;
+  businessName?: string;
+  businessesList?: any[];
 }
 
 export function SecurityWorkstation({
@@ -63,6 +69,11 @@ export function SecurityWorkstation({
   currentUserName = "Super Admin",
   currentUserRole = "super_admin",
   initialSubnav = "audit",
+  city,
+  country,
+  businessId,
+  businessName,
+  businessesList = [],
 }: SecurityWorkstationProps) {
   // Navigation subtabs
   const [activeSubtab, setActiveSubtab] = useState<string>(initialSubnav);
@@ -109,6 +120,9 @@ export function SecurityWorkstation({
       if (severityFilter && severityFilter !== "all") params.set("severity", severityFilter);
       if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
       if (eventTypeFilter && eventTypeFilter !== "all") params.set("eventType", eventTypeFilter);
+      if (city && city !== "all") params.set("city", city);
+      if (country && country !== "all") params.set("country", country);
+      if (businessId && businessId !== "all") params.set("businessId", businessId);
 
       const res = await fetch(`/api/security/events?${params.toString()}`);
       if (!res.ok || !res.headers.get("content-type")?.includes("application/json")) return;
@@ -131,13 +145,29 @@ export function SecurityWorkstation({
     }
   };
 
+  // Reset to page 1 when jurisdiction or business changes
+  useEffect(() => {
+    setPage(1);
+  }, [city, country, businessId]);
+
   // Debounced search / filter trigger
   useEffect(() => {
     const handler = setTimeout(() => {
       fetchSecurityEvents(page);
     }, 200);
     return () => clearTimeout(handler);
-  }, [page, severityFilter, statusFilter, eventTypeFilter, searchQuery]);
+  }, [page, severityFilter, statusFilter, eventTypeFilter, searchQuery, city, country, businessId]);
+
+  // Global cross-dashboard live telemetry broadcast sync
+  useEffect(() => {
+    const handleGlobalSecurityRegistered = () => {
+      fetchSecurityEvents(1);
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("bizfinder_security_registered", handleGlobalSecurityRegistered);
+      return () => window.removeEventListener("bizfinder_security_registered", handleGlobalSecurityRegistered);
+    }
+  }, [city, country, businessId]);
 
   // Handle new security event registered
   const handleEventRegistered = (newEvent: ISecurityEvent) => {
@@ -151,6 +181,9 @@ export function SecurityWorkstation({
         critical: newEvent.severity === "critical" ? stats.critical + 1 : stats.critical,
         high: newEvent.severity === "high" ? stats.high + 1 : stats.high,
       });
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("bizfinder_security_registered", { detail: newEvent }));
     }
     fetchSecurityEvents(1);
   };
@@ -307,20 +340,45 @@ export function SecurityWorkstation({
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
             <ShieldCheck className="w-5 h-5 text-emerald-400" />
             <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
-              Enterprise Zero-Trust Security & Threat Intelligence Center
+              {portalType === "owner"
+                ? "Merchant & Storefront Zero-Trust Security Center"
+                : currentUserRole === "city_admin"
+                ? `${city || "Municipal"} City Governance Security Center`
+                : currentUserRole === "country_admin"
+                ? `${country || "National"} Sovereign Threat Workstation`
+                : "Enterprise Zero-Trust Security & Threat Intelligence Center"}
             </h2>
-            <Badge className="bg-emerald-400/20 text-emerald-300 border-emerald-400/30 text-[10px] font-bold">
-              Active WAF Shield
-            </Badge>
+            {businessName ? (
+              <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-400/40 text-[10px] font-bold">
+                🏪 {businessName}
+              </Badge>
+            ) : null}
+            {city && city !== "all" ? (
+              <Badge className="bg-sky-500/20 text-sky-300 border-sky-400/30 text-[10px] font-bold">
+                📍 {city} Municipal Scope
+              </Badge>
+            ) : country && country !== "all" ? (
+              <Badge className="bg-indigo-500/20 text-indigo-300 border-indigo-400/30 text-[10px] font-bold">
+                🌍 {country} Sovereign Scope
+              </Badge>
+            ) : (
+              <Badge className="bg-emerald-400/20 text-emerald-300 border-emerald-400/30 text-[10px] font-bold">
+                Active WAF Shield
+              </Badge>
+            )}
           </div>
           <p className="text-xs text-slate-300 leading-relaxed">
-            Real-time audit logging across all 195 nations and 5,850 cities. Enforces automated brute-force rate limiting, Clerk session lockdown, 2FA identity validation, and instant IP blacklisting.
+            {portalType === "owner"
+              ? `Real-time security telemetry for your business in ${city || "Addis Ababa"}, ${country || "Ethiopia"}. Enforces login protection, staff access controls, and rapid threat alerts.`
+              : `Real-time audit logging for ${city && city !== "all" ? `${city}, ${country || ""}` : country && country !== "all" ? country : "all 195 nations and 5,850 cities"}. Enforces automated brute-force rate limiting, Clerk session lockdown, 2FA identity validation, and instant IP blacklisting.`}
           </p>
           <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] font-medium text-slate-300">
             <span className="bg-white/10 px-2.5 py-0.5 rounded-full">🛡️ Edge DDOS Shield: ACTIVE</span>
             <span className="bg-white/10 px-2.5 py-0.5 rounded-full">🔐 2FA Auth Enforced</span>
             <span className="bg-white/10 px-2.5 py-0.5 rounded-full">⚡ 20 Records / Page</span>
-            <span className="bg-white/10 px-2.5 py-0.5 rounded-full">🌍 Worldwide Telemetry</span>
+            <span className="bg-white/10 px-2.5 py-0.5 rounded-full">
+              {city && city !== "all" ? `📍 ${city}, ${country || ""}` : country && country !== "all" ? `🌍 ${country}` : "🌍 Worldwide Telemetry"}
+            </span>
           </div>
         </div>
 
@@ -495,6 +553,19 @@ export function SecurityWorkstation({
                 <option value="ddos_mitigated">DDoS Mitigated</option>
               </select>
 
+              {city && city !== "all" && (
+                <Badge variant="outline" className="text-xs h-9 px-2.5 gap-1 font-bold text-sky-600 bg-sky-500/10 border-sky-500/30 flex items-center">
+                  <MapPin className="w-3 h-3" />
+                  <span>{city}</span>
+                </Badge>
+              )}
+              {country && country !== "all" && (!city || city === "all") && (
+                <Badge variant="outline" className="text-xs h-9 px-2.5 gap-1 font-bold text-indigo-600 bg-indigo-500/10 border-indigo-500/30 flex items-center">
+                  <Globe className="w-3 h-3" />
+                  <span>{country}</span>
+                </Badge>
+              )}
+
               <Button
                 size="sm"
                 variant="outline"
@@ -551,7 +622,14 @@ export function SecurityWorkstation({
                           {renderSeverityBadge(evt.severity)}
                         </td>
                         <td className="px-5 py-3.5 max-w-xs">
-                          <div className="font-bold text-foreground truncate">{evt.title}</div>
+                          <div className="font-bold text-foreground truncate flex items-center gap-1.5">
+                            <span className="truncate">{evt.title}</span>
+                            {evt.businessName && (
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20 shrink-0">
+                                🏪 {evt.businessName}
+                              </Badge>
+                            )}
+                          </div>
                           <div className="text-[11px] text-muted-foreground truncate">{evt.description}</div>
                         </td>
                         <td className="px-5 py-3.5 font-mono text-[11px] text-foreground max-w-[140px] truncate">
@@ -771,22 +849,22 @@ export function SecurityWorkstation({
           <div className="space-y-3">
             {[
               {
-                device: "Chrome 128 on macOS Sonoma",
-                location: "Addis Ababa, Ethiopia (197.156.104.12)",
+                device: "Chrome 128 on macOS Sonoma / Windows 11",
+                location: `${city && city !== "all" ? city : "Addis Ababa"}, ${country && country !== "all" ? country : "Ethiopia"} (197.156.104.12)`,
                 status: "Current Active Session",
                 current: true,
                 time: "Active Now",
               },
               {
                 device: "Safari on iPhone 15 Pro (iOS 18)",
-                location: "Bole Medhanialem, Addis Ababa (196.188.15.4)",
-                status: "Biometric TouchID",
+                location: `${city && city !== "all" ? city : "Bole Medhanialem, Addis Ababa"}, ${country && country !== "all" ? country : "Ethiopia"} (196.188.15.4)`,
+                status: "Biometric TouchID / FaceID",
                 current: false,
                 time: "1 hour ago",
               },
               {
-                device: "Firefox 129 on Windows 11",
-                location: "Hawassa, Ethiopia (196.188.40.18)",
+                device: "Firefox 129 on Encrypted Workstation",
+                location: `${city && city !== "all" ? city : "Hawassa"}, ${country && country !== "all" ? country : "Ethiopia"} (196.188.40.18)`,
                 status: "Staff Workstation",
                 current: false,
                 time: "5 hours ago",
@@ -916,8 +994,20 @@ export function SecurityWorkstation({
         isOpen={isRegisterModalOpen}
         onClose={() => setIsRegisterModalOpen(false)}
         onSecurityEventRegistered={handleEventRegistered}
+        businessesList={businessesList}
+        preselectedBusinessId={businessId}
+        preselectedBusinessName={businessName}
         currentAdminName={currentUserName}
         currentAdminRole={currentUserRole}
+        defaultCity={city && city !== "all" ? city : "Addis Ababa"}
+        defaultCountry={country && country !== "all" ? country : "Ethiopia"}
+        defaultTargetResource={
+          portalType === "owner"
+            ? (businessId ? `/business/${businessId}` : "/dashboard/security")
+            : currentUserRole === "city_admin"
+            ? "/city-admin/security"
+            : "/admin/security"
+        }
       />
 
       <SecurityEventDetailModal

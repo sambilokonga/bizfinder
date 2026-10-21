@@ -216,9 +216,17 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
 };
 
 /**
+ * Cache for descendant category lookups to avoid repeated recursive filtering
+ */
+const descendantsCache = new Map<string, { ids: string[]; slugs: string[] }>();
+
+/**
  * Recursively retrieves all descendant IDs and slugs for a given category ID in SEED_CATEGORIES
  */
 function getDescendants(catId: string): { ids: string[]; slugs: string[] } {
+  const cached = descendantsCache.get(catId);
+  if (cached) return cached;
+
   const ids: string[] = [];
   const slugs: string[] = [];
 
@@ -231,23 +239,35 @@ function getDescendants(catId: string): { ids: string[]; slugs: string[] } {
     slugs.push(...sub.slugs);
   }
 
-  return { ids, slugs };
+  const result = { ids, slugs };
+  descendantsCache.set(catId, result);
+  return result;
 }
 
-/**
- * Resolves any category input (ID, slug, alias, or name) into all related IDs, slugs, and keywords.
- */
-export function getCategoryRelatedTokens(categoryInput: string): {
+export interface CategoryTokensResult {
   targetCategory?: Category;
   allIds: string[];
   allSlugs: string[];
   keywords: string[];
-} {
+  idSet: Set<string>;
+  slugSet: Set<string>;
+}
+
+const tokensCache = new Map<string, CategoryTokensResult>();
+
+/**
+ * Resolves any category input (ID, slug, alias, or name) into all related IDs, slugs, and keywords.
+ * Cached in memory for blazing-fast repeated queries.
+ */
+export function getCategoryRelatedTokens(categoryInput: string): CategoryTokensResult {
   if (!categoryInput || categoryInput === "all") {
-    return { allIds: [], allSlugs: [], keywords: [] };
+    return { allIds: [], allSlugs: [], keywords: [], idSet: new Set(), slugSet: new Set() };
   }
 
   const normalized = categoryInput.trim().toLowerCase();
+  const cached = tokensCache.get(normalized);
+  if (cached) return cached;
+
   const allIds = new Set<string>();
   const allSlugs = new Set<string>();
   const keywords = new Set<string>();
@@ -334,12 +354,20 @@ export function getCategoryRelatedTokens(categoryInput: string): {
     }
   }
 
-  return {
+  const idSet = new Set(Array.from(allIds).map((id) => id.toLowerCase()));
+  const slugSet = new Set(Array.from(allSlugs).map((s) => s.toLowerCase()));
+
+  const result: CategoryTokensResult = {
     targetCategory,
     allIds: Array.from(allIds),
     allSlugs: Array.from(allSlugs),
     keywords: Array.from(keywords),
+    idSet,
+    slugSet,
   };
+
+  tokensCache.set(normalized, result);
+  return result;
 }
 
 /**
@@ -360,45 +388,41 @@ export function isBusinessInCategory(
 ): boolean {
   if (!categoryInput || categoryInput === "all") return true;
 
-  const { allIds, allSlugs, keywords } = getCategoryRelatedTokens(categoryInput);
+  const tokens = getCategoryRelatedTokens(categoryInput);
 
-  const bizCatId = biz.categoryId || "";
-  const bizSubCatId = biz.subcategoryId || "";
-  const bizSubSubCatId = biz.subSubcategoryId || "";
+  const bizCatId = (biz.categoryId || "").toLowerCase();
+  const bizSubCatId = (biz.subcategoryId || "").toLowerCase();
+  const bizSubSubCatId = (biz.subSubcategoryId || "").toLowerCase();
+
+  // 1. Direct O(1) ID set match
+  if (bizCatId && tokens.idSet.has(bizCatId)) return true;
+  if (bizSubCatId && tokens.idSet.has(bizSubCatId)) return true;
+  if (bizSubSubCatId && tokens.idSet.has(bizSubSubCatId)) return true;
+
+  // 2. Direct O(1) Slug set match against category IDs
+  if (bizCatId && tokens.slugSet.has(bizCatId)) return true;
+  if (bizSubCatId && tokens.slugSet.has(bizSubCatId)) return true;
+  if (bizSubSubCatId && tokens.slugSet.has(bizSubSubCatId)) return true;
+
+  // 3. Business slug substring match
+  const bizSlug = (biz.slug || "").toLowerCase();
+  if (bizSlug) {
+    for (const t of tokens.allSlugs) {
+      if (t.length >= 3 && bizSlug.includes(t)) {
+        return true;
+      }
+    }
+  }
+
+  // 4. Keyword match in category or subcategory name
   const bizCatName = (biz.categoryName || "").toLowerCase();
   const bizSubCatName = (biz.subcategoryName || "").toLowerCase();
-  const bizSlug = (biz.slug || "").toLowerCase();
-  const bizName = (biz.name || "").toLowerCase();
-
-  // 1. Direct ID / Slug match against related tokens
-  for (const token of allIds) {
-    const t = token.toLowerCase();
-    if (
-      bizCatId.toLowerCase() === t ||
-      bizSubCatId.toLowerCase() === t ||
-      bizSubSubCatId.toLowerCase() === t
-    ) {
-      return true;
-    }
-  }
-
-  for (const token of allSlugs) {
-    const t = token.toLowerCase();
-    if (
-      bizCatId.toLowerCase() === t ||
-      bizSubCatId.toLowerCase() === t ||
-      bizSubSubCatId.toLowerCase() === t ||
-      bizSlug.includes(t)
-    ) {
-      return true;
-    }
-  }
-
-  // 2. Keyword match in category or subcategory name
-  for (const kw of keywords) {
-    if (kw.length >= 3) {
-      if (bizCatName.includes(kw) || bizSubCatName.includes(kw)) {
-        return true;
+  if (tokens.keywords.length > 0 && (bizCatName || bizSubCatName)) {
+    for (const kw of tokens.keywords) {
+      if (kw.length >= 3) {
+        if (bizCatName.includes(kw) || bizSubCatName.includes(kw)) {
+          return true;
+        }
       }
     }
   }

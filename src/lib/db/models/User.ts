@@ -31,6 +31,14 @@ export interface IUserDoc extends Document {
   preferences: IUserPreferences;
   notificationSettings: INotificationSettings;
   accountSettings?: any;
+  approvalStatus?: "approved" | "pending" | "rejected";
+  nominatedBy?: {
+    name?: string;
+    email?: string;
+    role?: string;
+    country?: string;
+    date?: string;
+  };
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -68,6 +76,13 @@ const UserSchema = new Schema<IUserDoc>(
       weeklyDigest: { type: Boolean, default: true },
     },
     accountSettings: { type: Schema.Types.Mixed },
+    approvalStatus: {
+      type: String,
+      enum: ["approved", "pending", "rejected"],
+      default: "approved",
+      index: true,
+    },
+    nominatedBy: { type: Schema.Types.Mixed },
     isActive: { type: Boolean, default: true, index: true },
   },
   { timestamps: true }

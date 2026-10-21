@@ -29,8 +29,17 @@ interface RegisterReportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onReportRegistered: (report: IReport) => void;
-  businessesList?: Array<{ id: string; name: string }>;
+  businessesList?: Array<{
+    id: string;
+    name: string;
+    cityName?: string;
+    city?: string;
+    countryName?: string;
+    country?: string;
+  }>;
   currentAdminName?: string;
+  defaultCity?: string;
+  defaultCountry?: string;
   preselectedTargetType?: ReportType;
   preselectedTargetId?: string;
   preselectedTargetName?: string;
@@ -42,6 +51,8 @@ export function RegisterReportModal({
   onReportRegistered,
   businessesList = [],
   currentAdminName = "Super Admin",
+  defaultCity,
+  defaultCountry,
   preselectedTargetType = "business",
   preselectedTargetId,
   preselectedTargetName,
@@ -55,8 +66,8 @@ export function RegisterReportModal({
   const [details, setDetails] = useState("");
   const [reporterName, setReporterName] = useState(currentAdminName || "Alex Rivera (Super Admin)");
   const [reporterEmail, setReporterEmail] = useState("admin@bizfinder.et");
-  const [city, setCity] = useState("Addis Ababa");
-  const [country, setCountry] = useState("Ethiopia");
+  const [city, setCity] = useState(defaultCity && defaultCity !== "all" ? defaultCity : "Addis Ababa");
+  const [country, setCountry] = useState(defaultCountry && defaultCountry !== "all" ? defaultCountry : "Ethiopia");
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -65,7 +76,10 @@ export function RegisterReportModal({
     if (preselectedTargetType) setReportType(preselectedTargetType);
     if (preselectedTargetName) setTargetName(preselectedTargetName);
     if (preselectedTargetId) setTargetId(preselectedTargetId);
-  }, [preselectedTargetType, preselectedTargetName, preselectedTargetId]);
+    if (defaultCity && defaultCity !== "all") setCity(defaultCity);
+    if (defaultCountry && defaultCountry !== "all") setCountry(defaultCountry);
+    if (currentAdminName) setReporterName(currentAdminName);
+  }, [preselectedTargetType, preselectedTargetName, preselectedTargetId, defaultCity, defaultCountry, currentAdminName]);
 
   const TYPE_OPTIONS: Array<{
     type: ReportType;
@@ -160,6 +174,7 @@ export function RegisterReportModal({
         targetId.trim() ||
         `${reportType.slice(0, 3)}-${Date.now().toString().slice(-5)}`;
 
+      const isBiz = reportType === "business";
       const payload = {
         type: reportType,
         title: title.trim(),
@@ -168,13 +183,15 @@ export function RegisterReportModal({
         targetId: generatedTargetId,
         targetName: targetName.trim(),
         targetType: reportType,
+        businessId: isBiz ? generatedTargetId : undefined,
+        businessName: isBiz ? targetName.trim() : undefined,
         reporterName: reporterName.trim() || "Admin Officer",
         reporterEmail: reporterEmail.trim() || undefined,
         reporterRole: "admin",
         priority,
         status: "under_review",
-        city: city.trim() || "Addis Ababa",
-        country: country.trim() || "Ethiopia",
+        city: city.trim() || (defaultCity && defaultCity !== "all" ? defaultCity : "Addis Ababa"),
+        country: country.trim() || (defaultCountry && defaultCountry !== "all" ? defaultCountry : "Ethiopia"),
         evidenceUrls: evidenceUrl.trim() ? [evidenceUrl.trim()] : undefined,
       };
 
@@ -286,6 +303,10 @@ export function RegisterReportModal({
                       onClick={() => {
                         setTargetName(b.name);
                         setTargetId(b.id);
+                        const bCity = b.cityName || b.city;
+                        const bCountry = b.countryName || b.country;
+                        if (bCity && bCity !== "all") setCity(bCity);
+                        if (bCountry && bCountry !== "all") setCountry(bCountry);
                       }}
                       className="px-2 py-0.5 rounded-lg bg-muted hover:bg-primary/15 text-primary text-[10px] font-bold shrink-0 transition-colors"
                     >
@@ -385,7 +406,7 @@ export function RegisterReportModal({
           </div>
 
           {/* Evidence URL & City/Country */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div className="sm:col-span-2 space-y-1.5">
               <label className="text-xs font-bold text-foreground">Evidence Link / Screenshot URL</label>
               <Input
@@ -401,6 +422,15 @@ export function RegisterReportModal({
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 placeholder="Addis Ababa"
+                className="text-xs rounded-xl"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground">Country Jurisdiction</label>
+              <Input
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                placeholder="Ethiopia"
                 className="text-xs rounded-xl"
               />
             </div>

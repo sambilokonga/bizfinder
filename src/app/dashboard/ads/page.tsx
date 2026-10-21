@@ -181,7 +181,7 @@ export default function SponsoredAdsDashboardPage() {
       };
 
       try {
-        await fetch("/api/ads/campaigns", {
+        const postRes = await fetch("/api/ads/campaigns", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -190,11 +190,17 @@ export default function SponsoredAdsDashboardPage() {
             name: campaignName.trim(),
             placement,
             targetLocation,
+            cityName: targetLocation,
+            countryName: "Ethiopia",
             dailyBudgetETB: dailyBudget,
             durationDays,
             startDate: newCamp.startDate,
           }),
         });
+        const postData = await postRes.json();
+        if (postData?.campaign?.id) {
+          newCamp.id = postData.campaign.id;
+        }
       } catch (err) {}
 
       setCampaigns((prev) => [newCamp, ...prev]);
@@ -228,37 +234,37 @@ export default function SponsoredAdsDashboardPage() {
       : "8.9";
 
   return (
-    <div className="w-full bg-slate-50/50 dark:bg-slate-950/50 py-8 min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+    <div className="w-full bg-slate-50/50 dark:bg-slate-950/50 py-4 sm:py-8 min-h-screen">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-5 sm:space-y-8">
         {/* Header Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-4 sm:pb-6 border-b border-border">
           <div>
             <Link
               href="/dashboard"
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-semibold mb-2"
+              className="inline-flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground hover:text-foreground font-semibold mb-1.5"
             >
-              <ArrowLeft className="w-4 h-4" /> Back to Owner Dashboard
+              <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" /> Back to Owner Dashboard
             </Link>
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-md shadow-amber-500/20">
-                <Crown className="w-5 h-5" />
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-md shadow-amber-500/20 shrink-0">
+                <Crown className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-                Sponsored Ads & Monetization Engine
+              <h1 className="text-base sm:text-2xl lg:text-3xl font-black text-foreground tracking-tight leading-tight">
+                Sponsored Ads &amp; Monetization Engine
               </h1>
             </div>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            <p className="text-[11px] sm:text-xs lg:text-sm text-muted-foreground mt-1">
               Supercharge your business visibility with prioritized search rankings, top-of-page featured banners, and targeted local customer reach.
             </p>
           </div>
 
           {/* Tab Switcher & Theme */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col xs:flex-row items-start xs:items-center gap-2 sm:gap-3">
             <ThemeToggle variant="pill" />
-            <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-border">
+            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-border overflow-x-auto no-scrollbar">
               <button
                 onClick={() => setActiveTab("plans")}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap ${
                   activeTab === "plans"
                     ? "bg-card text-primary shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -268,7 +274,7 @@ export default function SponsoredAdsDashboardPage() {
               </button>
             <button
               onClick={() => setActiveTab("campaigns")}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+              className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap ${
                 activeTab === "campaigns"
                   ? "bg-card text-primary shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -278,13 +284,13 @@ export default function SponsoredAdsDashboardPage() {
             </button>
             <button
               onClick={() => setActiveTab("create")}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${
+              className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1 whitespace-nowrap ${
                 activeTab === "create"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-primary hover:bg-primary/10"
               }`}
             >
-              <Plus className="w-3.5 h-3.5" /> Launch Ad Campaign
+              <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Launch Ad
             </button>
           </div>
         </div>
@@ -333,23 +339,23 @@ export default function SponsoredAdsDashboardPage() {
             {/* 3 Pricing Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Plan 1: Starter */}
-              <div className="p-6 sm:p-8 rounded-3xl border border-border bg-card shadow-sm space-y-6 flex flex-col justify-between">
-                <div className="space-y-4">
+              <div className="p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border border-border bg-card shadow-sm space-y-4 sm:space-y-6 flex flex-col justify-between">
+                <div className="space-y-3 sm:space-y-4">
                   <div>
-                    <Badge variant="outline" className="text-[10px] uppercase font-bold">
+                    <Badge variant="outline" className="text-[9px] sm:text-[10px] uppercase font-bold">
                       Basic Presence
                     </Badge>
-                    <h3 className="text-xl font-black text-foreground mt-2">
+                    <h3 className="text-base sm:text-xl font-black text-foreground mt-1.5 sm:mt-2">
                       Starter Free
                     </h3>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
                       Essential presence on the BizFinder local business directory.
                     </p>
                   </div>
 
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-black text-foreground">0 ETB</span>
-                    <span className="text-xs text-muted-foreground font-semibold">/ month</span>
+                    <span className="text-xl sm:text-3xl font-black text-foreground">0 ETB</span>
+                    <span className="text-[11px] sm:text-xs text-muted-foreground font-semibold">/ month</span>
                   </div>
 
                   <div className="space-y-2.5 text-xs text-muted-foreground pt-4 border-t border-border">
@@ -382,29 +388,29 @@ export default function SponsoredAdsDashboardPage() {
               </div>
 
               {/* Plan 2: Pro Verified (Featured) */}
-              <div className="p-6 sm:p-8 rounded-3xl border-2 border-primary bg-gradient-to-b from-primary/5 via-card to-card shadow-xl space-y-6 flex flex-col justify-between relative overflow-hidden">
-                <div className="absolute -right-12 top-6 bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-wider py-1 px-12 rotate-45 shadow-md">
+              <div className="p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border-2 border-primary bg-gradient-to-b from-primary/5 via-card to-card shadow-xl space-y-4 sm:space-y-6 flex flex-col justify-between relative overflow-hidden">
+                <div className="absolute -right-12 top-5 sm:top-6 bg-primary text-primary-foreground text-[9px] sm:text-[10px] font-black uppercase tracking-wider py-1 px-12 rotate-45 shadow-md">
                   Most Popular
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <div>
-                    <Badge variant="default" className="text-[10px] uppercase font-bold">
+                    <Badge variant="default" className="text-[9px] sm:text-[10px] uppercase font-bold">
                       Verified Growth
                     </Badge>
-                    <h3 className="text-xl font-black text-foreground mt-2">
+                    <h3 className="text-base sm:text-xl font-black text-foreground mt-1.5 sm:mt-2">
                       Pro Verified
                     </h3>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
                       Verified blue checkmark and prioritized ranking for growing businesses.
                     </p>
                   </div>
 
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-black text-primary">
+                    <span className="text-xl sm:text-3xl font-black text-primary">
                       {billingCycle === "yearly" ? "22,000" : "2,200"} ETB
                     </span>
-                    <span className="text-xs text-muted-foreground font-semibold">
+                    <span className="text-[11px] sm:text-xs text-muted-foreground font-semibold">
                       / {billingCycle === "yearly" ? "year" : "month"}
                     </span>
                   </div>
@@ -443,25 +449,25 @@ export default function SponsoredAdsDashboardPage() {
               </div>
 
               {/* Plan 3: Spotlight Master */}
-              <div className="p-6 sm:p-8 rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-500/5 via-card to-card shadow-sm space-y-6 flex flex-col justify-between">
-                <div className="space-y-4">
+              <div className="p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-500/5 via-card to-card shadow-sm space-y-4 sm:space-y-6 flex flex-col justify-between">
+                <div className="space-y-3 sm:space-y-4">
                   <div>
-                    <Badge variant="warning" className="text-[10px] uppercase font-bold">
+                    <Badge variant="warning" className="text-[9px] sm:text-[10px] uppercase font-bold">
                       Maximum Exposure
                     </Badge>
-                    <h3 className="text-xl font-black text-foreground mt-2 flex items-center gap-1.5">
-                      Spotlight Master <Crown className="w-4 h-4 text-amber-500" />
+                    <h3 className="text-base sm:text-xl font-black text-foreground mt-1.5 sm:mt-2 flex items-center gap-1.5">
+                      Spotlight Master <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" />
                     </h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Top-of-page search ad slots, home page feature showcase & competitor conquesting protection.
+                    <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
+                      Top-of-page search ad slots, home page feature showcase &amp; competitor conquesting protection.
                     </p>
                   </div>
 
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-black text-amber-600 dark:text-amber-400">
+                    <span className="text-xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">
                       {billingCycle === "yearly" ? "58,000" : "5,800"} ETB
                     </span>
-                    <span className="text-xs text-muted-foreground font-semibold">
+                    <span className="text-[11px] sm:text-xs text-muted-foreground font-semibold">
                       / {billingCycle === "yearly" ? "year" : "month"}
                     </span>
                   </div>
@@ -506,76 +512,76 @@ export default function SponsoredAdsDashboardPage() {
         {/* TAB 2: ACTIVE CAMPAIGNS & RECHARTS PERFORMANCE             */}
         {/* ────────────────────────────────────────────────────────── */}
         {activeTab === "campaigns" && (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-5 rounded-3xl border border-border bg-card shadow-sm">
-                <span className="text-xs font-bold text-muted-foreground uppercase">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+              <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-border bg-card shadow-sm">
+                <span className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase">
                   Total Ad Impressions
                 </span>
-                <div className="text-2xl font-black text-foreground mt-2">
+                <div className="text-lg sm:text-2xl font-black text-foreground mt-1 sm:mt-2">
                   {totalImpressions.toLocaleString()}
                 </div>
-                <div className="text-xs text-emerald-600 font-semibold mt-1 flex items-center gap-1">
-                  <TrendingUp className="w-3.5 h-3.5" /> +24% vs last week
+                <div className="text-[11px] sm:text-xs text-emerald-600 font-semibold mt-0.5 sm:mt-1 flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> +24% vs last week
                 </div>
               </div>
 
-              <div className="p-5 rounded-3xl border border-border bg-card shadow-sm">
-                <span className="text-xs font-bold text-muted-foreground uppercase">
+              <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-border bg-card shadow-sm">
+                <span className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase">
                   Sponsored Ad Clicks
                 </span>
-                <div className="text-2xl font-black text-primary mt-2">
+                <div className="text-lg sm:text-2xl font-black text-primary mt-1 sm:mt-2">
                   {totalClicks.toLocaleString()}
                 </div>
-                <div className="text-xs text-muted-foreground font-semibold mt-1">
-                  Direct visits & phone calls
+                <div className="text-[11px] sm:text-xs text-muted-foreground font-semibold mt-0.5 sm:mt-1">
+                  Direct visits &amp; phone calls
                 </div>
               </div>
 
-              <div className="p-5 rounded-3xl border border-border bg-card shadow-sm">
-                <span className="text-xs font-bold text-muted-foreground uppercase">
-                  Average Click-Through (CTR)
+              <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-border bg-card shadow-sm">
+                <span className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase">
+                  Average CTR
                 </span>
-                <div className="text-2xl font-black text-indigo-600 mt-2">
+                <div className="text-lg sm:text-2xl font-black text-indigo-600 mt-1 sm:mt-2">
                   {avgCTR}%
                 </div>
-                <div className="text-xs text-emerald-600 font-semibold mt-1">
+                <div className="text-[11px] sm:text-xs text-emerald-600 font-semibold mt-0.5 sm:mt-1">
                   High engagement rate
                 </div>
               </div>
 
-              <div className="p-5 rounded-3xl border border-border bg-card shadow-sm">
-                <span className="text-xs font-bold text-muted-foreground uppercase">
+              <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-border bg-card shadow-sm">
+                <span className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase">
                   Active Ad Slots
                 </span>
-                <div className="text-2xl font-black text-amber-600 mt-2">
+                <div className="text-lg sm:text-2xl font-black text-amber-600 mt-1 sm:mt-2">
                   {campaigns.filter((c) => c.status === "active").length} Active
                 </div>
-                <div className="text-xs text-muted-foreground font-semibold mt-1">
-                  Across Search & Home
+                <div className="text-[11px] sm:text-xs text-muted-foreground font-semibold mt-0.5 sm:mt-1">
+                  Across Search &amp; Home
                 </div>
               </div>
             </div>
 
             {/* Recharts Area Performance Graph */}
-            <div className="p-6 sm:p-8 rounded-3xl border border-border bg-card shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl border border-border bg-card shadow-sm space-y-3 sm:space-y-4">
+              <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2">
                 <div>
-                  <h3 className="font-bold text-base text-foreground flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-indigo-500" />
-                    Sponsored Ad Impressions vs Clicks (Last 7 Days)
+                  <h3 className="font-bold text-sm sm:text-base text-foreground flex items-center gap-1.5 sm:gap-2">
+                    <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500 shrink-0" />
+                    Ad Impressions vs Clicks (7 Days)
                   </h3>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[11px] sm:text-xs text-muted-foreground">
                     Live delivery performance across all active placements
                   </p>
                 </div>
-                <div className="flex items-center gap-3 text-xs font-bold">
-                  <span className="flex items-center gap-1.5 text-indigo-600">
-                    <span className="w-3 h-3 rounded-full bg-indigo-600" /> Impressions
+                <div className="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs font-bold shrink-0">
+                  <span className="flex items-center gap-1 sm:gap-1.5 text-indigo-600">
+                    <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-indigo-600" /> Impressions
                   </span>
-                  <span className="flex items-center gap-1.5 text-amber-500">
-                    <span className="w-3 h-3 rounded-full bg-amber-500" /> Clicks
+                  <span className="flex items-center gap-1 sm:gap-1.5 text-amber-500">
+                    <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-amber-500" /> Clicks
                   </span>
                 </div>
               </div>
@@ -627,13 +633,13 @@ export default function SponsoredAdsDashboardPage() {
             </div>
 
             {/* Campaigns Table */}
-            <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 space-y-4 shadow-sm">
-              <div className="flex items-center justify-between">
+            <div className="rounded-2xl sm:rounded-3xl border border-border bg-card p-4 sm:p-6 lg:p-8 space-y-3 sm:space-y-4 shadow-sm">
+              <div className="flex items-center justify-between gap-2">
                 <div>
-                  <h3 className="font-bold text-base text-foreground">
+                  <h3 className="font-bold text-sm sm:text-base text-foreground">
                     Active Sponsored Campaigns
                   </h3>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[11px] sm:text-xs text-muted-foreground">
                     Manage budget, targeting location, and real-time delivery
                   </p>
                 </div>
@@ -641,9 +647,9 @@ export default function SponsoredAdsDashboardPage() {
                   size="sm"
                   variant="gradient"
                   onClick={() => setActiveTab("create")}
-                  className="font-bold text-xs gap-1.5"
+                  className="font-bold text-[11px] sm:text-xs gap-1 sm:gap-1.5 h-7 sm:h-8 px-2.5 sm:px-3 shrink-0"
                 >
-                  <Plus className="w-3.5 h-3.5" /> New Campaign
+                  <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> New Campaign
                 </Button>
               </div>
 
@@ -725,13 +731,13 @@ export default function SponsoredAdsDashboardPage() {
         {activeTab === "create" && (
           <form
             onSubmit={handleCreateCampaignSubmit}
-            className="bg-card rounded-3xl border border-border p-6 sm:p-8 shadow-sm space-y-6 max-w-2xl mx-auto"
+            className="bg-card rounded-2xl sm:rounded-3xl border border-border p-4 sm:p-6 lg:p-8 shadow-sm space-y-5 sm:space-y-6 max-w-2xl mx-auto"
           >
             <div>
-              <h2 className="text-lg font-bold text-foreground">
+              <h2 className="text-sm sm:text-lg font-bold text-foreground">
                 Launch Sponsored Ad Campaign
               </h2>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[11px] sm:text-xs text-muted-foreground">
                 Configure your target location, placement slot, and daily budget.
               </p>
             </div>

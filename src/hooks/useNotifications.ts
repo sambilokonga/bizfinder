@@ -119,6 +119,7 @@ export function useNotifications() {
 
   const prevCountRef = useRef<number>(0);
   const knownNotifIdsRef = useRef<Set<string>>(new Set());
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Initialize sound preference from localStorage
   useEffect(() => {
@@ -144,6 +145,14 @@ export function useNotifications() {
   }, []);
 
   const fetchNotifications = useCallback(async () => {
+    // Don't fetch until Clerk has finished loading and user is authenticated
+    if (!isLoaded || !isSignedIn) return;
+
+    // Cancel any previous in-flight request before starting a new one
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const params = new URLSearchParams();
       params.set("limit", "50");
@@ -159,7 +168,9 @@ export function useNotifications() {
         params.set("city", currentUser.assignedCity);
       }
 
-      const res = await fetch(`/api/notifications?${params.toString()}`);
+      const res = await fetch(`/api/notifications?${params.toString()}`, {
+        signal: controller.signal,
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.notifications)) {
@@ -217,25 +228,37 @@ export function useNotifications() {
           setUnreadCount(freshUnread);
         }
       }
-    } catch (err) {
-      console.error("Failed to load notifications", err);
+    } catch (err: any) {
+      // Ignore intentional abort errors (component unmount / request superseded)
+      if (err?.name !== "AbortError") {
+        console.error("Failed to load notifications", err);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [currentRole, currentUser]);
+  }, [isLoaded, isSignedIn, currentRole, currentUser]);
 
-  // Initial fetch and role change fetch
+  // Initial fetch and role change fetch — only when signed in
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
     fetchNotifications();
-  }, [fetchNotifications]);
+    // Cancel in-flight request on effect cleanup
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, [fetchNotifications, isLoaded, isSignedIn]);
 
-  // Auto-polling every 8 seconds for real-time alerts
+  // Auto-polling every 8 seconds for real-time alerts — only when signed in
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
     const timer = setInterval(() => {
       fetchNotifications();
     }, 8000);
-    return () => clearInterval(timer);
-  }, [fetchNotifications]);
+    return () => {
+      clearInterval(timer);
+      abortControllerRef.current?.abort();
+    };
+  }, [fetchNotifications, isLoaded, isSignedIn]);
 
   const markAsRead = useCallback(async (notificationId: string) => {
     setNotifications((prev) =>

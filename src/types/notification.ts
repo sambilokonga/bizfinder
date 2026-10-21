@@ -47,7 +47,8 @@ export interface INotification {
     | "subscription_expired"
     | "payment"
     | "system"
-    | "review";
+    | "review"
+    | "ad_campaign";
   metadata?: Record<string, any>;
   status: NotificationStatus;
   priority: NotificationPriority;

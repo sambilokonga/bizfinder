@@ -111,13 +111,13 @@ const DOC_TYPES = [
 // -----------------------------------------------------------------
 function StepHeader({ step, title, subtitle }: { step: number; title: string; subtitle: string }) {
   return (
-    <div className="flex items-center gap-3 pb-3 border-b border-border">
-      <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm shrink-0">
+    <div className="flex items-center gap-2.5 sm:gap-3 pb-2.5 sm:pb-3 border-b border-border">
+      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-xs sm:text-sm shrink-0">
         {step}
       </div>
       <div>
-        <h3 className="text-base font-black text-foreground">{title}</h3>
-        <p className="text-xs text-muted-foreground">{subtitle}</p>
+        <h3 className="text-sm sm:text-base font-black text-foreground">{title}</h3>
+        <p className="text-[11px] sm:text-xs text-muted-foreground">{subtitle}</p>
       </div>
     </div>
   );
@@ -126,7 +126,7 @@ function StepHeader({ step, title, subtitle }: { step: number; title: string; su
 function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="text-xs font-bold text-foreground block mb-1">
+      <label className="text-[11px] sm:text-xs font-bold text-foreground block mb-1">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
       {children}
@@ -1060,35 +1060,38 @@ export function EmbeddedListingWizard({
   const isEmbedded = mode === "embedded";
 
   return (
-    <div className={isEmbedded ? "w-full space-y-4" : "w-full min-h-[calc(100vh-4rem)] py-8 px-4 sm:px-6 flex items-start justify-center bg-background text-foreground"}>
-      <div className={isEmbedded ? "w-full space-y-4" : "max-w-4xl w-full space-y-6"}>
+    <div className={isEmbedded ? "w-full space-y-4" : "w-full min-h-[calc(100vh-4rem)] py-4 sm:py-8 px-2.5 sm:px-6 flex items-start justify-center bg-background text-foreground"}>
+      <div className={isEmbedded ? "w-full space-y-4" : "max-w-4xl w-full space-y-4 sm:space-y-6"}>
 
         {/* Top Bar: back link (fullscreen) or cancel (embedded) */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           {isEmbedded ? (
             <div className="flex items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border border-primary/25 bg-primary/10 text-primary">
-                {isAdmin ? <Crown className="w-3.5 h-3.5 text-amber-500" /> : <Compass className="w-3.5 h-3.5" />}
-                {isAdmin ? "Super Admin Business Creation Wizard" : "Worldwide Business Listing Wizard"}
+              <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold border border-primary/25 bg-primary/10 text-primary">
+                {isAdmin ? <Crown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-500" /> : <Compass className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                <span className="hidden xs:inline">{isAdmin ? "Super Admin Business Creation Wizard" : "Worldwide Business Listing Wizard"}</span>
+                <span className="xs:hidden">{isAdmin ? "Admin Wizard" : "Listing Wizard"}</span>
               </div>
             </div>
           ) : (
             <Link
               href="/dashboard"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ArrowLeft className="w-4 h-4" /> Back to Business Dashboard
+              <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">Back to Business Dashboard</span>
+              <span className="xs:hidden">Dashboard</span>
             </Link>
           )}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => saveDraft(true)}
-              className="h-8 text-xs font-bold gap-1.5 border-border bg-card hover:bg-muted text-foreground"
+              className="h-7 sm:h-8 text-[11px] sm:text-xs font-bold gap-1 sm:gap-1.5 border-border bg-card hover:bg-muted text-foreground px-2 sm:px-3"
             >
-              <Save className="w-3.5 h-3.5" /> Save Draft
+              <Save className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> <span className="hidden xs:inline">Save Draft</span><span className="xs:hidden">Save</span>
             </Button>
             {isEmbedded && onCancel && (
               <Button
@@ -1096,29 +1099,29 @@ export function EmbeddedListingWizard({
                 variant="ghost"
                 size="sm"
                 onClick={onCancel}
-                className="h-8 text-xs font-bold gap-1.5 text-muted-foreground hover:text-foreground"
+                className="h-7 sm:h-8 text-[11px] sm:text-xs font-bold gap-1 sm:gap-1.5 text-muted-foreground hover:text-foreground px-2 sm:px-3"
               >
-                <X className="w-3.5 h-3.5" /> Cancel
+                <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Cancel
               </Button>
             )}
-            <div className="px-3 py-1 rounded-xl border border-border bg-muted/60 text-xs font-black text-foreground">
+            <div className="px-2.5 sm:px-3 py-1 rounded-lg sm:rounded-xl border border-border bg-muted/60 text-[10px] sm:text-xs font-black text-foreground shrink-0">
               Step <span className="text-primary">{step}</span> of 7
             </div>
           </div>
         </div>
 
         {/* HEADER CARD */}
-        <div className="rounded-3xl border border-border bg-card p-6 sm:p-7 shadow-sm relative overflow-hidden">
+        <div className="rounded-2xl sm:rounded-3xl border border-border bg-card p-4 sm:p-6 lg:p-7 shadow-sm relative overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-          <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 mb-5">
-            <div className="space-y-1.5">
+          <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-5">
+            <div className="space-y-1 sm:space-y-1.5">
               {!isEmbedded && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border border-primary/25 bg-primary/10 text-primary">
-                  <Compass className="w-3.5 h-3.5" />
+                <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold border border-primary/25 bg-primary/10 text-primary">
+                  <Compass className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                   Worldwide Business Listing Wizard
                 </div>
               )}
-              <h2 className={`${isEmbedded ? "text-xl" : "text-2xl sm:text-3xl"} font-black text-foreground tracking-tight`}>
+              <h2 className={`${isEmbedded ? "text-lg sm:text-xl" : "text-xl sm:text-2xl lg:text-3xl"} font-black text-foreground tracking-tight`}>
                 Register Your Business
               </h2>
               <p className="text-xs sm:text-sm text-muted-foreground">
@@ -1127,8 +1130,8 @@ export function EmbeddedListingWizard({
             </div>
             {!isEmbedded && (
               <Link href="/dashboard/listings/new" target="_blank">
-                <Button size="sm" variant="outline" className="text-xs font-bold gap-1.5 border-border">
-                  <ExternalLink className="w-3.5 h-3.5" /> Open Fullscreen
+                <Button size="sm" variant="outline" className="h-7 sm:h-8 text-[11px] sm:text-xs font-bold gap-1 sm:gap-1.5 border-border">
+                  <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Open Fullscreen
                 </Button>
               </Link>
             )}
@@ -1136,9 +1139,9 @@ export function EmbeddedListingWizard({
 
           {/* DRAFT RESTORE PROMPT */}
           {hasSavedDraft && !isSubmitted && (
-            <div className="mb-5 p-3.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 flex items-center justify-between text-xs gap-3">
+            <div className="mb-4 sm:mb-5 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-amber-500/30 bg-amber-500/10 flex flex-col sm:flex-row sm:items-center justify-between text-[11px] sm:text-xs gap-2 sm:gap-3">
               <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-medium">
-                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-amber-600 dark:text-amber-400" />
                 <span>Saved draft available {draftSavedAt ? `(saved at ${draftSavedAt})` : ""}. Restore previous details?</span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -1147,14 +1150,14 @@ export function EmbeddedListingWizard({
                   size="sm"
                   variant="outline"
                   onClick={loadDraft}
-                  className="h-7 text-xs font-bold border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20"
+                  className="h-6 sm:h-7 text-[10px] sm:text-xs font-bold border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20"
                 >
                   <RotateCcw className="w-3 h-3 mr-1" /> Restore
                 </Button>
                 <button
                   type="button"
                   onClick={clearDraft}
-                  className="text-xs text-muted-foreground hover:text-red-500 transition-colors px-2"
+                  className="text-[11px] sm:text-xs text-muted-foreground hover:text-red-500 transition-colors px-2"
                 >
                   Discard
                 </button>
@@ -1163,8 +1166,8 @@ export function EmbeddedListingWizard({
           )}
 
           {/* STEPPER PROGRESS */}
-          <div className="space-y-3 pt-1">
-            <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+          <div className="space-y-2 sm:space-y-3 pt-1">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2">
               {WIZARD_STEPS.map((s) => {
                 const Icon = s.icon;
                 const isActive = step === s.id;
@@ -1176,7 +1179,7 @@ export function EmbeddedListingWizard({
                     type="button"
                     onClick={() => isAccessible && setStep(s.id as any)}
                     disabled={!isAccessible}
-                    className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl border transition-all text-center ${
+                    className={`flex flex-col items-center gap-1 sm:gap-1.5 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl border transition-all text-center ${
                       isActive
                         ? "border-primary bg-primary/10 shadow-xs ring-2 ring-primary/20"
                         : isDone
@@ -1185,7 +1188,7 @@ export function EmbeddedListingWizard({
                     }`}
                   >
                     <div
-                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center font-bold text-xs transition-colors ${
+                      className={`w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center font-bold text-[10px] sm:text-xs transition-colors ${
                         isActive
                           ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
                           : isDone
@@ -1193,13 +1196,13 @@ export function EmbeddedListingWizard({
                           : "bg-muted text-muted-foreground"
                       }`}
                     >
-                      {isDone ? <CheckCircle2 className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                      {isDone ? <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4" /> : <Icon className="w-3 h-3 sm:w-4 sm:h-4" />}
                     </div>
                     <div className="min-w-0">
-                      <div className={`text-[10px] sm:text-xs font-black truncate ${isActive ? "text-primary" : isDone ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                      <div className={`text-[9px] sm:text-xs font-black truncate ${isActive ? "text-primary" : isDone ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>
                         {s.label}
                       </div>
-                      <div className="text-[9px] text-muted-foreground truncate hidden sm:block">
+                      <div className="text-[9px] text-muted-foreground truncate hidden md:block">
                         {s.sublabel}
                       </div>
                     </div>
@@ -1208,7 +1211,7 @@ export function EmbeddedListingWizard({
               })}
             </div>
             {/* PROGRESS BAR */}
-            <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+            <div className="w-full h-1 sm:h-1.5 rounded-full bg-muted overflow-hidden">
               <div
                 className="h-full rounded-full bg-primary transition-all duration-500"
                 style={{ width: `${progressPct}%` }}
@@ -1219,51 +1222,51 @@ export function EmbeddedListingWizard({
 
         {/* SUBMITTED SUCCESS BANNER WITH MULTI-TIER APPROVAL FLOW */}
         {isSubmitted ? (
-          <div className="p-8 sm:p-10 rounded-3xl border border-indigo-500/30 bg-card text-center space-y-6 shadow-sm">
-            <div className="w-16 h-16 rounded-full bg-indigo-500/10 text-indigo-600 flex items-center justify-center mx-auto ring-8 ring-indigo-500/5">
-              <CheckCircle2 className="w-8 h-8" />
+          <div className="p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-3xl border border-indigo-500/30 bg-card text-center space-y-4 sm:space-y-6 shadow-sm">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-indigo-500/10 text-indigo-600 flex items-center justify-center mx-auto ring-4 sm:ring-8 ring-indigo-500/5">
+              <CheckCircle2 className="w-6 h-6 sm:w-8 sm:h-8" />
             </div>
-            <div className="space-y-2">
-              <span className="px-3 py-1 rounded-full text-xs font-bold border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+            <div className="space-y-1.5 sm:space-y-2">
+              <span className="px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
                 Stage 1 of 3 Initiated
               </span>
-              <h2 className="text-2xl font-black text-foreground">Listing Submitted for Multi-Tier Approval!</h2>
-              <p className="text-sm text-muted-foreground max-w-lg mx-auto">
+              <h2 className="text-lg sm:text-2xl font-black text-foreground">Listing Submitted for Multi-Tier Approval!</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground max-w-lg mx-auto">
                 "{name}" has been recorded. To protect directory quality, your listing will undergo administrative verification before going live.
               </p>
             </div>
 
             {/* 3-Tier Approval Pipeline Tracker */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left max-w-2xl mx-auto pt-2">
-              <div className="p-3.5 rounded-2xl border border-amber-500/30 bg-amber-500/5 space-y-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 text-left max-w-2xl mx-auto pt-2">
+              <div className="p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border border-amber-500/30 bg-amber-500/5 space-y-1 sm:space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Stage 1: Pending</span>
-                  <Clock className="w-4 h-4 text-amber-500 animate-pulse" />
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Stage 1: Pending</span>
+                  <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 animate-pulse" />
                 </div>
                 <div className="text-xs font-black text-foreground">City Admin Review</div>
-                <div className="text-[11px] text-muted-foreground">{displayCity} municipal team verifies address & subcity permits.</div>
+                <div className="text-[10px] sm:text-[11px] text-muted-foreground">{displayCity} municipal team verifies address & subcity permits.</div>
               </div>
 
-              <div className="p-3.5 rounded-2xl border border-border bg-muted/20 space-y-1.5 opacity-80">
+              <div className="p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border border-border bg-muted/20 space-y-1 sm:space-y-1.5 opacity-80">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Stage 2: Queued</span>
-                  <ShieldCheck className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Stage 2: Queued</span>
+                  <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
                 </div>
                 <div className="text-xs font-black text-foreground">Country Lead Review</div>
-                <div className="text-[11px] text-muted-foreground">{displayCountry} national compliance & tax identity checks.</div>
+                <div className="text-[10px] sm:text-[11px] text-muted-foreground">{displayCountry} national compliance & tax identity checks.</div>
               </div>
 
-              <div className="p-3.5 rounded-2xl border border-border bg-muted/20 space-y-1.5 opacity-80">
+              <div className="p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border border-border bg-muted/20 space-y-1 sm:space-y-1.5 opacity-80">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Stage 3: Queued</span>
-                  <Crown className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Stage 3: Queued</span>
+                  <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
                 </div>
                 <div className="text-xs font-black text-foreground">Super Admin Posting</div>
-                <div className="text-[11px] text-muted-foreground">Final global authorization & publication. (Super Admin may fast-track).</div>
+                <div className="text-[10px] sm:text-[11px] text-muted-foreground">Final global authorization & publication. (Super Admin may fast-track).</div>
               </div>
             </div>
 
-            <div className="p-3.5 rounded-2xl border border-border bg-muted/40 text-xs text-muted-foreground max-w-lg mx-auto">
+            <div className="p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border border-border bg-muted/40 text-[11px] sm:text-xs text-muted-foreground max-w-lg mx-auto">
               💡 <strong>Note:</strong> Super Admins can fast-track approval without waiting for intermediate steps. You will receive real-time notifications as your listing progresses.
             </div>
 
@@ -1271,7 +1274,7 @@ export function EmbeddedListingWizard({
               <div className="pt-2">
                 <Button
                   onClick={() => onSuccess?.("")}
-                  className="font-bold bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="h-8 sm:h-9 text-xs sm:text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   Back to My Businesses
                 </Button>
@@ -1279,7 +1282,7 @@ export function EmbeddedListingWizard({
             ) : (
               <div className="pt-2">
                 <Link href="/dashboard">
-                  <Button className="font-bold bg-primary text-primary-foreground hover:bg-primary/90">
+                  <Button className="h-8 sm:h-9 text-xs sm:text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90">
                     Go to Owner Dashboard
                   </Button>
                 </Link>
@@ -1288,7 +1291,7 @@ export function EmbeddedListingWizard({
           </div>
         ) : (
           /* FORM CONTAINER */
-          <form onSubmit={handleNext} className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-sm space-y-6">
+          <form onSubmit={handleNext} className="rounded-2xl sm:rounded-3xl border border-border bg-card p-4 sm:p-6 lg:p-8 shadow-sm space-y-5 sm:space-y-6">
 
             {/* STEP 1: IDENTITY & BRAND */}
             {step === 1 && (
@@ -2136,7 +2139,7 @@ export function EmbeddedListingWizard({
             )}
 
             {/* NAVIGATION FOOTER */}
-            <div className="flex items-center justify-between pt-6 border-t border-border mt-4">
+            <div className="flex items-center justify-between pt-4 sm:pt-6 border-t border-border mt-3 sm:mt-4 gap-2">
               {step > 1 ? (
                 <Button
                   type="button"
@@ -2146,44 +2149,44 @@ export function EmbeddedListingWizard({
                     setStep((step - 1) as any);
                     if (mode === "fullscreen") window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
-                  className="font-bold border-border text-foreground hover:bg-muted"
+                  className="h-8 sm:h-9 text-xs sm:text-sm font-bold border-border text-foreground hover:bg-muted px-2.5 sm:px-4"
                 >
-                  <ArrowLeft className="w-4 h-4 mr-1.5" /> Previous
+                  <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" /> Previous
                 </Button>
               ) : (
                 isEmbedded && onCancel ? (
-                  <Button type="button" variant="ghost" size="sm" onClick={onCancel} className="font-semibold text-muted-foreground hover:text-foreground">
+                  <Button type="button" variant="ghost" size="sm" onClick={onCancel} className="h-8 sm:h-9 text-xs sm:text-sm font-semibold text-muted-foreground hover:text-foreground px-2 sm:px-3">
                     Cancel
                   </Button>
                 ) : (
                   <Link href="/dashboard">
-                    <Button type="button" variant="ghost" size="sm" className="font-semibold text-muted-foreground hover:text-foreground">
+                    <Button type="button" variant="ghost" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm font-semibold text-muted-foreground hover:text-foreground px-2 sm:px-3">
                       Cancel
                     </Button>
                   </Link>
                 )
               )}
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => saveDraft(true)}
-                  className="font-semibold text-xs border-dashed border-border text-muted-foreground hover:text-foreground"
+                  className="h-8 sm:h-9 font-semibold text-[11px] sm:text-xs border-dashed border-border text-muted-foreground hover:text-foreground px-2 sm:px-3"
                 >
-                  <Save className="w-3.5 h-3.5 mr-1" /> Save Draft
+                  <Save className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" /> <span className="hidden xs:inline">Save Draft</span><span className="xs:hidden">Save</span>
                 </Button>
                 <Button
                   type="submit"
                   size="sm"
                   disabled={isSubmitting}
-                  className="font-bold gap-1.5 shadow-md bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                  className="h-8 sm:h-9 text-xs sm:text-sm font-bold gap-1 sm:gap-1.5 shadow-md bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-3 sm:px-5"
                 >
                   {step === 7 ? (
-                    isSubmitting ? <>Submitting...</> : <><ShieldCheck className="w-4 h-4" /> Submit for Approval</>
+                    isSubmitting ? <>Submitting...</> : <><ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Submit for Approval</>
                   ) : (
-                    <>Next Step <ArrowRight className="w-4 h-4" /></>
+                    <>Next Step <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></>
                   )}
                 </Button>
               </div>

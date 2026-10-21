@@ -14,12 +14,17 @@ function getInitialSeedMedia() {
   let index = 1;
 
   for (const biz of SEED_BUSINESSES) {
+    const cityName: string = (biz as any).cityName || (biz as any).city || "";
+    const countryName: string = (biz as any).countryName || (biz as any).country || "";
+
     // 1. Cover
     if (biz.coverUrl) {
       list.push({
         id: `med-seed-cov-${biz.id || index}`,
         businessId: biz.id,
         businessName: biz.name,
+        cityName,
+        countryName,
         title: `${biz.name} – Exterior & Main Facade`,
         type: "Cover",
         url: biz.coverUrl,
@@ -38,6 +43,8 @@ function getInitialSeedMedia() {
         id: `med-seed-log-${biz.id || index}`,
         businessId: biz.id,
         businessName: biz.name,
+        cityName,
+        countryName,
         title: `${biz.name} – Brand Logo`,
         type: "Logo",
         url: biz.logoUrl,
@@ -66,6 +73,8 @@ function getInitialSeedMedia() {
           id: m.id || `med-seed-item-${index++}`,
           businessId: biz.id,
           businessName: biz.name,
+          cityName,
+          countryName,
           title: m.title || `${biz.name} – Gallery Photo`,
           type: normalizedType,
           url: m.url,
@@ -85,6 +94,8 @@ function getInitialSeedMedia() {
         id: `med-seed-vid-${biz.id || index}`,
         businessId: biz.id,
         businessName: biz.name,
+        cityName,
+        countryName,
         title: `${biz.name} – Official Video Showcase Tour`,
         type: "Video",
         url: `https://www.youtube.com/watch?v=${vId}`,
@@ -131,66 +142,76 @@ async function syncMediaFromDatabase() {
       const initial = getInitialSeedMedia();
       await MediaModel.insertMany(initial, { ordered: false }).catch(() => {});
     } else {
-      // Also inspect any businesses in MongoDB that might have new media
-      const businesses = await BusinessModel.find({}, "id name logoUrl coverUrl media youtubeVideoId").lean();
+      // Sync all businesses in MongoDB to MediaModel with geo fields
+      const businesses = await BusinessModel.find(
+        {},
+        "id name cityName countryName logoUrl coverUrl media youtubeVideoId"
+      ).lean() as any[];
+
+      const ops: any[] = [];
       for (const biz of businesses) {
+        const cityName = biz.cityName || "";
+        const countryName = biz.countryName || "";
+
         if (biz.coverUrl) {
-          await MediaModel.updateOne(
-            { businessId: biz.id, type: "Cover" },
-            {
-              $setOnInsert: {
-                id: `med-cov-${biz.id}`,
-                businessId: biz.id,
-                businessName: biz.name,
-                title: `${biz.name} – Cover Header`,
-                type: "Cover",
-                url: biz.coverUrl,
-                uploadedBy: "Admin",
-                uploadedAt: new Date().toISOString(),
-                status: "Approved",
-                sortOrder: 0,
+          ops.push({
+            updateOne: {
+              filter: { id: `med-cov-${biz.id}` },
+              update: {
+                $set: { cityName, countryName },
+                $setOnInsert: {
+                  id: `med-cov-${biz.id}`,
+                  businessId: biz.id,
+                  businessName: biz.name,
+                  title: `${biz.name} – Cover Header`,
+                  type: "Cover",
+                  url: biz.coverUrl,
+                  uploadedBy: "Admin",
+                  uploadedAt: new Date().toISOString(),
+                  status: "Approved",
+                  sortOrder: 0,
+                },
               },
+              upsert: true,
             },
-            { upsert: true }
-          ).catch(() => {});
+          });
         }
 
         if (Array.isArray(biz.media)) {
-          for (const m of biz.media) {
-            if (!m.url) continue;
+          biz.media.forEach((m: any, idx: number) => {
+            if (!m.url) return;
             const isVid = m.type === "video" || isYoutubeUrl(m.url);
             const vId = isVid ? extractYoutubeVideoId(m.url) : null;
-            const normType =
-              isVid
-                ? "Video"
-                : m.type === "cover"
-                ? "Cover"
-                : m.type === "logo"
-                ? "Logo"
-                : "Photo";
-
-            await MediaModel.updateOne(
-              { id: m.id },
-              {
-                $setOnInsert: {
-                  id: m.id || `med-item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-                  businessId: biz.id,
-                  businessName: biz.name,
-                  title: m.title || `${biz.name} ${isVid ? "Video Tour" : "Photo"}`,
-                  type: normType,
-                  url: m.url,
-                  youtubeId: vId || undefined,
-                  thumbnailUrl: m.thumbnailUrl || (vId ? getYoutubeThumbnail(vId) : undefined),
-                  uploadedBy: "Owner",
-                  uploadedAt: m.uploadedAt || new Date().toISOString(),
-                  status: "Approved",
-                  sortOrder: m.sortOrder || 1,
+            const normType = isVid ? "Video" : m.type === "cover" ? "Cover" : m.type === "logo" ? "Logo" : "Photo";
+            const mediaId = m.id || `med-item-${biz.id}-${idx}`;
+            ops.push({
+              updateOne: {
+                filter: { id: mediaId },
+                update: {
+                  $set: { cityName, countryName },
+                  $setOnInsert: {
+                    id: mediaId,
+                    businessId: biz.id,
+                    businessName: biz.name,
+                    title: m.title || `${biz.name} ${isVid ? "Video Tour" : "Photo"}`,
+                    type: normType,
+                    url: m.url,
+                    youtubeId: vId || undefined,
+                    thumbnailUrl: m.thumbnailUrl || (vId ? getYoutubeThumbnail(vId) : undefined),
+                    uploadedBy: "Owner",
+                    uploadedAt: m.uploadedAt || new Date().toISOString(),
+                    status: "Approved",
+                    sortOrder: m.sortOrder || 1,
+                  },
                 },
+                upsert: true,
               },
-              { upsert: true }
-            ).catch(() => {});
-          }
+            });
+          });
         }
+      }
+      if (ops.length > 0) {
+        await MediaModel.bulkWrite(ops, { ordered: false }).catch(() => {});
       }
     }
   } catch (err) {
@@ -213,11 +234,40 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status") || "all";
     const search = (searchParams.get("search") || "").trim().toLowerCase();
     const businessId = searchParams.get("businessId") || "";
+    const city = (searchParams.get("city") || "").trim();
+    const country = (searchParams.get("country") || "").trim();
 
     const db = await connectToDatabase();
 
     if (db) {
       const filter: any = {};
+
+      // Geo-scope: use indexed cityName/countryName on MediaModel directly (fastest path).
+      // Fallback: join via BusinessModel ids (covers legacy docs without geo fields).
+      if (city || country) {
+        const mediaGeoFilter: any = {};
+        if (city) mediaGeoFilter.cityName = new RegExp(`^${city}$`, "i");
+        if (country) mediaGeoFilter.countryName = new RegExp(`^${country}$`, "i");
+
+        // Also fetch business IDs for the jurisdiction (covers docs missing cityName)
+        const bizGeoFilter: any = {};
+        if (city) bizGeoFilter.cityName = new RegExp(`^${city}$`, "i");
+        if (country) bizGeoFilter.countryName = new RegExp(`^${country}$`, "i");
+        const bizDocs = await BusinessModel.find(bizGeoFilter, "id").lean() as any[];
+        const scopedBizIds = bizDocs.map((b: any) => b.id);
+
+        if (businessId) {
+          filter.businessId = scopedBizIds.includes(businessId) ? businessId : "__no_match__";
+        } else {
+          // OR: directly on media geo fields OR via businessId set
+          filter.$or = [
+            mediaGeoFilter,
+            { businessId: { $in: scopedBizIds } },
+          ];
+        }
+      } else if (businessId) {
+        filter.businessId = businessId;
+      }
 
       if (type && type !== "all") {
         if (type === "photos") {
@@ -238,10 +288,6 @@ export async function GET(req: NextRequest) {
         filter.status = new RegExp(`^${status}$`, "i");
       }
 
-      if (businessId) {
-        filter.businessId = businessId;
-      }
-
       if (search) {
         filter.$or = [
           { title: { $regex: search, $options: "i" } },
@@ -250,6 +296,9 @@ export async function GET(req: NextRequest) {
           { description: { $regex: search, $options: "i" } },
         ];
       }
+
+      // Scope filter for tab counts (geo-restricted, no type/status/search)
+      const geoScopeFilter: any = filter.$or ? { $or: filter.$or } : filter.businessId ? { businessId: filter.businessId } : {};
 
       const total = await MediaModel.countDocuments(filter);
       const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -261,16 +310,16 @@ export async function GET(req: NextRequest) {
         .limit(limit)
         .lean();
 
-      // Aggregate global counts for tabs
+      // Aggregate global counts for tabs (scoped to geo if applicable)
       const [allCount, photosCount, videosCount, coversCount, pendingCount, reportedCount, approvedCount] =
         await Promise.all([
-          MediaModel.countDocuments(),
-          MediaModel.countDocuments({ type: { $in: ["Photo", "Logo"] } }),
-          MediaModel.countDocuments({ type: "Video" }),
-          MediaModel.countDocuments({ type: "Cover" }),
-          MediaModel.countDocuments({ status: "Pending" }),
-          MediaModel.countDocuments({ status: "Reported" }),
-          MediaModel.countDocuments({ status: "Approved" }),
+          MediaModel.countDocuments(geoScopeFilter),
+          MediaModel.countDocuments({ ...geoScopeFilter, type: { $in: ["Photo", "Logo"] } }),
+          MediaModel.countDocuments({ ...geoScopeFilter, type: "Video" }),
+          MediaModel.countDocuments({ ...geoScopeFilter, type: "Cover" }),
+          MediaModel.countDocuments({ ...geoScopeFilter, status: "Pending" }),
+          MediaModel.countDocuments({ ...geoScopeFilter, status: "Reported" }),
+          MediaModel.countDocuments({ ...geoScopeFilter, status: "Approved" }),
         ]);
 
       return NextResponse.json({
@@ -394,10 +443,26 @@ export async function POST(req: NextRequest) {
     const finalUrl = isVid ? url.trim() : await uploadBase64IfPresent(url.trim(), `globalbiz/businesses/${subFolder}`);
 
     const uniqueId = `med-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+    // Resolve geo fields from the linked business if available
+    let bizCityName = body.cityName || "";
+    let bizCountryName = body.countryName || "";
+    if (businessId && (!bizCityName || !bizCountryName)) {
+      try {
+        const linkedBiz = await BusinessModel.findOne({ id: businessId }, "cityName countryName").lean() as any;
+        if (linkedBiz) {
+          bizCityName = bizCityName || linkedBiz.cityName || "";
+          bizCountryName = bizCountryName || linkedBiz.countryName || "";
+        }
+      } catch (_) {}
+    }
+
     const newMediaData = {
       id: uniqueId,
       businessId: businessId || undefined,
       businessName: businessName || "General Platform Asset",
+      cityName: bizCityName,
+      countryName: bizCountryName,
       title: title.trim(),
       type: isVid ? "Video" : type,
       url: finalUrl,

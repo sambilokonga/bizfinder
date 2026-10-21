@@ -30,6 +30,7 @@ interface AssignGeoAdminModalProps {
   initialCity?: string;
   currentAdminRole?: "super_admin" | "country_admin" | "city_admin" | "admin";
   currentAdminCountry?: string;
+  currentAdminCity?: string;
 }
 
 export function AssignGeoAdminModal({
@@ -41,43 +42,58 @@ export function AssignGeoAdminModal({
   initialCity = "",
   currentAdminRole = "super_admin",
   currentAdminCountry,
+  currentAdminCity,
 }: AssignGeoAdminModalProps) {
-  const [role, setRole] = useState<"super_admin" | "country_admin" | "city_admin">(initialRole);
+  // If the logged-in user is a Country Admin, they can ONLY nominate City Admins within their assigned country
+  const isCountryAdminLocked = currentAdminRole === "country_admin";
+  const isCityAdminLocked = currentAdminRole === "city_admin";
+  const isGeoRestricted = isCountryAdminLocked || isCityAdminLocked;
+
+  const [role, setRole] = useState<"super_admin" | "country_admin" | "city_admin">(
+    isGeoRestricted ? "city_admin" : initialRole
+  );
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [assignedCountry, setAssignedCountry] = useState(
-    currentAdminRole === "country_admin" && currentAdminCountry
-      ? currentAdminCountry
-      : initialCountry || "Ethiopia"
+    isGeoRestricted
+      ? (currentAdminCountry || initialCountry || "Ethiopia")
+      : (initialCountry || "Ethiopia")
   );
-  const [assignedCity, setAssignedCity] = useState(initialCity || "");
+  const [assignedCity, setAssignedCity] = useState(
+    isCityAdminLocked
+      ? (currentAdminCity || initialCity || "Addis Ababa")
+      : (initialCity || "")
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // If the logged-in user is a Country Admin, they can only assign City Admins within their assigned country
-  const isCountryAdminLocked = currentAdminRole === "country_admin";
-
   useEffect(() => {
-    if (isCountryAdminLocked && currentAdminCountry) {
-      setAssignedCountry(currentAdminCountry);
+    if (isCountryAdminLocked) {
+      if (currentAdminCountry) setAssignedCountry(currentAdminCountry);
+      setRole("city_admin");
+    } else if (isCityAdminLocked) {
+      if (currentAdminCountry) setAssignedCountry(currentAdminCountry);
+      if (currentAdminCity) setAssignedCity(currentAdminCity);
       setRole("city_admin");
     }
-  }, [isCountryAdminLocked, currentAdminCountry]);
+  }, [isCountryAdminLocked, isCityAdminLocked, currentAdminCountry, currentAdminCity]);
 
   useEffect(() => {
-    if (initialCountry) setAssignedCountry(initialCountry);
-    if (initialCity) setAssignedCity(initialCity);
-    if (initialRole) setRole(initialRole);
-  }, [initialCountry, initialCity, initialRole, isOpen]);
+    if (initialCountry && !isGeoRestricted) setAssignedCountry(initialCountry);
+    if (initialCity && !isCityAdminLocked) setAssignedCity(initialCity);
+    if (initialRole && !isGeoRestricted) setRole(initialRole);
+  }, [initialCountry, initialCity, initialRole, isGeoRestricted, isCityAdminLocked, isOpen]);
 
   // Cities for the currently selected country
   const availableCities = getCitiesForCountry(assignedCountry);
 
   useEffect(() => {
-    if (availableCities.length > 0 && (!assignedCity || !availableCities.includes(assignedCity))) {
+    if (isCityAdminLocked && currentAdminCity) {
+      setAssignedCity(currentAdminCity);
+    } else if (availableCities.length > 0 && (!assignedCity || !availableCities.includes(assignedCity))) {
       setAssignedCity(availableCities[0]);
     }
-  }, [assignedCountry, availableCities, assignedCity]);
+  }, [assignedCountry, availableCities, assignedCity, isCityAdminLocked, currentAdminCity]);
 
   if (!isOpen) return null;
 
@@ -99,6 +115,7 @@ export function AssignGeoAdminModal({
       const queryParams = new URLSearchParams();
       if (currentAdminRole) queryParams.set("callerRole", currentAdminRole);
       if (currentAdminCountry) queryParams.set("callerCountry", currentAdminCountry);
+      if (currentAdminCity) queryParams.set("callerCity", currentAdminCity);
       const url = `/api/admin/geo-admins${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
 
       const response = await fetch(url, {
@@ -107,9 +124,9 @@ export function AssignGeoAdminModal({
         body: JSON.stringify({
           name: name.trim(),
           email: email.trim().toLowerCase(),
-          role,
+          role: isCountryAdminLocked ? "city_admin" : role,
           assignedCountry: role === "super_admin" ? undefined : assignedCountry,
-          assignedCity: role === "city_admin" ? assignedCity : undefined,
+          assignedCity: (isCountryAdminLocked || role === "city_admin") ? assignedCity : undefined,
           password: password.trim() || undefined,
         }),
       });
@@ -117,9 +134,25 @@ export function AssignGeoAdminModal({
       const data = await response.json();
 
       if (response.ok && data.success) {
-        toast.success(
-          data.message || `Successfully assigned ${name} and synchronized to Clerk Dashboard!`
-        );
+        if (data.pendingApproval || isCountryAdminLocked) {
+          toast.success(
+            data.message || `City Admin nomination for ${assignedCity} submitted! Awaiting Super Admin approval before being posted live.`,
+            { duration: 6000 }
+          );
+        } else {
+          toast.success(
+            data.message || `Successfully assigned ${name} and posted live to Clerk & platform!`,
+            { duration: 5000 }
+          );
+        }
+
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("bizfinder_territory_admin_registered", {
+              detail: data.admin,
+            })
+          );
+        }
         onAdminAssigned?.();
         setName("");
         setEmail("");
@@ -146,7 +179,9 @@ export function AssignGeoAdminModal({
         <div className="flex items-center justify-between pb-3 border-b border-border">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-              {role === "super_admin" ? (
+              {isCountryAdminLocked ? (
+                <Building2 className="w-5 h-5 text-indigo-500" />
+              ) : role === "super_admin" ? (
                 <Crown className="w-5 h-5 text-amber-500" />
               ) : role === "country_admin" ? (
                 <Globe className="w-5 h-5 text-indigo-500" />
@@ -156,14 +191,18 @@ export function AssignGeoAdminModal({
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-black text-foreground">
-                {role === "super_admin"
+                {isCountryAdminLocked
+                  ? "Nominate City Admin"
+                  : role === "super_admin"
                   ? "Appoint Global Super Admin"
                   : role === "country_admin"
                   ? "Assign Country Main Admin"
-                  : "Assign City Admin"}
+                  : "Assign City Admin (Direct Post)"}
               </h3>
               <p className="text-xs text-muted-foreground">
-                Directly synchronized with your <strong>Clerk Dashboard publicMetadata</strong> & MongoDB.
+                {isCountryAdminLocked
+                  ? "Nominations are submitted to the Super Admin for verification and posting."
+                  : "Directly synchronized with your Clerk Dashboard & MongoDB database."}
               </p>
             </div>
           </div>
@@ -176,8 +215,26 @@ export function AssignGeoAdminModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Admin Role Toggle (Only Super Admin can switch) */}
-          {!isCountryAdminLocked && (
+          {/* Country Admin Role Banner (Locked) */}
+          {isCountryAdminLocked ? (
+            <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <Building2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <div>
+                  <span className="text-xs font-bold text-foreground block">
+                    Role: City Administrator
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    Exclusive to {assignedCountry} municipal districts
+                  </span>
+                </div>
+              </div>
+              <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px] font-bold">
+                Pending Super Admin Approval
+              </Badge>
+            </div>
+          ) : (
+            /* Admin Role Toggle (Only Super Admin can switch) */
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-foreground block">
                 Administrative Authority Level <span className="text-destructive">*</span>
@@ -256,7 +313,7 @@ export function AssignGeoAdminModal({
           )}
 
           {/* Geographic Assignment Dropdowns (if not global super admin) */}
-          {role !== "super_admin" && (
+          {(isCountryAdminLocked || role !== "super_admin") && (
             <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-border space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
@@ -268,13 +325,13 @@ export function AssignGeoAdminModal({
                 </Badge>
               </div>
 
-              <div className={`grid ${role === "city_admin" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"} gap-3`}>
+              <div className={`grid ${isGeoRestricted || role === "city_admin" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"} gap-3`}>
                 {/* Country Selection */}
                 <div>
                   <label className="text-[11px] font-bold text-foreground block mb-1">
-                    Country (195 Sovereign Nations) <span className="text-destructive">*</span>
+                    Country (Sovereign Nation) <span className="text-destructive">*</span>
                   </label>
-                  {isCountryAdminLocked ? (
+                  {isGeoRestricted ? (
                     <div className="h-9 px-3 rounded-xl border border-input bg-background flex items-center text-xs font-bold gap-2">
                       <span>{selectedCountryEntry?.flag}</span>
                       <span>{assignedCountry}</span>
@@ -298,22 +355,32 @@ export function AssignGeoAdminModal({
                 </div>
 
                 {/* City Selection (For City Admin role) */}
-                {role === "city_admin" && (
+                {(isGeoRestricted || role === "city_admin") && (
                   <div>
                     <label className="text-[11px] font-bold text-foreground block mb-1">
-                      Assigned City (30 Cities per Nation) <span className="text-destructive">*</span>
+                      Assigned City ({assignedCountry}) <span className="text-destructive">*</span>
                     </label>
-                    <select
-                      value={assignedCity}
-                      onChange={(e) => setAssignedCity(e.target.value)}
-                      className="w-full h-9 rounded-xl border border-input bg-background px-3 text-xs font-semibold focus:ring-2 focus:ring-primary shadow-sm"
-                    >
-                      {availableCities.map((city) => (
-                        <option key={city} value={city}>
-                          🏙️ {city}
-                        </option>
-                      ))}
-                    </select>
+                    {isCityAdminLocked ? (
+                      <div className="h-9 px-3 rounded-xl border border-input bg-background flex items-center text-xs font-bold gap-2">
+                        <span>🏙️</span>
+                        <span>{assignedCity}</span>
+                        <Badge variant="secondary" className="ml-auto text-[10px]">
+                          Your City
+                        </Badge>
+                      </div>
+                    ) : (
+                      <select
+                        value={assignedCity}
+                        onChange={(e) => setAssignedCity(e.target.value)}
+                        className="w-full h-9 rounded-xl border border-input bg-background px-3 text-xs font-semibold focus:ring-2 focus:ring-primary shadow-sm"
+                      >
+                        {availableCities.map((city) => (
+                          <option key={city} value={city}>
+                            🏙️ {city}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 )}
               </div>
@@ -349,7 +416,7 @@ export function AssignGeoAdminModal({
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g. admin.ethiopia@bizfinder.et"
+                  placeholder={`e.g. admin.${assignedCity ? assignedCity.toLowerCase().replace(/\s+/g, '') : 'city'}@bizfinder.et`}
                   className="pl-9 text-xs"
                 />
               </div>
@@ -372,11 +439,19 @@ export function AssignGeoAdminModal({
             </div>
           </div>
 
-          {/* Clerk Sync Info Badge */}
+          {/* Sync / Workflow Info Badge */}
           <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[11px] text-muted-foreground flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
             <span>
-              Assigning will immediately synchronize <strong>publicMetadata</strong> to your Clerk Dashboard and MongoDB database.
+              {isCountryAdminLocked ? (
+                <>
+                  Your nomination will be submitted for <strong>Super Admin approval</strong>. Once approved, the City Admin will be officially activated and posted live.
+                </>
+              ) : (
+                <>
+                  Assigning will immediately synchronize <strong>publicMetadata</strong> to your Clerk Dashboard and MongoDB, posting them live immediately.
+                </>
+              )}
             </span>
           </div>
 
@@ -401,12 +476,14 @@ export function AssignGeoAdminModal({
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               {isSubmitting
-                ? "Assigning & Syncing to Clerk..."
+                ? isCountryAdminLocked ? "Submitting Nomination..." : "Assigning & Syncing..."
+                : isCountryAdminLocked
+                ? `Submit City Admin Nomination (${assignedCity || "City"})`
                 : role === "super_admin"
                 ? "Appoint Global Super Admin"
                 : role === "country_admin"
                 ? `Assign ${assignedCountry} Country Lead`
-                : `Assign ${assignedCity || "City"} Admin`}
+                : `Assign & Post ${assignedCity || "City"} Admin`}
             </Button>
           </div>
         </form>

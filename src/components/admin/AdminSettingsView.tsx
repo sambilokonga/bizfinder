@@ -9,6 +9,7 @@ import {
   Bell,
   CreditCard,
   Shield,
+  ShieldCheck,
   RotateCcw,
   Save,
   CheckCircle2,
@@ -28,6 +29,7 @@ import {
   Mail,
   Zap,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -44,6 +46,10 @@ interface AdminSettingsViewProps {
   assignedCountry?: string;
   assignedCity?: string;
   initialSubnav?: string;
+  // Geo-scope props — when set, settings are persisted for that jurisdiction only
+  scope?: "global" | "country" | "city";
+  country?: string;
+  city?: string;
 }
 
 export function AdminSettingsView({
@@ -52,7 +58,14 @@ export function AdminSettingsView({
   assignedCountry,
   assignedCity,
   initialSubnav = "general",
+  scope,
+  country,
+  city,
 }: AdminSettingsViewProps) {
+  // Resolve the effective jurisdiction
+  const effectiveScope = scope || (city ? "city" : country ? "country" : "global");
+  const effectiveCountry = country || assignedCountry;
+  const effectiveCity = city || assignedCity;
   const [activeTab, setActiveTab] = useState<string>(initialSubnav);
   const [settings, setSettings] = useState<ISystemSettingsData>(DEFAULT_SYSTEM_SETTINGS);
   const [initialSettings, setInitialSettings] = useState<ISystemSettingsData>(DEFAULT_SYSTEM_SETTINGS);
@@ -69,11 +82,15 @@ export function AdminSettingsView({
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
-  // Fetch settings from API
+  // Fetch settings from API (geo-scoped)
   const fetchSettings = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/admin/settings");
+      const params = new URLSearchParams();
+      if (effectiveScope) params.set("scope", effectiveScope);
+      if (effectiveCountry && effectiveCountry !== "all") params.set("country", effectiveCountry);
+      if (effectiveCity && effectiveCity !== "all") params.set("city", effectiveCity);
+      const res = await fetch(`/api/admin/settings?${params.toString()}`);
       const data = await res.json();
       if (data?.settings) {
         setSettings(data.settings);
@@ -89,7 +106,8 @@ export function AdminSettingsView({
 
   useEffect(() => {
     fetchSettings();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveScope, effectiveCountry, effectiveCity]);
 
   // Update a single setting
   const updateSetting = <K extends keyof ISystemSettingsData>(key: K, value: ISystemSettingsData[K]) => {
@@ -107,14 +125,19 @@ export function AdminSettingsView({
     toast.info("Unsaved changes discarded.");
   };
 
-  // Save changes to backend
+  // Save changes to backend (geo-scoped)
   const handleSave = async () => {
     setIsSaving(true);
     try {
       const res = await fetch("/api/admin/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({
+          ...settings,
+          scope: effectiveScope,
+          country: effectiveCountry,
+          city: effectiveCity,
+        }),
       });
       const data = await res.json();
       if (res.ok && data?.settings) {
@@ -166,7 +189,12 @@ export function AdminSettingsView({
       const res = await fetch("/api/admin/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "purge_cache" }),
+        body: JSON.stringify({
+          action: "purge_cache",
+          scope: effectiveScope,
+          country: effectiveCountry,
+          city: effectiveCity,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -185,14 +213,20 @@ export function AdminSettingsView({
       const res = await fetch("/api/admin/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "export_config" }),
+        body: JSON.stringify({
+          action: "export_config",
+          scope: effectiveScope,
+          country: effectiveCountry,
+          city: effectiveCity,
+        }),
       });
       const data = await res.json();
       if (res.ok && data?.data) {
+        const scopeSuffix = effectiveCity ? `_${effectiveCity}` : effectiveCountry ? `_${effectiveCountry}` : "_global";
         const jsonStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data.data, null, 2));
         const downloadAnchor = document.createElement("a");
         downloadAnchor.setAttribute("href", jsonStr);
-        downloadAnchor.setAttribute("download", `bizfinder_settings_${new Date().toISOString().slice(0, 10)}.json`);
+        downloadAnchor.setAttribute("download", `bizfinder_settings${scopeSuffix}_${new Date().toISOString().slice(0, 10)}.json`);
         document.body.appendChild(downloadAnchor);
         downloadAnchor.click();
         downloadAnchor.remove();
@@ -210,7 +244,12 @@ export function AdminSettingsView({
       const res = await fetch("/api/admin/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "reset_defaults" }),
+        body: JSON.stringify({
+          action: "reset_defaults",
+          scope: effectiveScope,
+          country: effectiveCountry,
+          city: effectiveCity,
+        }),
       });
       const data = await res.json();
       if (res.ok && data?.settings) {
@@ -218,7 +257,7 @@ export function AdminSettingsView({
         setInitialSettings(data.settings);
         setHasChanges(false);
         setIsResetModalOpen(false);
-        toast.success("Settings restored to factory defaults!");
+        toast.success("Settings restored to defaults!");
       } else {
         toast.error(data?.error || "Reset failed.");
       }
@@ -229,15 +268,19 @@ export function AdminSettingsView({
     }
   };
 
+  const isCityScope = effectiveScope === "city";
+  const isCountryScope = effectiveScope === "country";
+
   const tabs = [
-    { key: "general", label: "General", icon: Globe },
-    { key: "business", label: "Business Rules", icon: Building2 },
-    { key: "search", label: "Search & Map", icon: Search },
-    { key: "seo", label: "SEO & Social", icon: Share2 },
-    { key: "notifications", label: "Notifications", icon: Bell },
-    { key: "payments", label: "Payments", icon: CreditCard, superOnly: true },
-    { key: "security", label: "Security & Access", icon: Shield, superOnly: true },
-    { key: "maintenance", label: "Maintenance", icon: Server, superOnly: true },
+    { key: "general", label: isCityScope ? "Municipal Profile" : isCountryScope ? "National Profile" : "General", icon: Globe },
+    { key: "business", label: isCityScope ? "Verification Rules" : "Business Rules", icon: Building2 },
+    { key: "search", label: isCityScope ? "Search & Radar Map" : "Search & Map", icon: Search },
+    { key: "seo", label: isCityScope ? "City SEO & Directory" : isCountryScope ? "Country SEO" : "SEO & Social", icon: Share2 },
+    { key: "notifications", label: isCityScope ? "Notifications & Alerts" : "Notifications", icon: Bell },
+    ...(!isCityScope ? [{ key: "payments", label: "Payments", icon: CreditCard, superOnly: true }] : []),
+    { key: "security", label: isCityScope ? "Access & Security" : "Security & Access", icon: Shield, superOnly: !isCityScope },
+    ...(!isCityScope ? [{ key: "maintenance", label: "Maintenance", icon: Server, superOnly: true }] : []),
+    ...(isCityScope || isCountryScope ? [{ key: "liaison", label: isCityScope ? "Country Lead Liaison" : "National Liaison", icon: MapPin }] : []),
   ];
 
   if (isLoading) {
@@ -249,26 +292,44 @@ export function AdminSettingsView({
     );
   }
 
+  const headerTitle = isCityScope
+    ? `${effectiveCity || "City"} — Municipal Settings`
+    : isCountryScope
+    ? `${effectiveCountry || "Country"} — National Settings`
+    : "Global Platform & Ecosystem Settings";
+
+  const headerDescription = isCityScope
+    ? `Configure municipal verification rules, bureau profile, and city-scoped search & map parameters for ${effectiveCity}.`
+    : isCountryScope
+    ? `Configure national business policies, country-wide defaults, and SEO for ${effectiveCountry}.`
+    : "Configure system rules, search parameters, monetization gateways, and real-time environment variables.";
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-24">
       {/* ─── Header & Scope ─────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-black text-foreground">Global Platform & Ecosystem Settings</h2>
-            {isSuperAdmin ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-2xl font-black text-foreground">{headerTitle}</h2>
+            {isSuperAdmin && effectiveScope === "global" ? (
               <Badge className="bg-purple-500/10 text-purple-600 border border-purple-500/20 text-[11px] font-bold">
                 👑 Super Admin Root
               </Badge>
+            ) : isCityScope ? (
+              <Badge className="bg-sky-500/10 text-sky-600 border border-sky-500/20 text-[11px] font-bold">
+                🏙️ City Admin — {effectiveCity}
+              </Badge>
+            ) : isCountryScope ? (
+              <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[11px] font-bold">
+                🌍 Country Admin — {effectiveCountry}
+              </Badge>
             ) : (
               <Badge className="bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[11px] font-bold">
-                🛡️ {currentRole.replace("_", " ").toUpperCase()}
+                🛡️ {currentRole.replace(/_/g, " ").toUpperCase()}
               </Badge>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Configure system rules, search parameters, monetization gateways, and real-time environment variables.
-          </p>
+          <p className="text-xs text-muted-foreground mt-1">{headerDescription}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -605,6 +666,104 @@ export function AdminSettingsView({
               </div>
             </div>
           </div>
+
+          {/* Municipal Verification Policy (City & Country scope only) */}
+          {(isCityScope || isCountryScope) && (
+            <div className="p-6 rounded-3xl bg-card border border-sky-500/20 shadow-sm space-y-4">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-sky-500" />
+                <h3 className="font-bold text-foreground text-sm">Municipal Verification Policy</h3>
+                <Badge className="text-[10px] bg-sky-500/10 text-sky-600 border-sky-500/20">
+                  {isCityScope ? effectiveCity : effectiveCountry} Jurisdiction
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                These rules govern how businesses are verified and what documentation owners must provide in this territory.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-sky-500/5 border border-sky-500/20">
+                  <div>
+                    <div className="font-bold text-foreground">Require Physical Storefront Photos</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Listings must supply an exterior entrance photo before verification is granted.
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.requirePhysicalStorefrontPhotos ?? false}
+                    onCheckedChange={(checked) => updateSetting("requirePhysicalStorefrontPhotos", checked)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-sky-500/5 border border-sky-500/20">
+                  <div>
+                    <div className="font-bold text-foreground">Mandate Sub-City / District Designation</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Every business must be mapped to a specific sub-city or administrative zone.
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.mandateSubcityDesignation ?? false}
+                    onCheckedChange={(checked) => updateSetting("mandateSubcityDesignation", checked)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-sky-500/5 border border-sky-500/20">
+                  <div>
+                    <div className="font-bold text-foreground">Trade License Required for Claims</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Owner claims require an official commercial registration certificate upload.
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.tradeLicenseRequiredForClaims ?? false}
+                    onCheckedChange={(checked) => updateSetting("tradeLicenseRequiredForClaims", checked)}
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-border/60 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground">Bureau / Authority Office Name</label>
+                  <Input
+                    value={settings.bureauOfficeName ?? ""}
+                    onChange={(e) => updateSetting("bureauOfficeName", e.target.value)}
+                    placeholder={isCityScope ? `${effectiveCity} Commercial Affairs Bureau` : "National Business Registry Office"}
+                    className="mt-1 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground">Bureau Phone Number</label>
+                  <Input
+                    value={settings.bureauOfficePhone ?? ""}
+                    onChange={(e) => updateSetting("bureauOfficePhone", e.target.value)}
+                    placeholder="+251 11 000 0000"
+                    className="mt-1 text-xs"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-[11px] font-bold text-muted-foreground">Bureau Office Address</label>
+                  <Input
+                    value={settings.bureauOfficeAddress ?? ""}
+                    onChange={(e) => updateSetting("bureauOfficeAddress", e.target.value)}
+                    placeholder="Floor 3, Government Trade Compound, Main Street"
+                    className="mt-1 text-xs"
+                  />
+                </div>
+                {isCountryScope && (
+                  <div className="sm:col-span-2">
+                    <label className="text-[11px] font-bold text-muted-foreground">Country Lead Liaison Email</label>
+                    <Input
+                      value={settings.countryLeadLiaisonEmail ?? ""}
+                      onChange={(e) => updateSetting("countryLeadLiaisonEmail", e.target.value)}
+                      placeholder="country-lead@bizfinder.et"
+                      className="mt-1 text-xs"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -612,6 +771,7 @@ export function AdminSettingsView({
           3. SEARCH ENGINE & MAP DISCOVERY
          ════════════════════════════════════════════════════════════════════ */}
       {activeTab === "search" && (
+
         <div className="space-y-6">
           <div className="p-6 rounded-3xl bg-card border border-border shadow-sm space-y-6">
             <div>
@@ -1128,7 +1288,90 @@ export function AdminSettingsView({
         </div>
       )}
 
+      {/* ════════════════════════════════════════════════════════════════════
+          LIAISON — Country Lead / National Liaison (City & Country scope)
+         ════════════════════════════════════════════════════════════════════ */}
+      {activeTab === "liaison" && (isCityScope || isCountryScope) && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="p-6 rounded-3xl bg-card border border-border shadow-sm space-y-6">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-indigo-500" />
+              <div>
+                <h3 className="font-bold text-foreground text-sm">
+                  {isCityScope ? `${effectiveCountry} Country Lead Liaison` : "National Administration Contacts"}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {isCityScope
+                    ? `Submit formal escalations to the ${effectiveCountry} national administration for cross-jurisdiction disputes, policy exceptions, or new classification requests.`
+                    : "Manage the national liaison contact details that city admins across this country will see and use to escalate issues."}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 space-y-4 text-xs">
+              <div className="font-bold text-foreground text-sm">
+                {isCityScope ? "Your Escalation Channel" : "National Liaison Profile"}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground">Bureau / Authority Name</label>
+                  <Input
+                    value={settings.bureauOfficeName ?? ""}
+                    onChange={(e) => updateSetting("bureauOfficeName", e.target.value)}
+                    placeholder={isCityScope ? `${effectiveCountry} National Business Registry` : "Ministry of Trade & Commerce"}
+                    className="mt-1 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground">Bureau Phone</label>
+                  <Input
+                    value={settings.bureauOfficePhone ?? ""}
+                    onChange={(e) => updateSetting("bureauOfficePhone", e.target.value)}
+                    placeholder="+251 11 551 0000"
+                    className="mt-1 text-xs"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-[11px] font-bold text-muted-foreground">Office Address</label>
+                  <Input
+                    value={settings.bureauOfficeAddress ?? ""}
+                    onChange={(e) => updateSetting("bureauOfficeAddress", e.target.value)}
+                    placeholder="Ministry Complex, Churchill Avenue, Addis Ababa"
+                    className="mt-1 text-xs"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-[11px] font-bold text-muted-foreground">Country Lead Liaison Email</label>
+                  <Input
+                    value={settings.countryLeadLiaisonEmail ?? ""}
+                    onChange={(e) => updateSetting("countryLeadLiaisonEmail", e.target.value)}
+                    placeholder="national-lead@bizfinder.et"
+                    className="mt-1 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {isCityScope && (
+              <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 text-xs space-y-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                  <span className="font-bold text-foreground">Escalation Guidelines</span>
+                </div>
+                <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                  <li>Cross-city or cross-jurisdiction business verification disputes</li>
+                  <li>Requests for new business classification categories not yet on the platform</li>
+                  <li>Appeals of suspended or rejected city-level decisions</li>
+                  <li>Tax policy queries requiring national authority interpretation</li>
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ─── Floating Unsaved Changes Bar ───────────────────────────────────── */}
+
       {hasChanges && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 px-6 py-3.5 rounded-2xl bg-card/95 border border-primary/40 shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-5">
           <div className="flex items-center gap-2">

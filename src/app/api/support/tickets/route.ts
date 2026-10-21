@@ -14,6 +14,8 @@ export async function GET(request: Request) {
     const userId = searchParams.get("userId") || undefined;
     const businessId = searchParams.get("businessId") || undefined;
     const assignedAdmin = searchParams.get("assignedAdmin") || undefined;
+    const city = searchParams.get("city") || undefined;
+    const country = searchParams.get("country") || undefined;
     const sort = (searchParams.get("sort") as "desc" | "asc") || "desc";
 
     const result = await getTickets({
@@ -26,6 +28,8 @@ export async function GET(request: Request) {
       userId,
       businessId,
       assignedAdmin,
+      city,
+      country,
       sort,
     });
 
@@ -77,16 +81,18 @@ export async function POST(request: Request) {
       country: body.country,
     });
 
-    // Auto-create notification for the ticket creator
+    // Auto-create notification for the ticket creator and municipal/country queue
     try {
       await createNotification({
-        title: `🎫 Ticket Opened: ${body.subject}`,
-        body: `Support ticket #${ticket.id} has been opened. Support team will reply shortly.`,
-        target: body.businessId ? "business" : "user",
-        targetBusinessId: body.businessId,
-        targetUserId: body.userId,
+        title: `🎫 Ticket Opened: ${ticket.subject}`,
+        body: `Support ticket #${ticket.id} (${ticket.category}) opened for ${ticket.businessName || ticket.userName} in ${ticket.city || "global"}, ${ticket.country || "network"}.`,
+        target: ticket.businessId ? "business" : "user",
+        targetBusinessId: ticket.businessId,
+        targetUserId: ticket.userId,
+        targetCity: ticket.city,
+        targetCountry: ticket.country,
         type: "system",
-        priority: body.priority === "urgent" ? "critical" : body.priority || "medium",
+        priority: (ticket.priority === "critical" as any) ? "critical" : "medium",
         sentBy: "Support Desk",
         link: `/dashboard?tab=support`,
       });

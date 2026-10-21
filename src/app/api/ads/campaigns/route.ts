@@ -4,6 +4,7 @@ import {
   getAdCampaignsByOwner,
   createAdCampaign,
 } from "@/lib/db/queries/ads";
+import { getBusinessById } from "@/lib/db/queries/businesses";
 
 export async function GET(request: Request) {
   const { userId } = await auth();
@@ -41,6 +42,9 @@ export async function POST(request: Request) {
       dailyBudgetETB,
       durationDays,
       startDate,
+      // Caller can supply these directly; if absent we resolve from the business
+      cityName: bodyCity,
+      countryName: bodyCountry,
     } = body;
 
     if (!businessId || !name || !placement || !dailyBudgetETB || !durationDays) {
@@ -48,6 +52,21 @@ export async function POST(request: Request) {
         { error: "Missing required campaign fields" },
         { status: 400 }
       );
+    }
+
+    // Resolve geo fields — prefer caller-supplied, otherwise look up from business
+    let resolvedCity = bodyCity || "";
+    let resolvedCountry = bodyCountry || "";
+    if ((!resolvedCity || !resolvedCountry) && businessId) {
+      try {
+        const biz = await getBusinessById(businessId);
+        if (biz) {
+          resolvedCity = resolvedCity || biz.cityName || "";
+          resolvedCountry = resolvedCountry || biz.countryName || "";
+        }
+      } catch (_) {
+        // non-fatal — geo fields will remain empty string
+      }
     }
 
     const campaign = await createAdCampaign({
@@ -61,7 +80,32 @@ export async function POST(request: Request) {
       dailyBudgetETB: Number(dailyBudgetETB),
       durationDays: Number(durationDays),
       startDate: startDate || new Date().toISOString().split("T")[0],
+      cityName: resolvedCity,
+      countryName: resolvedCountry,
     });
+
+    // Dispatch multi-tier ad notifications across Super Admin, Country Admin, City Admin, and Owner
+    try {
+      const { dispatchAdCampaignNotifications } = await import(
+        "@/lib/notifications/ad-campaign"
+      );
+      await dispatchAdCampaignNotifications({
+        campaign: {
+          id: campaign.id,
+          name: campaign.name,
+          businessName: campaign.businessName,
+          businessId: campaign.businessId,
+          ownerId: campaign.ownerId,
+          placement: campaign.placement,
+          dailyBudgetETB: campaign.dailyBudgetETB,
+          cityName: campaign.cityName,
+          countryName: campaign.countryName,
+          targetLocation: campaign.targetLocation,
+        },
+      });
+    } catch (notifErr) {
+      console.warn("[API /ads/campaigns POST] Failed to dispatch ad notifications:", notifErr);
+    }
 
     return NextResponse.json({ campaign }, { status: 201 });
   } catch (error: any) {

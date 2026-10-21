@@ -83,6 +83,7 @@ import {
   BellRing,
   BookOpen,
   Menu,
+  Landmark,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -148,6 +149,7 @@ import { DashboardSettingsView } from "@/components/dashboard/DashboardSettingsV
 import { BillingPlansView } from "@/components/dashboard/BillingPlansView";
 import { EmbeddedListingWizard } from "@/components/dashboard/EmbeddedListingWizard";
 import { SecurityWorkstation } from "@/components/security/SecurityWorkstation";
+import { StorefrontTerritoryView } from "@/components/dashboard/StorefrontTerritoryView";
 import { RegisterMediaModal } from "@/components/media/RegisterMediaModal";
 import { BusinessAuditStatusCard } from "@/components/business/BusinessAuditStatusCard";
 import { buildRealShowcaseMedia } from "@/lib/data/real-media-showcase";
@@ -773,6 +775,7 @@ export default function OwnerDashboardPage() {
     | "moderation"
     | "settings"
     | "security"
+    | "territory"
   >("dashboard");
 
 
@@ -957,7 +960,13 @@ export default function OwnerDashboardPage() {
   const fetchDashboardAnalytics = async (page = dashboardAnalyticsPage) => {
     setIsDashboardAnalyticsLoading(true);
     try {
-      const bizParam = selectedBusiness?.id ? `&businessId=${encodeURIComponent(selectedBusiness.id)}` : "";
+      const activeBiz =
+        selectedBusiness?.id && selectedBusiness.id !== ""
+          ? selectedBusiness
+          : businesses.length > 0
+          ? businesses[0]
+          : null;
+      const bizParam = activeBiz?.id ? `&businessId=${encodeURIComponent(activeBiz.id)}` : "";
       const res = await fetch(`/api/analytics?page=${page}&limit=20${bizParam}`);
       const data = await parseResponseJson(res);
       if (data.success && Array.isArray(data.events)) {
@@ -984,7 +993,7 @@ export default function OwnerDashboardPage() {
     if (activeNav === "analytics") {
       fetchDashboardAnalytics(dashboardAnalyticsPage);
     }
-  }, [activeNav, dashboardAnalyticsPage, selectedBusiness?.id]);
+  }, [activeNav, dashboardAnalyticsPage, selectedBusiness?.id, businesses.length]);
 
   // ─── Real Disputes & Moderation State & 5-Per-Page Pagination ─────────────
   const [ownerReports, setOwnerReports] = useState<IReport[]>([]);
@@ -1005,7 +1014,14 @@ export default function OwnerDashboardPage() {
   const fetchOwnerReports = async (page = ownerReportPage) => {
     setIsOwnerReportsLoading(true);
     try {
-      const res = await fetch(`/api/reports?page=${page}&limit=${OWNER_REPORTS_PER_PAGE}`);
+      const params = new URLSearchParams();
+      params.set("page", String(page));
+      params.set("limit", String(OWNER_REPORTS_PER_PAGE));
+      const bizId = selectedBusiness?.id && selectedBusiness.id !== "" ? selectedBusiness.id : (businesses[0]?.id || "");
+      if (bizId) {
+        params.set("businessId", bizId);
+      }
+      const res = await fetch(`/api/reports?${params.toString()}`);
       const data = await parseResponseJson(res);
       if (data.success && Array.isArray(data.data)) {
         setOwnerReports(data.data);
@@ -1025,7 +1041,7 @@ export default function OwnerDashboardPage() {
     if (activeNav === "moderation") {
       fetchOwnerReports(ownerReportPage);
     }
-  }, [activeNav, ownerReportPage]);
+  }, [activeNav, ownerReportPage, selectedBusiness?.id]);
 
 
   // Business Sub-entities State
@@ -1170,6 +1186,11 @@ export default function OwnerDashboardPage() {
       if (ownerTicketPriorityFilter && ownerTicketPriorityFilter !== "all") {
         params.set("priority", ownerTicketPriorityFilter);
       }
+      if (selectedBusiness?.id) {
+        params.set("businessId", selectedBusiness.id);
+      } else if (user?.id) {
+        params.set("userId", user.id);
+      }
 
       const res = await fetch(`/api/support/tickets?${params.toString()}`);
       const data = await parseResponseJson(res);
@@ -1203,6 +1224,8 @@ export default function OwnerDashboardPage() {
     ownerTicketCategoryFilter,
     ownerTicketPriorityFilter,
     ownerTicketSearch,
+    selectedBusiness?.id,
+    user?.id,
   ]);
 
   const [notifications, setNotifications] = useState<OwnerNotification[]>(INITIAL_NOTIFICATIONS);
@@ -1227,6 +1250,17 @@ export default function OwnerDashboardPage() {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("limit", String(OWNER_NOTIFS_PER_PAGE));
+      // Always scope as owner role so the query returns only relevant notifications
+      params.set("role", "owner");
+      // Pass the logged-in user's ID so notifications explicitly for them are included
+      if (user?.id) params.set("userId", user.id);
+      // Pass city/country from the selected business for geo-scoped notices
+      const bizCity = (selectedBusiness as any)?.cityName || (selectedBusiness as any)?.city || "";
+      const bizCountry = (selectedBusiness as any)?.countryName || (selectedBusiness as any)?.country || "";
+      if (bizCity) params.set("city", bizCity);
+      if (bizCountry) params.set("country", bizCountry);
+      if (selectedBusiness?.id) params.set("businessId", selectedBusiness.id);
+
       if (ownerNotifSearch.trim()) params.set("search", ownerNotifSearch.trim());
 
       // Filter by activeSubnav tabs when viewing notifications
@@ -1261,7 +1295,7 @@ export default function OwnerDashboardPage() {
     if (activeNav === "notifications") {
       fetchOwnerNotifications(ownerNotifPage);
     }
-  }, [activeNav, ownerNotifPage, activeSubnav]);
+  }, [activeNav, ownerNotifPage, activeSubnav, selectedBusiness?.id]);
 
   const handleOwnerMarkRead = async (id: string) => {
     setOwnerNotificationsList((prev) =>
@@ -2339,6 +2373,8 @@ export default function OwnerDashboardPage() {
           dailyBudgetETB: Number(newCampaign.budget) || 1000,
           durationDays: Number(newCampaign.durationDays) || 30,
           startDate: new Date().toISOString().split("T")[0],
+          cityName: (selectedBusiness as any)?.cityName || (selectedBusiness as any)?.city || "",
+          countryName: (selectedBusiness as any)?.countryName || (selectedBusiness as any)?.country || "",
         }),
       });
 
@@ -2585,46 +2621,46 @@ export default function OwnerDashboardPage() {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-background text-foreground flex flex-col">
       {/* ─── Top Workspace Bar ────────────────────────────────────────────── */}
-      <div className="border-b border-border/80 bg-card/60 backdrop-blur-xl px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-4 sticky top-16 z-30">
-        <div className="flex items-center gap-3">
+      <div className="border-b border-border/80 bg-card/60 backdrop-blur-xl px-3 sm:px-8 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4 sticky top-16 z-30">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Hamburger — mobile only */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className="md:hidden p-2 rounded-xl border border-border/60 bg-card hover:bg-accent transition-colors"
+            className="md:hidden p-1.5 sm:p-2 rounded-xl border border-border/60 bg-card hover:bg-accent transition-colors shrink-0"
             aria-label="Open navigation menu"
           >
-            <Menu className="w-5 h-5 text-foreground" />
+            <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-foreground" />
           </button>
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
-            <Building2 className="w-5 h-5" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
+            <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-black tracking-tight text-foreground">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-foreground">
                 Business Owner Portal
               </h1>
-              <Badge variant="outline" className="text-[10px] uppercase font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+              <Badge variant="outline" className="text-[9px] sm:text-[10px] uppercase font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400 py-0 sm:py-0.5">
                 🟢 Verified Active
               </Badge>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[11px] sm:text-xs text-muted-foreground line-clamp-1 sm:line-clamp-none">
               Multi-Branch Management, Performance Telemetry & Customer Engagement
             </p>
           </div>
         </div>
 
         {/* Right Controls: Business Selector + Theme + Quick CTA */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 flex-wrap">
           {/* Active Business Switcher */}
-          <div className="flex items-center gap-1.5 p-1 bg-muted/60 rounded-xl border border-border text-xs">
-            <span className="text-[11px] font-bold text-muted-foreground pl-2 hidden sm:inline">Active:</span>
+          <div className="flex items-center gap-1 p-0.5 sm:p-1 bg-muted/60 rounded-xl border border-border text-[11px] sm:text-xs">
+            <span className="text-[10px] sm:text-[11px] font-bold text-muted-foreground pl-1.5 sm:pl-2 hidden sm:inline">Active:</span>
             <select
               value={selectedBusiness?.id}
               onChange={(e) => {
                 const found = businesses.find((b) => b.id === e.target.value);
                 if (found) setSelectedBusiness(found);
               }}
-              className="bg-background text-foreground text-xs font-bold py-1 px-2.5 rounded-lg border border-border focus:outline-none focus:ring-1 focus:ring-primary max-w-[160px] truncate"
+              className="bg-background text-foreground text-[11px] sm:text-xs font-bold py-0.5 sm:py-1 px-1.5 sm:px-2.5 rounded-lg border border-border focus:outline-none focus:ring-1 focus:ring-primary max-w-[120px] sm:max-w-[160px] truncate"
             >
               {businesses.map((b) => (
                 <option key={b.id} value={b.id}>
@@ -2642,8 +2678,8 @@ export default function OwnerDashboardPage() {
 
           {/* Quick Preview Profile */}
           <Link href={`/business/${selectedBusiness?.id || "biz-1"}`} target="_blank">
-            <Button size="sm" variant="outline" className="gap-1.5 text-xs font-bold">
-              <ExternalLink className="w-3.5 h-3.5 text-indigo-500" />
+            <Button size="sm" variant="outline" className="h-7 sm:h-8 gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold px-2 sm:px-3">
+              <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-500" />
               <span className="hidden sm:inline">Preview Profile</span>
             </Button>
           </Link>
@@ -2654,9 +2690,9 @@ export default function OwnerDashboardPage() {
               <Button
                 size="sm"
                 variant="outline"
-                className="gap-1.5 text-xs font-bold border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                className="h-7 sm:h-8 gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 px-2 sm:px-3"
               >
-                <Crown className="w-3.5 h-3.5 text-indigo-500" />
+                <Crown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-500" />
                 <span className="hidden sm:inline">Admin Portal</span>
               </Button>
             </Link>
@@ -2721,6 +2757,11 @@ export default function OwnerDashboardPage() {
                 { key: "videos", label: "Videos" },
                 { key: "logo", label: "Logo & Avatar" },
                 { key: "cover", label: "Cover Header" },
+              ])}
+              {renderSidebarItem("territory", "Territory & Jurisdiction", <Landmark className="w-4 h-4 text-indigo-500" />, undefined, [
+                { key: "overview", label: "Municipal Desk" },
+                { key: "city-lead", label: "City Administrator" },
+                { key: "national-lead", label: "Country Lead Admin" },
               ])}
             </div>
 
@@ -2835,40 +2876,40 @@ export default function OwnerDashboardPage() {
         {/* ── Main Workspace Display ──────────────────────────────────── */}
         <main className="flex-1 overflow-y-auto bg-background">
           {/* Breadcrumb / Location Strip */}
-          <div className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-md px-6 sm:px-8 py-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-md px-3 sm:px-8 py-1.5 sm:py-2 flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-muted-foreground overflow-x-auto">
             <Building2 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-            <span className="font-semibold text-foreground">{selectedBusiness?.name || "Owner Portal"}</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="capitalize font-semibold text-primary">
+            <span className="font-semibold text-foreground truncate">{selectedBusiness?.name || "Owner Portal"}</span>
+            <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+            <span className="capitalize font-semibold text-primary shrink-0">
               {activeNav.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
             </span>
             {activeSubnav && activeSubnav !== "all" && activeSubnav !== "events" && (
               <>
-                <ChevronRight className="w-3.5 h-3.5" />
-                <span className="capitalize text-muted-foreground">
+                <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                <span className="capitalize text-muted-foreground shrink-0">
                   {activeSubnav.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                 </span>
               </>
             )}
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Live</span>
             </div>
           </div>
           {/* Animated key wrapper — re-mounts + slides in on every nav change */}
-          <div key={activeNav + "-" + activeSubnav} className="animate-page-enter p-6 sm:p-8">
+          <div key={activeNav + "-" + activeSubnav} className="animate-page-enter p-3 sm:p-6 lg:p-8">
           {/* ════════════════════════════════════════════════════════════════════
               1. 🏠 DASHBOARD HOME OVERVIEW
              ════════════════════════════════════════════════════════════════════ */}
           {activeNav === "dashboard" && (
-            <div className="space-y-8 max-w-7xl mx-auto">
+            <div className="space-y-5 sm:space-y-8 max-w-7xl mx-auto">
               {/* Welcome Banner */}
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white p-6 sm:p-8 shadow-xl">
-                <div className="relative z-10 max-w-2xl space-y-2">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-bold border border-white/20">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Live Owner Telemetry
+              <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white p-4 sm:p-6 lg:p-8 shadow-xl">
+                <div className="relative z-10 max-w-2xl space-y-1.5 sm:space-y-2">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-white/10 backdrop-blur-md text-[10px] sm:text-xs font-bold border border-white/20">
+                    <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-300" /> Live Owner Telemetry
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+                  <h2 className="text-lg sm:text-2xl lg:text-3xl font-black tracking-tight">
                     Welcome back, {selectedBusiness?.name || "Business Owner"}!
                   </h2>
                   <p className="text-xs sm:text-sm text-indigo-200 leading-relaxed">
@@ -2878,7 +2919,7 @@ export default function OwnerDashboardPage() {
               </div>
 
               {/* 8 Primary Statistics Cards — powered by live analytics API */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
                 {[
                   { icon: "🏢", label: "Businesses", value: businesses.length.toString(), change: "Active", loading: false },
                   {
@@ -2909,34 +2950,34 @@ export default function OwnerDashboardPage() {
                     change: globalAnalyticsStats?.totalDirections ? "+Live" : "+15.7%", loading: isGlobalStatsLoading,
                   },
                 ].map((stat, i) => (
-                  <div key={i} className="p-3.5 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between hover:border-primary/40 transition-colors">
-                    <div className="text-xl mb-1">{stat.icon}</div>
+                  <div key={i} className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between hover:border-primary/40 transition-colors">
+                    <div className="text-base sm:text-xl mb-0.5 sm:mb-1">{stat.icon}</div>
                     <div>
-                      <div className="text-[10px] font-bold text-muted-foreground uppercase truncate">{stat.label}</div>
-                      <div className={`text-lg font-black text-foreground mt-0.5 ${stat.loading ? "animate-pulse text-muted-foreground" : ""}`}>{stat.value}</div>
-                      <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{stat.change}</div>
+                      <div className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase truncate">{stat.label}</div>
+                      <div className={`text-sm sm:text-lg font-black text-foreground mt-0.5 ${stat.loading ? "animate-pulse text-muted-foreground" : ""}`}>{stat.value}</div>
+                      <div className="text-[9px] sm:text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{stat.change}</div>
                     </div>
                   </div>
                 ))}
               </div>
 
               {/* Charts Row: Business Views + Customer Actions */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {/* Chart 1: Business Views (Area) */}
-                <div className="p-6 rounded-3xl bg-card border border-border shadow-sm space-y-4">
-                  <div className="flex items-center justify-between">
+                <div className="p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl bg-card border border-border shadow-sm space-y-3 sm:space-y-4">
+                  <div className="flex items-center justify-between gap-2">
                     <div>
-                      <h3 className="font-black text-base text-foreground flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-indigo-500" />
+                      <h3 className="font-black text-sm sm:text-base text-foreground flex items-center gap-1.5 sm:gap-2">
+                        <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500 shrink-0" />
                         Business Profile Views (Last 7 Days)
                       </h3>
-                      <p className="text-xs text-muted-foreground">Daily unique impressions and customer visits</p>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground">Daily unique impressions and customer visits</p>
                     </div>
-                    <Badge className="bg-indigo-500/10 text-indigo-600 border border-indigo-500/20 text-xs font-bold">
+                    <Badge className="bg-indigo-500/10 text-indigo-600 border border-indigo-500/20 text-[10px] sm:text-xs font-bold shrink-0">
                       +18.4% WoW
                     </Badge>
                   </div>
-                  <div className="h-64 w-full">
+                  <div className="h-48 sm:h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={liveChartData}>
                         <defs>
@@ -2956,20 +2997,20 @@ export default function OwnerDashboardPage() {
                 </div>
 
                 {/* Chart 2: Customer Actions (Bar) */}
-                <div className="p-6 rounded-3xl bg-card border border-border shadow-sm space-y-4">
-                  <div className="flex items-center justify-between">
+                <div className="p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl bg-card border border-border shadow-sm space-y-3 sm:space-y-4">
+                  <div className="flex items-center justify-between gap-2">
                     <div>
-                      <h3 className="font-black text-base text-foreground flex items-center gap-2">
-                        <MousePointerClick className="w-4 h-4 text-emerald-500" />
+                      <h3 className="font-black text-sm sm:text-base text-foreground flex items-center gap-1.5 sm:gap-2">
+                        <MousePointerClick className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
                         Customer Conversion Actions
                       </h3>
-                      <p className="text-xs text-muted-foreground">Calls, directions requests, and web clicks</p>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground">Calls, directions requests, and web clicks</p>
                     </div>
-                    <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-xs font-bold">
+                    <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[10px] sm:text-xs font-bold shrink-0">
                       High Intent
                     </Badge>
                   </div>
-                  <div className="h-64 w-full">
+                  <div className="h-48 sm:h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={liveChartData}>
                         <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
@@ -2986,33 +3027,33 @@ export default function OwnerDashboardPage() {
               </div>
 
               {/* Bottom Row: Recent Reviews + Business Status Table */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {/* Recent Reviews Preview */}
-                <div className="p-6 rounded-3xl bg-card border border-border shadow-sm space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-black text-base text-foreground flex items-center gap-2">
-                      <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                <div className="p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl bg-card border border-border shadow-sm space-y-3 sm:space-y-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-black text-sm sm:text-base text-foreground flex items-center gap-1.5 sm:gap-2">
+                      <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 fill-amber-500 shrink-0" />
                       Recent Customer Reviews
                     </h3>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setActiveNav("reviews")}
-                      className="text-xs font-bold text-primary"
+                      className="text-[11px] sm:text-xs font-bold text-primary h-7 sm:h-8 px-2 sm:px-3"
                     >
                       View All ({reviews.length}) →
                     </Button>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2.5 sm:space-y-3">
                     {reviews.slice(0, 3).map((r) => (
-                      <div key={r.id} className="p-3.5 rounded-2xl bg-muted/40 border border-border/80 space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
+                      <div key={r.id} className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-muted/40 border border-border/80 space-y-1 sm:space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] sm:text-xs">
                           <span className="font-bold text-foreground">{r.userName}</span>
                           <span className="text-amber-500 font-black">{"★".repeat(r.rating)}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2">{r.comment}</p>
-                        <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1">
+                        <p className="text-[11px] sm:text-xs text-muted-foreground line-clamp-2">{r.comment}</p>
+                        <div className="flex items-center justify-between text-[9px] sm:text-[10px] text-muted-foreground pt-1">
                           <span>{r.createdAt?.split("T")[0]}</span>
                           {r.reply ? (
                             <span className="text-emerald-600 font-bold">✓ Replied</span>
@@ -3034,37 +3075,37 @@ export default function OwnerDashboardPage() {
                 </div>
 
                 {/* Business Status Roster */}
-                <div className="p-6 rounded-3xl bg-card border border-border shadow-sm space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-black text-base text-foreground flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-indigo-500" />
+                <div className="p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl bg-card border border-border shadow-sm space-y-3 sm:space-y-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-black text-sm sm:text-base text-foreground flex items-center gap-1.5 sm:gap-2">
+                      <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500 shrink-0" />
                       Owned Business Listings Status
                     </h3>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setActiveNav("businesses")}
-                      className="text-xs font-bold text-primary"
+                      className="text-[11px] sm:text-xs font-bold text-primary h-7 sm:h-8 px-2 sm:px-3"
                     >
                       Manage Listings →
                     </Button>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2.5 sm:space-y-3">
                     {businesses.map((biz) => (
-                      <div key={biz.id} className="p-3.5 rounded-2xl bg-muted/40 border border-border flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-800 shrink-0">
+                      <div key={biz.id} className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-muted/40 border border-border flex items-center justify-between gap-2.5 sm:gap-3">
+                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl overflow-hidden bg-slate-800 shrink-0">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={biz.coverUrl || "/placeholder-business.jpg"} alt={biz.name} className="w-full h-full object-cover" />
                           </div>
-                          <div>
-                            <div className="font-bold text-sm text-foreground">{biz.name}</div>
-                            <div className="text-xs text-muted-foreground">{biz.categoryName} • {biz.addressLine}</div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-xs sm:text-sm text-foreground truncate">{biz.name}</div>
+                            <div className="text-[10px] sm:text-xs text-muted-foreground truncate">{biz.categoryName} • {biz.addressLine}</div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[10px] font-bold">
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                          <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[9px] sm:text-[10px] font-bold">
                             🟢 Active
                           </Badge>
                           <Button
@@ -3074,7 +3115,7 @@ export default function OwnerDashboardPage() {
                               setSelectedBusiness(biz);
                               setIsEditListingOpen(true);
                             }}
-                            className="h-7 text-xs font-semibold px-2"
+                            className="h-6 sm:h-7 text-[10px] sm:text-xs font-semibold px-2"
                           >
                             Edit
                           </Button>
@@ -3102,7 +3143,7 @@ export default function OwnerDashboardPage() {
                     </span>
                     <span className="text-xs text-muted-foreground">• Exactly 20 Listings / Page</span>
                   </div>
-                  <h2 className="text-2xl font-black text-foreground tracking-tight">
+                  <h2 className="text-lg sm:text-2xl font-black text-foreground tracking-tight">
                     My Business Directory Portfolio
                   </h2>
                   <p className="text-xs text-muted-foreground">
@@ -4144,43 +4185,43 @@ export default function OwnerDashboardPage() {
                         <Sliders className="w-3 h-3" /> Management Hub
                       </span>
                     </div>
-                    <h2 className="text-2xl font-black text-foreground tracking-tight">
+                    <h2 className="text-lg sm:text-2xl font-black text-foreground tracking-tight">
                       {selectedBusiness.name} — Management
                     </h2>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Configure your business profile, branch network, services, hours, and contact channels.
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setIsEditListingOpen(true)}
-                      className="gap-1.5 text-xs font-bold"
+                      className="gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold h-7 sm:h-8 px-2 sm:px-3"
                     >
-                      <Edit className="w-3.5 h-3.5" /> Full Profile Editor
+                      <Edit className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Full Profile Editor
                     </Button>
                     <Link href={`/business/${selectedBusiness?.id}`} target="_blank">
-                      <Button size="sm" variant="ghost" className="gap-1.5 text-xs font-bold text-primary">
-                        <ExternalLink className="w-3.5 h-3.5" /> Live Preview
+                      <Button size="sm" variant="ghost" className="gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold text-primary h-7 sm:h-8 px-2 sm:px-3">
+                        <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Live Preview
                       </Button>
                     </Link>
                   </div>
                 </div>
 
                 {/* Quick KPI Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                   {[
                     { icon: "📋", label: "Services Listed", value: (selectedBusiness.services || []).length, color: "indigo" },
                     { icon: "📍", label: "Branch Locations", value: branches.length, color: "emerald" },
                     { icon: "⏰", label: "Operating Days", value: (selectedBusiness.openingHours || []).filter((h: any) => !h.isClosed).length, color: "amber" },
                     { icon: "🛡️", label: "Verification", value: selectedBusiness.isVerified ? "Verified" : "Pending", color: "blue" },
                   ].map((kpi, i) => (
-                    <div key={i} className="p-4 rounded-2xl bg-card border border-border shadow-xs flex items-center gap-3">
-                      <div className="text-2xl">{kpi.icon}</div>
+                    <div key={i} className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-card border border-border shadow-xs flex items-center gap-2.5 sm:gap-3">
+                      <div className="text-lg sm:text-2xl">{kpi.icon}</div>
                       <div>
-                        <div className="text-[10px] font-semibold text-muted-foreground uppercase">{kpi.label}</div>
-                        <div className="text-lg font-black text-foreground">{kpi.value}</div>
+                        <div className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase">{kpi.label}</div>
+                        <div className="text-base sm:text-lg font-black text-foreground">{kpi.value}</div>
                       </div>
                     </div>
                   ))}
@@ -5141,12 +5182,12 @@ export default function OwnerDashboardPage() {
               <div className="space-y-6 max-w-7xl mx-auto">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-2xl font-black text-foreground">Media & Visual Content</h2>
-                      <Badge variant="outline" className="text-xs font-mono border-primary/30 text-primary bg-primary/10">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-lg sm:text-2xl font-black text-foreground">Media &amp; Visual Content</h2>
+                      <Badge variant="outline" className="text-[10px] sm:text-xs font-mono border-primary/30 text-primary bg-primary/10">
                         20 per page
                       </Badge>
-                      <Badge className="bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30 text-[10px] font-bold">
+                      <Badge className="bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30 text-[9px] sm:text-[10px] font-bold">
                         {rawMedia.length} Registered Photos
                       </Badge>
                     </div>
@@ -5529,25 +5570,25 @@ export default function OwnerDashboardPage() {
             <div className="space-y-6 max-w-7xl mx-auto">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-black text-foreground">Customer Reviews & Ratings</h2>
-                    <Badge variant="outline" className="text-xs font-mono border-amber-500/30 text-amber-600 bg-amber-500/10">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg sm:text-2xl font-black text-foreground">Customer Reviews &amp; Ratings</h2>
+                    <Badge variant="outline" className="text-[10px] sm:text-xs font-mono border-amber-500/30 text-amber-600 bg-amber-500/10">
                       20 per page
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Monitor customer feedback for {selectedBusiness.name || "your business"}, publish verified owner responses, and record customer ratings.
                   </p>
                 </div>
-                <div className="flex items-center gap-2.5">
-                  <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs font-bold py-1 px-2.5">
+                <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                  <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] sm:text-xs font-bold py-1 px-2 sm:px-2.5">
                     ⭐ {selectedBusiness.ratingAvg || "0.0"} Rating Average
                   </Badge>
                   <Button
                     size="sm"
                     variant="gradient"
                     onClick={() => setIsAddReviewModalOpen(true)}
-                    className="gap-1.5 text-xs font-bold shadow-md"
+                    className="gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold shadow-md h-7 sm:h-8 px-2 sm:px-3"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Register Review</span>
@@ -5776,11 +5817,11 @@ export default function OwnerDashboardPage() {
                       <UserCheck className="w-3 h-3" /> Customer Registry
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-black text-foreground tracking-tight">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg sm:text-2xl font-black text-foreground tracking-tight">
                       Registered Users
                     </h2>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 text-xs font-mono font-bold border border-violet-500/20">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 text-[10px] sm:text-xs font-mono font-bold border border-violet-500/20">
                       20 per page
                     </span>
                   </div>
@@ -5926,12 +5967,12 @@ export default function OwnerDashboardPage() {
                     color: "rose", desc: "On this page",
                   },
                 ].map((kpi, i) => (
-                  <div key={i} className="p-4 rounded-2xl bg-card border border-border shadow-sm flex items-center gap-3 hover:border-primary/30 transition-colors">
-                    <div className="text-2xl">{kpi.icon}</div>
+                  <div key={i} className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-card border border-border shadow-sm flex items-center gap-2.5 sm:gap-3 hover:border-primary/30 transition-colors">
+                    <div className="text-lg sm:text-2xl">{kpi.icon}</div>
                     <div>
-                      <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{kpi.label}</div>
-                      <div className="text-xl font-black text-foreground">{kpi.value}</div>
-                      <div className="text-[10px] text-muted-foreground">{kpi.desc}</div>
+                      <div className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{kpi.label}</div>
+                      <div className="text-base sm:text-xl font-black text-foreground">{kpi.value}</div>
+                      <div className="text-[9px] sm:text-[10px] text-muted-foreground">{kpi.desc}</div>
                     </div>
                   </div>
                 ))}
@@ -6138,11 +6179,11 @@ export default function OwnerDashboardPage() {
             <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-black text-foreground tracking-tight">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg sm:text-2xl font-black text-foreground tracking-tight">
                       Performance &amp; Search Intelligence
                     </h2>
-                    <Badge className="bg-primary/10 text-primary border-primary/20 text-xs font-bold">
+                    <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] sm:text-xs font-bold">
                       {dashboardAnalyticsTotalCount} Real Telemetry Events
                     </Badge>
                   </div>
@@ -6157,55 +6198,55 @@ export default function OwnerDashboardPage() {
                     variant="outline"
                     onClick={() => fetchDashboardAnalytics(dashboardAnalyticsPage)}
                     disabled={isDashboardAnalyticsLoading}
-                    className="gap-1.5 text-xs font-bold rounded-xl"
+                    className="gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold rounded-xl h-7 sm:h-8 px-2 sm:px-3"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isDashboardAnalyticsLoading ? "animate-spin" : ""}`} />
+                    <RefreshCw className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isDashboardAnalyticsLoading ? "animate-spin" : ""}`} />
                     Refresh
                   </Button>
                   <Button
                     size="sm"
                     variant="gradient"
                     onClick={() => setIsRegisterDashboardAnalyticsOpen(true)}
-                    className="gap-1.5 text-xs font-bold shadow-md shadow-primary/20 rounded-xl"
+                    className="gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold shadow-md shadow-primary/20 rounded-xl h-7 sm:h-8 px-2 sm:px-3"
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     Register Analytics Event
                   </Button>
                 </div>
               </div>
 
               {/* Dynamic KPI Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="p-5 rounded-3xl bg-card border border-border shadow-sm space-y-1">
-                  <div className="text-xs font-bold text-muted-foreground">Profile Views</div>
-                  <div className="text-2xl font-black text-foreground font-mono">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+                <div className="p-3 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-border shadow-sm space-y-0.5 sm:space-y-1">
+                  <div className="text-[10px] sm:text-xs font-bold text-muted-foreground">Profile Views</div>
+                  <div className="text-lg sm:text-2xl font-black text-foreground font-mono">
                     {(dashboardAnalyticsStats?.totalViews || 0).toLocaleString()}
                   </div>
-                  <div className="text-[11px] font-bold text-emerald-600">Dynamic Count</div>
+                  <div className="text-[10px] sm:text-[11px] font-bold text-emerald-600">Dynamic Count</div>
                 </div>
 
-                <div className="p-5 rounded-3xl bg-card border border-border shadow-sm space-y-1">
-                  <div className="text-xs font-bold text-muted-foreground">Search Impressions</div>
-                  <div className="text-2xl font-black text-foreground font-mono">
+                <div className="p-3 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-border shadow-sm space-y-0.5 sm:space-y-1">
+                  <div className="text-[10px] sm:text-xs font-bold text-muted-foreground">Search Impressions</div>
+                  <div className="text-lg sm:text-2xl font-black text-foreground font-mono">
                     {(dashboardAnalyticsStats?.totalSearches || 0).toLocaleString()}
                   </div>
-                  <div className="text-[11px] font-bold text-emerald-600">Dynamic Count</div>
+                  <div className="text-[10px] sm:text-[11px] font-bold text-emerald-600">Dynamic Count</div>
                 </div>
 
-                <div className="p-5 rounded-3xl bg-card border border-border shadow-sm space-y-1">
-                  <div className="text-xs font-bold text-muted-foreground">Direct Calls Initiated</div>
-                  <div className="text-2xl font-black text-foreground font-mono">
+                <div className="p-3 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-border shadow-sm space-y-0.5 sm:space-y-1">
+                  <div className="text-[10px] sm:text-xs font-bold text-muted-foreground">Direct Calls Initiated</div>
+                  <div className="text-lg sm:text-2xl font-black text-foreground font-mono">
                     {(dashboardAnalyticsStats?.totalCalls || 0).toLocaleString()}
                   </div>
-                  <div className="text-[11px] font-bold text-emerald-600">Dynamic Count</div>
+                  <div className="text-[10px] sm:text-[11px] font-bold text-emerald-600">Dynamic Count</div>
                 </div>
 
-                <div className="p-5 rounded-3xl bg-card border border-border shadow-sm space-y-1">
-                  <div className="text-xs font-bold text-muted-foreground">Directions Requested</div>
-                  <div className="text-2xl font-black text-foreground font-mono">
+                <div className="p-3 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-border shadow-sm space-y-0.5 sm:space-y-1">
+                  <div className="text-[10px] sm:text-xs font-bold text-muted-foreground">Directions Requested</div>
+                  <div className="text-lg sm:text-2xl font-black text-foreground font-mono">
                     {(dashboardAnalyticsStats?.totalDirections || 0).toLocaleString()}
                   </div>
-                  <div className="text-[11px] font-bold text-emerald-600">Dynamic Count</div>
+                  <div className="text-[10px] sm:text-[11px] font-bold text-emerald-600">Dynamic Count</div>
                 </div>
               </div>
 
@@ -6434,26 +6475,26 @@ export default function OwnerDashboardPage() {
                 return (
                   <div className="space-y-4">
                     {/* Top row: CTR card + Total events card */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 shadow-sm space-y-1 col-span-1">
-                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Click-Through Rate</div>
-                        <div className="text-3xl font-black text-indigo-600 dark:text-indigo-400 font-mono">{ctr.toFixed(1)}%</div>
-                        <div className="text-[11px] text-muted-foreground">Calls + Directions + Web ÷ Views</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+                      <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 shadow-sm space-y-0.5 sm:space-y-1 col-span-1">
+                        <div className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wide">Click-Through Rate</div>
+                        <div className="text-xl sm:text-2xl lg:text-3xl font-black text-indigo-600 dark:text-indigo-400 font-mono">{ctr.toFixed(1)}%</div>
+                        <div className="text-[10px] sm:text-[11px] text-muted-foreground">Calls + Directions + Web ÷ Views</div>
                       </div>
-                      <div className="p-5 rounded-3xl bg-card border border-border shadow-sm space-y-1 col-span-1">
-                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Total Events</div>
-                        <div className="text-3xl font-black text-foreground font-mono">{totalEvents.toLocaleString()}</div>
-                        <div className="text-[11px] text-emerald-600 font-semibold">All time interactions</div>
+                      <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-border shadow-sm space-y-0.5 sm:space-y-1 col-span-1">
+                        <div className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wide">Total Events</div>
+                        <div className="text-xl sm:text-2xl lg:text-3xl font-black text-foreground font-mono">{totalEvents.toLocaleString()}</div>
+                        <div className="text-[10px] sm:text-[11px] text-emerald-600 font-semibold">All time interactions</div>
                       </div>
-                      <div className="p-5 rounded-3xl bg-card border border-border shadow-sm space-y-1 col-span-1">
-                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide">High-Intent Actions</div>
-                        <div className="text-3xl font-black text-foreground font-mono">{((stats?.totalCalls || 0) + (stats?.totalDirections || 0) + (stats?.totalWebsites || 0)).toLocaleString()}</div>
-                        <div className="text-[11px] text-amber-600 font-semibold">Calls + Nav + Web</div>
+                      <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-border shadow-sm space-y-0.5 sm:space-y-1 col-span-1">
+                        <div className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wide">High-Intent Actions</div>
+                        <div className="text-xl sm:text-2xl lg:text-3xl font-black text-foreground font-mono">{((stats?.totalCalls || 0) + (stats?.totalDirections || 0) + (stats?.totalWebsites || 0)).toLocaleString()}</div>
+                        <div className="text-[10px] sm:text-[11px] text-amber-600 font-semibold">Calls + Nav + Web</div>
                       </div>
-                      <div className="p-5 rounded-3xl bg-card border border-border shadow-sm space-y-1 col-span-1">
-                        <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Unique Searches</div>
-                        <div className="text-3xl font-black text-foreground font-mono">{(stats?.totalSearches || 0).toLocaleString()}</div>
-                        <div className="text-[11px] text-blue-600 font-semibold">Discovery queries</div>
+                      <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-border shadow-sm space-y-0.5 sm:space-y-1 col-span-1">
+                        <div className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wide">Unique Searches</div>
+                        <div className="text-xl sm:text-2xl lg:text-3xl font-black text-foreground font-mono">{(stats?.totalSearches || 0).toLocaleString()}</div>
+                        <div className="text-[10px] sm:text-[11px] text-blue-600 font-semibold">Discovery queries</div>
                       </div>
                     </div>
 
@@ -6621,9 +6662,9 @@ export default function OwnerDashboardPage() {
             <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-black text-foreground tracking-tight">Advertising &amp; Growth Engine</h2>
-                    <Badge variant="outline" className="text-[11px] font-bold bg-primary/10 text-primary border-primary/20">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg sm:text-2xl font-black text-foreground tracking-tight">Advertising &amp; Growth Engine</h2>
+                    <Badge variant="outline" className="text-[10px] sm:text-[11px] font-bold bg-primary/10 text-primary border-primary/20">
                       {campaignsTotalCount} {campaignsTotalCount === 1 ? "Advertisement" : "Advertisements"}
                     </Badge>
                   </div>
@@ -6631,57 +6672,57 @@ export default function OwnerDashboardPage() {
                     Launch sponsored placement banners, boost search ranking, and target local customers across Addis Ababa.
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => fetchOwnerCampaigns(campaignsPage)}
                     disabled={isCampaignsLoading}
-                    className="gap-1.5 text-xs font-bold rounded-xl"
+                    className="gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold rounded-xl h-7 sm:h-8 px-2 sm:px-3"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isCampaignsLoading ? "animate-spin" : ""}`} />
+                    <RefreshCw className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isCampaignsLoading ? "animate-spin" : ""}`} />
                     Refresh
                   </Button>
                   <Button
                     size="sm"
                     variant="gradient"
                     onClick={() => setIsCreateCampaignOpen(true)}
-                    className="gap-1.5 text-xs font-bold shadow-md rounded-xl"
+                    className="gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold shadow-md rounded-xl h-7 sm:h-8 px-2 sm:px-3"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Register Advertisement
+                    <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Register Advertisement
                   </Button>
                 </div>
               </div>
 
               {/* Quick Metric KPI Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="p-4 rounded-2xl bg-card border border-border shadow-sm">
-                  <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Active Campaigns</div>
-                  <div className="text-2xl font-black text-emerald-500 mt-1">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-card border border-border shadow-sm">
+                  <div className="text-[10px] sm:text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Active Campaigns</div>
+                  <div className="text-lg sm:text-2xl font-black text-emerald-500 mt-0.5 sm:mt-1">
                     {campaigns.filter((c) => c.status === "Active").length}
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Live on search &amp; spotlight</div>
+                  <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">Live on search &amp; spotlight</div>
                 </div>
-                <div className="p-4 rounded-2xl bg-card border border-border shadow-sm">
-                  <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Total Impressions</div>
-                  <div className="text-2xl font-black text-foreground mt-1">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-card border border-border shadow-sm">
+                  <div className="text-[10px] sm:text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Total Impressions</div>
+                  <div className="text-lg sm:text-2xl font-black text-foreground mt-0.5 sm:mt-1">
                     {campaigns.reduce((acc, c) => acc + (c.impressions || 0), 0).toLocaleString()}
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Local customer views</div>
+                  <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">Local customer views</div>
                 </div>
-                <div className="p-4 rounded-2xl bg-card border border-border shadow-sm">
-                  <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Total Clicks</div>
-                  <div className="text-2xl font-black text-primary mt-1">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-card border border-border shadow-sm">
+                  <div className="text-[10px] sm:text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Total Clicks</div>
+                  <div className="text-lg sm:text-2xl font-black text-primary mt-0.5 sm:mt-1">
                     {campaigns.reduce((acc, c) => acc + (c.clicks || 0), 0).toLocaleString()}
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Direct profile clicks</div>
+                  <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">Direct profile clicks</div>
                 </div>
-                <div className="p-4 rounded-2xl bg-card border border-border shadow-sm">
-                  <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Daily Budget Total</div>
-                  <div className="text-2xl font-black text-foreground mt-1">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-card border border-border shadow-sm">
+                  <div className="text-[10px] sm:text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Daily Budget Total</div>
+                  <div className="text-lg sm:text-2xl font-black text-foreground mt-0.5 sm:mt-1">
                     {campaigns.reduce((acc, c) => acc + (c.budget || 0), 0).toLocaleString()} ETB
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Aggregated daily spend</div>
+                  <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">Aggregated daily spend</div>
                 </div>
               </div>
 
@@ -6960,11 +7001,11 @@ export default function OwnerDashboardPage() {
                 <div className="absolute inset-0 opacity-10" style={{backgroundImage: "radial-gradient(circle at 70% 50%, white 1px, transparent 1px)", backgroundSize: "24px 24px"}} />
                 <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-bold border border-white/20 mb-2">
-                      <Gift className="w-3 h-3 text-orange-300" /> Promotions, Coupons & Deals Engine
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 rounded-full bg-white/15 backdrop-blur-md text-[10px] sm:text-[11px] font-bold border border-white/20 mb-1.5 sm:mb-2">
+                      <Gift className="w-3 h-3 text-orange-300" /> Promotions, Coupons &amp; Deals Engine
                     </div>
-                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight">Offers & Discounts Engine</h2>
-                    <p className="text-sm text-rose-200">
+                    <h2 className="text-lg sm:text-2xl lg:text-3xl font-black tracking-tight">Offers &amp; Discounts Engine</h2>
+                    <p className="text-xs sm:text-sm text-rose-200">
                       Launch discount codes, BOGO promotions, and counter QR vouchers to boost footfall and sales.
                     </p>
                   </div>
@@ -6973,43 +7014,43 @@ export default function OwnerDashboardPage() {
                       size="sm"
                       variant="outline"
                       onClick={handleExportOffersCsv}
-                      className="gap-1.5 text-xs font-bold bg-white/10 border-white/20 text-white hover:bg-white/20"
+                      className="gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold bg-white/10 border-white/20 text-white hover:bg-white/20 h-7 sm:h-8 px-2 sm:px-3"
                     >
-                      <Download className="w-3.5 h-3.5" /> Export CSV
+                      <Download className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Export CSV
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={handleResetOffersToDemo}
-                      className="gap-1.5 text-xs font-bold bg-white/10 border-white/20 text-white hover:bg-white/20"
+                      className="gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold bg-white/10 border-white/20 text-white hover:bg-white/20 h-7 sm:h-8 px-2 sm:px-3"
                       title="Reset demo offers and redemptions"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" /> Reset Demo
+                      <RefreshCw className={`w-3 h-3 sm:w-3.5 sm:h-3.5`} /> Reset Demo
                     </Button>
                     <Button
                       size="sm"
                       onClick={() => { setEditingOffer(null); setIsAddOfferOpen(true); }}
-                      className="gap-1.5 text-xs font-bold bg-white text-rose-900 hover:bg-rose-50 shadow-lg"
+                      className="gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold bg-white text-rose-900 hover:bg-rose-50 shadow-lg h-7 sm:h-8 px-2.5 sm:px-3.5"
                     >
-                      <Plus className="w-3.5 h-3.5" /> Create Offer
+                      <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Create Offer
                     </Button>
                   </div>
                 </div>
               </div>
 
               {/* ── KPI Stats Row ── */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
                 {[
                   { label: "Total Offers", value: offers.length, icon: "🎁", color: "text-rose-500", bg: "bg-rose-500/10", border: "border-rose-500/20" },
                   { label: "Active Now", value: activeCount, icon: "✅", color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
                   { label: "Scheduled", value: scheduledCount, icon: "🕐", color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20" },
                   { label: "Total Redemptions", value: totalRedemptions.toLocaleString(), icon: "🎟️", color: "text-indigo-500", bg: "bg-indigo-500/10", border: "border-indigo-500/20" },
                 ].map((stat, i) => (
-                  <div key={i} className={`p-5 rounded-2xl bg-card border ${stat.border} shadow-sm flex items-start gap-3`}>
-                    <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center text-lg shrink-0`}>{stat.icon}</div>
+                  <div key={i} className={`p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-card border ${stat.border} shadow-sm flex items-start gap-2.5 sm:gap-3`}>
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl ${stat.bg} flex items-center justify-center text-base sm:text-lg shrink-0`}>{stat.icon}</div>
                     <div>
-                      <div className={`text-2xl font-black ${stat.color} font-mono`}>{stat.value}</div>
-                      <div className="text-[11px] text-muted-foreground font-semibold mt-0.5">{stat.label}</div>
+                      <div className={`text-lg sm:text-2xl font-black ${stat.color} font-mono`}>{stat.value}</div>
+                      <div className="text-[10px] sm:text-[11px] text-muted-foreground font-semibold mt-0.5">{stat.label}</div>
                     </div>
                   </div>
                 ))}
@@ -7592,8 +7633,8 @@ export default function OwnerDashboardPage() {
           {activeNav === "messages" && (
             <div className="space-y-6 max-w-7xl mx-auto">
               <div>
-                <h2 className="text-2xl font-black text-foreground">Customer Inquiries & Messages</h2>
-                <p className="text-xs text-muted-foreground">Direct customer table inquiries, catering quotes, and customer questions.</p>
+                <h2 className="text-lg sm:text-2xl font-black text-foreground">Customer Inquiries &amp; Messages</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Direct customer table inquiries, catering quotes, and customer questions.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -7688,9 +7729,9 @@ export default function OwnerDashboardPage() {
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-black text-foreground tracking-tight">Notifications & Activity Feed</h2>
-                    <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg sm:text-2xl font-black text-foreground tracking-tight">Notifications &amp; Activity Feed</h2>
+                    <Badge className="bg-primary/10 text-primary border-primary/20 text-[9px] sm:text-[10px] font-bold">
                       {ownerNotifTotalCount} Total
                     </Badge>
                   </div>
@@ -7802,60 +7843,60 @@ export default function OwnerDashboardPage() {
               </div>
 
               {/* KPI Telemetry Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-card border border-border/80 shadow-xs">
                   <div className="flex items-center justify-between text-muted-foreground">
-                    <span className="text-[11px] font-bold uppercase tracking-wider">Total</span>
-                    <Bell className="w-4 h-4 text-primary" />
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">Total</span>
+                    <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
                   </div>
-                  <div className="text-2xl font-black text-foreground mt-2 font-mono">
+                  <div className="text-lg sm:text-2xl font-black text-foreground mt-1 sm:mt-2 font-mono">
                     {ownerNotifStats?.total ?? ownerNotifTotalCount}
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-1">All logged notifications</div>
+                  <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5 sm:mt-1">All logged notifications</div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-card border border-border/80 shadow-xs">
                   <div className="flex items-center justify-between text-amber-500">
-                    <span className="text-[11px] font-bold uppercase tracking-wider">Unread</span>
-                    <AlertTriangle className="w-4 h-4" />
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">Unread</span>
+                    <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
-                  <div className="text-2xl font-black text-amber-500 mt-2 font-mono">
+                  <div className="text-lg sm:text-2xl font-black text-amber-500 mt-1 sm:mt-2 font-mono">
                     {ownerNotifStats?.unread ?? 0}
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-1">Pending read receipts</div>
+                  <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5 sm:mt-1">Pending read receipts</div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-card border border-border/80 shadow-xs">
                   <div className="flex items-center justify-between text-red-500">
-                    <span className="text-[11px] font-bold uppercase tracking-wider">Critical</span>
-                    <Shield className="w-4 h-4" />
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">Critical</span>
+                    <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
-                  <div className="text-2xl font-black text-red-500 mt-2 font-mono">
+                  <div className="text-lg sm:text-2xl font-black text-red-500 mt-1 sm:mt-2 font-mono">
                     {ownerNotifStats?.criticalCount ?? 0}
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-1">High urgency directives</div>
+                  <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5 sm:mt-1">High urgency directives</div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-card border border-border/80 shadow-xs">
                   <div className="flex items-center justify-between text-emerald-500">
-                    <span className="text-[11px] font-bold uppercase tracking-wider">Business</span>
-                    <Building2 className="w-4 h-4" />
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">Business</span>
+                    <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
-                  <div className="text-2xl font-black text-emerald-500 mt-2 font-mono">
+                  <div className="text-lg sm:text-2xl font-black text-emerald-500 mt-1 sm:mt-2 font-mono">
                     {ownerNotifStats?.businessCount ?? 0}
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-1">Merchant specific</div>
+                  <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5 sm:mt-1">Merchant specific</div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-card border border-border/80 shadow-xs">
                   <div className="flex items-center justify-between text-blue-500">
-                    <span className="text-[11px] font-bold uppercase tracking-wider">Global</span>
-                    <Globe className="w-4 h-4" />
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">Global</span>
+                    <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
-                  <div className="text-2xl font-black text-blue-500 mt-2 font-mono">
+                  <div className="text-lg sm:text-2xl font-black text-blue-500 mt-1 sm:mt-2 font-mono">
                     {ownerNotifStats?.globalCount ?? 0}
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-1">Platform announcements</div>
+                  <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5 sm:mt-1">Platform announcements</div>
                 </div>
               </div>
 
@@ -8265,11 +8306,11 @@ export default function OwnerDashboardPage() {
               {/* Header with Quick Actions & Mode Switcher */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-black text-foreground">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg sm:text-2xl font-black text-foreground">
                       Business Support &amp; Help Desk
                     </h2>
-                    <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 text-[10px] font-bold">
+                    <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 text-[9px] sm:text-[10px] font-bold">
                       {ownerTicketTotalCount} Active Tickets
                     </Badge>
                   </div>
@@ -8394,49 +8435,49 @@ export default function OwnerDashboardPage() {
               ) : (
                 <>
                   {/* KPI Telemetry Metrics */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs relative overflow-hidden">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+                    <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-card border border-border/80 shadow-xs relative overflow-hidden">
                       <div className="flex items-center justify-between text-muted-foreground">
-                        <span className="text-[10px] font-bold uppercase tracking-wider">All Cases</span>
-                    <Ticket className="w-4 h-4 text-indigo-500" />
+                        <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">All Cases</span>
+                    <Ticket className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500" />
                   </div>
-                  <div className="text-2xl font-black text-foreground mt-2 font-mono">
+                  <div className="text-lg sm:text-2xl font-black text-foreground mt-1 sm:mt-2 font-mono">
                     {ownerTicketTotalCount}
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-1">Total inquiries logged</div>
+                  <div className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5 sm:mt-1">Total inquiries logged</div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs relative overflow-hidden">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-card border border-border/80 shadow-xs relative overflow-hidden">
                   <div className="flex items-center justify-between text-red-500">
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Open</span>
-                    <AlertTriangle className="w-4 h-4" />
+                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">Open</span>
+                    <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
-                  <div className="text-2xl font-black text-red-600 mt-2 font-mono">
+                  <div className="text-lg sm:text-2xl font-black text-red-600 mt-1 sm:mt-2 font-mono">
                     {ownerTicketStats?.open ?? 0}
                   </div>
-                  <div className="text-[10px] text-red-600 dark:text-red-400 mt-1">Under review</div>
+                  <div className="text-[9px] sm:text-[10px] text-red-600 dark:text-red-400 mt-0.5 sm:mt-1">Under review</div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs relative overflow-hidden">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-card border border-border/80 shadow-xs relative overflow-hidden">
                   <div className="flex items-center justify-between text-amber-500">
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Awaiting My Reply</span>
-                    <Clock className="w-4 h-4" />
+                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">Awaiting My Reply</span>
+                    <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
-                  <div className="text-2xl font-black text-amber-600 mt-2 font-mono">
+                  <div className="text-lg sm:text-2xl font-black text-amber-600 mt-1 sm:mt-2 font-mono">
                     {ownerTicketStats?.waiting ?? 0}
                   </div>
-                  <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-1">Action required</div>
+                  <div className="text-[9px] sm:text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 sm:mt-1">Action required</div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs relative overflow-hidden">
+                <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-card border border-border/80 shadow-xs relative overflow-hidden">
                   <div className="flex items-center justify-between text-emerald-500">
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Resolved</span>
-                    <CheckCircle2 className="w-4 h-4" />
+                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">Resolved</span>
+                    <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
-                  <div className="text-2xl font-black text-emerald-600 mt-2 font-mono">
+                  <div className="text-lg sm:text-2xl font-black text-emerald-600 mt-1 sm:mt-2 font-mono">
                     {ownerTicketStats?.resolved ?? 0}
                   </div>
-                  <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1">Successfully closed</div>
+                  <div className="text-[9px] sm:text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 sm:mt-1">Successfully closed</div>
                 </div>
               </div>
 
@@ -8730,9 +8771,9 @@ export default function OwnerDashboardPage() {
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-black text-foreground">Disputes & Moderation Desk</h2>
-                    <Badge className="bg-red-500/15 text-red-600 border-red-500/30 text-[10px] font-bold">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg sm:text-2xl font-black text-foreground">Disputes &amp; Moderation Desk</h2>
+                    <Badge className="bg-red-500/15 text-red-600 border-red-500/30 text-[9px] sm:text-[10px] font-bold">
                       {ownerReportTotalCount} Filed Cases
                     </Badge>
                   </div>
@@ -8956,6 +8997,22 @@ export default function OwnerDashboardPage() {
               currentUserName={user?.fullName || selectedBusiness?.name || "Business Owner"}
               currentUserRole="owner"
               initialSubnav={activeSubnav === "security" ? "audit" : activeSubnav}
+              city={selectedBusiness?.cityName || (selectedBusiness as any)?.city || (businesses.length > 0 ? (businesses[0].cityName || (businesses[0] as any).city) : "Addis Ababa")}
+              country={selectedBusiness?.countryName || (selectedBusiness as any)?.country || (businesses.length > 0 ? (businesses[0].countryName || (businesses[0] as any).country) : "Ethiopia")}
+              businessId={selectedBusiness?.id || (businesses.length > 0 ? businesses[0].id : undefined)}
+              businessName={selectedBusiness?.name || (businesses.length > 0 ? businesses[0].name : undefined)}
+              businessesList={businesses}
+            />
+          )}
+
+          {/* ════════════════════════════════════════════════════════════════════
+              16. 🏛️ TERRITORY & MUNICIPAL JURISDICTION
+             ════════════════════════════════════════════════════════════════════ */}
+          {activeNav === "territory" && (
+            <StorefrontTerritoryView
+              business={selectedBusiness}
+              currentUser={user}
+              onNavigateToTab={(tab) => setActiveNav(tab as any)}
             />
           )}
           </div>{/* end animate-page-enter */}
@@ -9500,7 +9557,7 @@ export default function OwnerDashboardPage() {
                   <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                     {selectedBusiness?.name || "GlobalBiz Partner Store"}
                   </div>
-                  <h4 className="text-2xl font-black text-foreground mt-1">
+                  <h4 className="text-lg sm:text-2xl font-black text-foreground mt-1">
                     {selectedOfferForShare.discountValue} OFF
                   </h4>
                   <p className="text-xs text-muted-foreground mt-0.5">{selectedOfferForShare.title}</p>
@@ -9934,8 +9991,10 @@ export default function OwnerDashboardPage() {
         isOpen={isRegisterDashboardAnalyticsOpen}
         onClose={() => setIsRegisterDashboardAnalyticsOpen(false)}
         businessesList={businesses}
-        preselectedBusinessId={selectedBusiness?.id}
-        preselectedBusinessName={selectedBusiness?.name}
+        preselectedBusinessId={selectedBusiness?.id || (businesses.length > 0 ? businesses[0].id : undefined)}
+        preselectedBusinessName={selectedBusiness?.name || (businesses.length > 0 ? businesses[0].name : undefined)}
+        defaultCity={selectedBusiness?.cityName || (businesses.length > 0 ? businesses[0].cityName : undefined)}
+        defaultCountry={selectedBusiness?.countryName || (businesses.length > 0 ? businesses[0].countryName : undefined)}
         currentAdminName="Business Owner"
         onAnalyticsRegistered={() => {
           fetchDashboardAnalytics(1);
@@ -9949,8 +10008,10 @@ export default function OwnerDashboardPage() {
         onClose={() => setIsRegisterOwnerReportOpen(false)}
         businessesList={businesses}
         preselectedTargetType={preselectedReportTarget.type}
-        preselectedTargetId={preselectedReportTarget.id}
-        preselectedTargetName={preselectedReportTarget.name}
+        preselectedTargetId={preselectedReportTarget.id || selectedBusiness?.id}
+        preselectedTargetName={preselectedReportTarget.name || selectedBusiness?.name}
+        defaultCity={selectedBusiness?.cityName}
+        defaultCountry={selectedBusiness?.countryName}
         currentAdminName="Business Owner (Verified)"
         onReportRegistered={() => {
           fetchOwnerReports(1);
@@ -10004,6 +10065,7 @@ export default function OwnerDashboardPage() {
           else if (link.includes("tab=support")) setActiveNav("support");
           else if (link.includes("tab=moderation")) setActiveNav("moderation");
           else if (link.includes("tab=settings")) setActiveNav("settings");
+          else if (link.includes("tab=territory")) setActiveNav("territory");
           else if (link.startsWith("/")) window.open(link, "_blank");
         }}
       />
@@ -10045,6 +10107,8 @@ export default function OwnerDashboardPage() {
         defaultUserRole="owner"
         initialCategory={prefilledTicketCategory}
         initialSubject={prefilledTicketSubject}
+        city={selectedBusiness?.cityName || (selectedBusiness as any)?.city}
+        country={selectedBusiness?.countryName || (selectedBusiness as any)?.country}
       />
 
       {/* Register Real Media & Photos Modal */}

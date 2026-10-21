@@ -32,10 +32,19 @@ interface RegisterAnalyticsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAnalyticsRegistered: (event: IAnalyticsEvent | IAnalyticsEvent[]) => void;
-  businessesList?: Array<{ id: string; name: string }>;
+  businessesList?: Array<{
+    id: string;
+    name: string;
+    cityName?: string;
+    city?: string;
+    countryName?: string;
+    country?: string;
+  }>;
   currentAdminName?: string;
   preselectedBusinessId?: string;
   preselectedBusinessName?: string;
+  defaultCity?: string;
+  defaultCountry?: string;
 }
 
 export function RegisterAnalyticsModal({
@@ -46,13 +55,15 @@ export function RegisterAnalyticsModal({
   currentAdminName = "Super Admin",
   preselectedBusinessId,
   preselectedBusinessName,
+  defaultCity,
+  defaultCountry,
 }: RegisterAnalyticsModalProps) {
   const [eventType, setEventType] = useState<AnalyticsEventType>("view");
   const [businessName, setBusinessName] = useState(preselectedBusinessName || "");
   const [businessId, setBusinessId] = useState(preselectedBusinessId || "");
   const [searchTerm, setSearchTerm] = useState("");
-  const [city, setCity] = useState("Addis Ababa");
-  const [country, setCountry] = useState("Ethiopia");
+  const [city, setCity] = useState(defaultCity || "Addis Ababa");
+  const [country, setCountry] = useState(defaultCountry || "Ethiopia");
   const [device, setDevice] = useState<AnalyticsDeviceType>("mobile");
   const [visitorName, setVisitorName] = useState("Local Customer");
   const [duration, setDuration] = useState<number>(45);
@@ -63,7 +74,9 @@ export function RegisterAnalyticsModal({
   React.useEffect(() => {
     if (preselectedBusinessName) setBusinessName(preselectedBusinessName);
     if (preselectedBusinessId) setBusinessId(preselectedBusinessId);
-  }, [preselectedBusinessName, preselectedBusinessId]);
+    if (defaultCity) setCity(defaultCity);
+    if (defaultCountry) setCountry(defaultCountry);
+  }, [preselectedBusinessName, preselectedBusinessId, defaultCity, defaultCountry]);
 
   const EVENT_OPTIONS: Array<{
     type: AnalyticsEventType;
@@ -135,10 +148,12 @@ export function RegisterAnalyticsModal({
     bName: string,
     term: string,
     c: string,
-    count = 1
+    count = 1,
+    bId = ""
   ) => {
     setEventType(type);
     if (bName) setBusinessName(bName);
+    if (bId) setBusinessId(bId);
     if (term) setSearchTerm(term);
     if (c) setCity(c);
     setBatchCount(count);
@@ -250,7 +265,8 @@ export function RegisterAnalyticsModal({
                     "Bole Medhanialem Pharmacy",
                     "",
                     "Addis Ababa",
-                    1
+                    1,
+                    "biz-3"
                   )
                 }
                 className="p-2.5 rounded-2xl border border-border bg-background hover:bg-muted/50 text-left transition-all group"
@@ -288,7 +304,8 @@ export function RegisterAnalyticsModal({
                     "Kategna Traditional Restaurant",
                     "",
                     "Addis Ababa",
-                    1
+                    1,
+                    "biz-1"
                   )
                 }
                 className="p-2.5 rounded-2xl border border-border bg-background hover:bg-muted/50 text-left transition-all group"
@@ -307,7 +324,8 @@ export function RegisterAnalyticsModal({
                     "Tomoca Coffee Piazza",
                     "",
                     "Addis Ababa",
-                    25
+                    25,
+                    "biz-2"
                   )
                 }
                 className="p-2.5 rounded-2xl border border-border bg-background hover:bg-muted/50 text-left transition-all group"
@@ -373,8 +391,12 @@ export function RegisterAnalyticsModal({
                     onChange={(e) => {
                       const id = e.target.value;
                       setBusinessId(id);
-                      const found = businessesList.find((b) => b.id === id);
-                      if (found) setBusinessName(found.name);
+                      const found: any = businessesList.find((b) => b.id === id);
+                      if (found) {
+                        setBusinessName(found.name);
+                        if (found.cityName || found.city) setCity(found.cityName || found.city);
+                        if (found.countryName || found.country) setCountry(found.countryName || found.country);
+                      }
                     }}
                     className="w-full text-xs rounded-xl bg-background border border-border p-2.5 font-medium text-foreground focus:ring-2 focus:ring-primary/20 focus:outline-none"
                   >

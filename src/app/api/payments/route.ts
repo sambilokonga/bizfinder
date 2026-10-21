@@ -87,12 +87,33 @@ export async function POST(request: Request) {
       clerkUser = userId;
     } catch (_) {}
 
+    let resolvedCity = cityName?.trim();
+    let resolvedCountry = countryName?.trim();
+
+    if ((!resolvedCity || !resolvedCountry) && (businessId || businessName)) {
+      try {
+        const { BusinessModel } = await import("@/lib/db/models/Business");
+        const bDoc = await BusinessModel.findOne({
+          $or: [
+            ...(businessId ? [{ id: businessId }] : []),
+            ...(businessName ? [{ name: new RegExp(`^${businessName.trim()}$`, "i") }] : []),
+          ],
+        }).lean();
+        if (bDoc) {
+          resolvedCity = resolvedCity || (bDoc as any).cityName;
+          resolvedCountry = resolvedCountry || (bDoc as any).countryName;
+        }
+      } catch (e) {
+        console.warn("[API /payments POST] Business lookup warning:", e);
+      }
+    }
+
     const newPayment = await createPayment({
       id,
       businessId,
       businessName: businessName.trim(),
-      cityName: cityName?.trim(),
-      countryName: countryName?.trim(),
+      cityName: resolvedCity,
+      countryName: resolvedCountry,
       payerName: (payerName || "Business Owner").trim(),
       payerEmail: payerEmail?.trim(),
       payerPhone: payerPhone?.trim(),

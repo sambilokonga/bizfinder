@@ -57,6 +57,10 @@ const MapController = dynamic(
           if (center && center[0] && center[1]) {
             map.flyTo(center, zoom, { duration: 1.2 });
           }
+          const timer = setTimeout(() => {
+            map.invalidateSize();
+          }, 200);
+          return () => clearTimeout(timer);
         }, [center, zoom, map]);
         return null;
       };
@@ -116,6 +120,14 @@ export function TerritoryMap({
       });
     });
   }, []);
+
+  // Sync center and zoom if props change
+  useEffect(() => {
+    if (center && center[0] !== undefined && center[1] !== undefined) {
+      setActiveCenter(center);
+      setActiveZoom(zoom || 6);
+    }
+  }, [center?.[0], center?.[1], zoom]);
 
   // Update center if selected territory changes
   useEffect(() => {
@@ -258,8 +270,8 @@ export function TerritoryMap({
         <MapController center={activeCenter} zoom={activeZoom} />
 
         <TileLayer
-          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           maxZoom={19}
         />
 

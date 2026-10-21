@@ -18,7 +18,15 @@ export interface User {
   assignedCity?: string;    // e.g. "Addis Ababa", "Toronto", "Baku"
   country?: string;
   city?: string;
-  status?: "active" | "suspended";
+  status?: "active" | "suspended" | "pending" | "rejected";
+  approvalStatus?: "approved" | "pending" | "rejected";
+  nominatedBy?: {
+    name?: string;
+    email?: string;
+    role?: string;
+    country?: string;
+    date?: string;
+  };
   isActive?: boolean;
   createdAt: string;
   claimedBusinessIds?: string[];

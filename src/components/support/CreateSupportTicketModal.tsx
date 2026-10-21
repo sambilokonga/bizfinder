@@ -115,6 +115,12 @@ export function CreateSupportTicketModal({
     }
   }, [isOpen, initialCategory, initialSubject, defaultBusinessName, defaultUserEmail]);
 
+  // Keep local city/country in sync whenever prop changes (e.g. switching business or city)
+  const [localCity, setLocalCity] = React.useState(city);
+  const [localCountry, setLocalCountry] = React.useState(country);
+  React.useEffect(() => { setLocalCity(city); }, [city]);
+  React.useEffect(() => { setLocalCountry(country); }, [country]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -145,8 +151,8 @@ export function CreateSupportTicketModal({
           userRole: defaultUserRole,
           businessId: defaultBusinessId,
           businessName: businessName.trim() || undefined,
-          city,
-          country,
+          city: localCity,
+          country: localCountry,
         }),
       });
 

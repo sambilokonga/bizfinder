@@ -9,6 +9,11 @@ export interface Review {
   id: string;
   businessId: string;
   businessName?: string;
+  cityName?: string;
+  countryName?: string;
+  timeframeType?: "historical" | "recent" | "future_scheduled";
+  dateFormatted?: string;
+  isVerifiedCitizen?: boolean;
   userId: string;
   userName: string;
   userAvatar?: string;

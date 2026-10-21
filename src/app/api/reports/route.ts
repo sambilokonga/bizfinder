@@ -11,6 +11,7 @@ export async function GET(request: Request) {
     const status = searchParams.get("status") || undefined;
     const priority = searchParams.get("priority") || undefined;
     const targetId = searchParams.get("targetId") || undefined;
+    const businessId = searchParams.get("businessId") || undefined;
     const city = searchParams.get("city") || undefined;
     const country = searchParams.get("country") || undefined;
     const sort = (searchParams.get("sort") as "desc" | "asc") || "desc";
@@ -23,6 +24,7 @@ export async function GET(request: Request) {
       status,
       priority,
       targetId,
+      businessId,
       city,
       country,
       sort,
@@ -55,6 +57,32 @@ export async function POST(request: Request) {
       );
     }
 
+    let targetCity = body.city?.trim();
+    let targetCountry = body.country?.trim();
+    let targetBusinessId = body.businessId?.trim();
+    let targetBusinessName = body.businessName?.trim();
+
+    // Auto-resolve business info (city, country, businessId, businessName) if target is a business or targetId matches a business
+    const lookupId = targetBusinessId || body.targetId;
+    if (lookupId) {
+      try {
+        const { getBusinessById } = await import("@/lib/db/queries/businesses");
+        const biz = await getBusinessById(lookupId);
+        if (biz) {
+          if (!targetBusinessId) targetBusinessId = biz.id;
+          if (!targetBusinessName) targetBusinessName = biz.name;
+          if ((!targetCity || targetCity === "all") && biz.cityName) {
+            targetCity = biz.cityName;
+          }
+          if ((!targetCountry || targetCountry === "all") && biz.countryName) {
+            targetCountry = biz.countryName;
+          }
+        }
+      } catch (err) {
+        console.warn("[API /api/reports POST] Auto-resolve business info error:", err);
+      }
+    }
+
     const report = await createReport({
       id: body.id,
       type: body.type || "business",
@@ -64,6 +92,8 @@ export async function POST(request: Request) {
       targetId: body.targetId,
       targetName: body.targetName,
       targetType: body.targetType || body.type,
+      businessId: targetBusinessId,
+      businessName: targetBusinessName,
       reporterName: body.reporterName,
       reporterEmail: body.reporterEmail,
       reporterId: body.reporterId,
@@ -71,8 +101,8 @@ export async function POST(request: Request) {
       priority: body.priority || "medium",
       status: body.status || "pending",
       evidenceUrls: body.evidenceUrls,
-      city: body.city,
-      country: body.country,
+      city: targetCity,
+      country: targetCountry,
     });
 
     return NextResponse.json({

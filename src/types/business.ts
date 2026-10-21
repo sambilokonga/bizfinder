@@ -184,6 +184,7 @@ export interface Business {
   // Location references
   countryId?: string;
   regionId?: string;
+  regionName?: string;
   cityId?: string;
   subcityId?: string;
   districtId?: string;
@@ -286,6 +287,7 @@ export type BusinessApprovalStatus =
   | "pending_super_admin"
   | "approved"
   | "rejected"
+  | "suspended"
   | "revision_requested";
 
 export interface ApprovalStageDetail {

@@ -1,9 +1,13 @@
 import { connectToDatabase, withDbTimeout } from "@/lib/db/mongodb";
 import { BusinessModel } from "@/lib/db/models/Business";
+import { CategoryModel } from "@/lib/db/models/Category";
+import { MediaModel } from "@/lib/db/models/Media";
 import { Business } from "@/types/business";
 import { BusinessSearchParams } from "@/types/api";
 import { extractYoutubeVideoId, getYoutubeThumbnail, isYoutubeUrl } from "@/lib/utils/youtube";
 import { getCategoryMongoCondition } from "@/lib/utils/category-matcher";
+import { resolveBusinessLocation } from "@/lib/utils/business-location";
+import { ensureBusinessLocationRegistered } from "@/lib/db/queries/locations";
 
 /**
  * Convert a Mongoose business document to the plain Business type used by the UI.
@@ -31,6 +35,8 @@ export function docToBusiness(doc: any): Business {
     subSubcategoryName: obj.subSubcategoryName ? String(obj.subSubcategoryName) : undefined,
     countryId: obj.countryId ? String(obj.countryId) : undefined,
     countryName: obj.countryName ? String(obj.countryName) : undefined,
+    regionId: obj.regionId ? String(obj.regionId) : undefined,
+    regionName: obj.regionName ? String(obj.regionName) : undefined,
     cityId: obj.cityId ? String(obj.cityId) : undefined,
     cityName: obj.cityName ? String(obj.cityName) : undefined,
     subcityId: obj.subcityId ? String(obj.subcityId) : undefined,
@@ -189,23 +195,29 @@ export async function searchBusinesses(params: BusinessSearchParams) {
   const conn = await connectToDatabase();
 
   if (!conn) {
-    // Instant in-memory fallback
-    const { SEED_BUSINESSES } = await import("@/lib/db/seed-data/businesses");
-    let results = [...SEED_BUSINESSES];
+    // Instant in-memory fallback using globalCityRegistry
+    const { globalCityRegistry } = await import("@/lib/data/city-business-registry");
+    const countryParam = (params as any).country || (params as any).countryName;
+    const cityParam = (params as any).city || (params as any).cityName || params.cityId;
+
+    let results: Business[] = [];
+    if (cityParam && cityParam !== "all") {
+      results = globalCityRegistry.getBusinessesForCity(cityParam, countryParam || "Ethiopia");
+    } else if (countryParam && countryParam !== "all") {
+      results = globalCityRegistry.getBusinessesForCountry(countryParam, cityParam);
+    } else {
+      results = globalCityRegistry.getAllBusinessesGlobal(countryParam, cityParam);
+    }
 
     const q = params.q?.toLowerCase();
     if (q) {
       results = results.filter(
         (b) =>
           b.name.toLowerCase().includes(q) ||
-          b.categoryName.toLowerCase().includes(q) ||
-          b.description.toLowerCase().includes(q) ||
-          b.addressLine.toLowerCase().includes(q) ||
-          (b.building && b.building.toLowerCase().includes(q)) ||
-          (b.street && b.street.toLowerCase().includes(q)) ||
-          (b.districtName && b.districtName.toLowerCase().includes(q)) ||
-          (b.services && b.services.some((s) => s.name.toLowerCase().includes(q) || s.description?.toLowerCase().includes(q))) ||
-          (b.branches && b.branches.some((br) => br.name.toLowerCase().includes(q) || br.branchCode?.toLowerCase().includes(q) || br.addressLine.toLowerCase().includes(q)))
+          b.categoryName?.toLowerCase().includes(q) ||
+          b.description?.toLowerCase().includes(q) ||
+          b.addressLine?.toLowerCase().includes(q) ||
+          (b.districtName && b.districtName.toLowerCase().includes(q))
       );
     }
     if (params.category && params.category !== "all") {
@@ -222,28 +234,38 @@ export async function searchBusinesses(params: BusinessSearchParams) {
     if (params.verified) {
       results = results.filter((b) => b.isVerified);
     }
-    if (params.minRating) {
-      results = results.filter((b) => b.ratingAvg >= params.minRating!);
-    }
-    const countryParam = (params as any).country || (params as any).countryName;
-    if (countryParam && countryParam !== "all") {
-      results = results.filter(
-        (b) => b.countryName?.toLowerCase() === countryParam.toLowerCase()
-      );
-    }
-    const cityParam = (params as any).city || (params as any).cityName || params.cityId;
-    if (cityParam && cityParam !== "all") {
+    const confirmationsCount = results.filter(
+      (b) =>
+        b.approvalStatus === "pending_city" ||
+        b.approvalStatus === "pending_country" ||
+        b.approvalStatus === "pending_super_admin" ||
+        (b as any).existenceStatus === "pending_confirmation"
+    ).length;
+
+    if (params.status === "confirmations" || params.status === "pending_confirmations") {
       results = results.filter(
         (b) =>
-          b.cityId === cityParam ||
-          b.cityName?.toLowerCase() === cityParam.toLowerCase()
+          b.approvalStatus === "pending_city" ||
+          b.approvalStatus === "pending_country" ||
+          b.approvalStatus === "pending_super_admin" ||
+          (b as any).existenceStatus === "pending_confirmation"
       );
-    }
-
-    // Public fallback filtering: if not owner and not admin querying pending/all, exclude unapproved
-    const isSpecialQuery = Boolean(params.ownerId) || params.status === "all" || params.status === "pending" || params.status === "rejected";
-    if (!isSpecialQuery) {
-      results = results.filter((b) => b.approvalStatus === "approved" || b.isApproved !== false);
+    } else if (params.status === "pending_city" || params.status === "pending_country" || params.status === "pending_super_admin") {
+      results = results.filter((b) => b.approvalStatus === params.status);
+    } else if (params.status === "pending") {
+      results = results.filter((b) => !b.isVerified || b.approvalStatus === "pending_city" || b.approvalStatus === "pending_country" || b.approvalStatus === "pending_super_admin");
+    } else if (params.status === "verified" || params.status === "approved") {
+      results = results.filter((b) => b.isVerified && (b.approvalStatus === "approved" || !b.approvalStatus));
+    } else if (params.status === "rejected") {
+      results = results.filter((b) => b.approvalStatus === "rejected");
+    } else if (params.status === "suspended") {
+      results = results.filter((b) => b.approvalStatus === "suspended" || b.status === "closed");
+    } else if (params.status === "claims" || params.status === "claimed") {
+      results = results.filter((b) => Boolean(b.ownerId));
+    } else if (params.status === "heritage" || params.status === "old") {
+      results = results.filter((b) => (b.yearEstablished || 2026) <= 2005);
+    } else if (params.status === "future") {
+      results = results.filter((b) => (b.yearEstablished || 2024) >= 2026 && b.shortDescription?.toLowerCase().includes("opening"));
     }
 
     const page = Number(params.page || 1);
@@ -260,10 +282,11 @@ export async function searchBusinesses(params: BusinessSearchParams) {
       businesses: paginated,
       counts: {
         all: results.length,
-        pending: results.filter((b) => !b.isVerified).length,
+        confirmations: confirmationsCount,
+        pending: results.filter((b) => !b.isVerified && b.approvalStatus !== "rejected" && b.approvalStatus !== "suspended").length,
         verified: results.filter((b) => b.isVerified).length,
-        suspended: results.filter((b) => (b.status as string) === "closed" || (b.status as string) === "suspended").length,
-        rejected: 0,
+        suspended: results.filter((b) => b.approvalStatus === "suspended" || (b.status as string) === "closed").length,
+        rejected: results.filter((b) => b.approvalStatus === "rejected").length,
         claimed: results.filter((b) => Boolean(b.ownerId)).length,
       },
     };
@@ -306,68 +329,63 @@ export async function searchBusinesses(params: BusinessSearchParams) {
     filter.ownerId = ownerId;
   }
 
+  const andClauses: any[] = [];
+
   // Text search (support regex across fields for partial matching)
   if (q && q.trim()) {
     const term = q.trim();
     const regex = { $regex: term, $options: "i" };
-    filter.$or = [
-      { name: regex },
-      { categoryName: regex },
-      { cityName: regex },
-      { countryName: regex },
-      { addressLine: regex },
-      { street: regex },
-      { building: regex },
-      { districtName: regex },
-      { description: regex },
-      { "services.name": regex },
-      { "services.description": regex },
-      { "branches.name": regex },
-      { "branches.branchCode": regex },
-      { "branches.building": regex },
-      { "branches.addressLine": regex },
-    ];
+    andClauses.push({
+      $or: [
+        { name: regex },
+        { categoryName: regex },
+        { cityName: regex },
+        { countryName: regex },
+        { addressLine: regex },
+        { street: regex },
+        { building: regex },
+        { districtName: regex },
+        { description: regex },
+        { "services.name": regex },
+        { "services.description": regex },
+        { "branches.name": regex },
+        { "branches.branchCode": regex },
+        { "branches.building": regex },
+        { "branches.addressLine": regex },
+      ],
+    });
   }
 
   // Category filters (supports canonical IDs, slugs, and legacy DB aliases)
   if (category && category !== "all") {
-    const catCondition = getCategoryMongoCondition(category);
-    if (filter.$or) {
-      filter.$and = filter.$and || [];
-      filter.$and.push({ $or: catCondition });
-    } else {
-      filter.$or = catCondition;
-    }
+    andClauses.push({ $or: getCategoryMongoCondition(category) });
   }
   if (subcategory && subcategory !== "all") {
-    const subCondition = getCategoryMongoCondition(subcategory);
-    if (filter.$or || filter.$and) {
-      filter.$and = filter.$and || [];
-      filter.$and.push({ $or: subCondition });
-    } else {
-      filter.$or = subCondition;
-    }
+    andClauses.push({ $or: getCategoryMongoCondition(subcategory) });
   }
 
   // Country filter (National jurisdiction & admin filtering)
   const targetCountry = country || countryName;
   if (targetCountry && targetCountry !== "all") {
-    filter.countryName = { $regex: new RegExp(`^${targetCountry.trim()}$`, "i") };
+    const escCountry = targetCountry.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+    andClauses.push({
+      $or: [
+        { countryName: { $regex: new RegExp(`^${escCountry}$`, "i") } },
+        { countryId: targetCountry.trim() },
+      ],
+    });
   }
 
   // City filter (Municipal jurisdiction & local filtering)
   const targetCity = city || cityName;
   if (targetCity && targetCity !== "all") {
-    const cityCondition = [
-      { cityId: targetCity },
-      { cityName: { $regex: new RegExp(`^${targetCity.trim()}$`, "i") } },
-    ];
-    if (filter.$or || filter.$and) {
-      filter.$and = filter.$and || [];
-      filter.$and.push({ $or: cityCondition });
-    } else {
-      filter.$or = cityCondition;
-    }
+    const escCity = targetCity.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+    andClauses.push({
+      $or: [
+        { cityId: targetCity.trim() },
+        { cityName: { $regex: new RegExp(`^${escCity}$`, "i") } },
+      ],
+    });
   } else if (cityId && cityId !== "all") {
     filter.cityId = cityId;
   }
@@ -379,42 +397,80 @@ export async function searchBusinesses(params: BusinessSearchParams) {
 
   // Status and Administrative Filters
   if (status) {
-    if (status === "pending") {
-      filter.$or = [
-        { isVerified: false },
-        { approvalStatus: { $in: ["pending_city", "pending_country", "pending_super_admin"] } },
-      ];
+    if (status === "confirmations" || status === "pending_confirmations") {
+      andClauses.push({
+        $or: [
+          { approvalStatus: { $in: ["pending_city", "pending_country", "pending_super_admin"] } },
+          { existenceStatus: "pending_confirmation" },
+        ],
+      });
+    } else if (status === "pending_city" || status === "pending_country" || status === "pending_super_admin") {
+      andClauses.push({
+        approvalStatus: status,
+      });
+    } else if (status === "pending") {
+      andClauses.push({
+        $or: [
+          { isVerified: false },
+          { approvalStatus: { $in: ["pending_city", "pending_country", "pending_super_admin"] } },
+        ],
+      });
     } else if (status === "verified" || status === "approved") {
-      filter.$and = filter.$and || [];
-      filter.$and.push({
+      andClauses.push({
         $or: [{ approvalStatus: "approved" }, { isApproved: true }, { isVerified: true }],
       });
     } else if (status === "suspended") {
-      filter.$or = [
-        { status: "closed" },
-        { status: "temporarily_closed" },
-        { status: "suspended" },
-      ];
+      andClauses.push({
+        $or: [
+          { status: "closed" },
+          { status: "temporarily_closed" },
+          { status: "suspended" },
+          { approvalStatus: "suspended" },
+        ],
+      });
     } else if (status === "rejected") {
-      filter.$or = [{ verificationStatus: "rejected" }, { approvalStatus: "rejected" }];
-    } else if (status === "claimed") {
-      filter.ownerId = { $exists: true, $ne: null };
+      andClauses.push({
+        $or: [{ verificationStatus: "rejected" }, { approvalStatus: "rejected" }],
+      });
+    } else if (status === "claims" || status === "claimed") {
+      andClauses.push({
+        ownerId: { $exists: true, $ne: null },
+      });
+    } else if (status === "heritage" || status === "old") {
+      andClauses.push({
+        yearEstablished: { $lte: 2005 },
+      });
+    } else if (status === "future") {
+      andClauses.push({
+        yearEstablished: { $gte: 2026 },
+      });
     } else if (status !== "all") {
       filter.status = status;
     }
   }
 
   // Public vs Admin Visibility:
-  // If not filtering by ownerId, and not querying administrative statuses ('all', 'pending', 'rejected', 'suspended'),
+  // If not filtering by ownerId, and not querying administrative statuses,
   // only show approved and published businesses on public pages!
-  const isAdminOrOwnerQuery = Boolean(ownerId) || status === "all" || status === "pending" || status === "rejected" || status === "suspended";
+  const isAdminOrOwnerQuery =
+    Boolean(ownerId) ||
+    status === "all" ||
+    status === "confirmations" ||
+    status === "pending_confirmations" ||
+    status === "pending" ||
+    status === "pending_city" ||
+    status === "pending_country" ||
+    status === "pending_super_admin" ||
+    status === "rejected" ||
+    status === "suspended" ||
+    status === "claims" ||
+    status === "claimed";
+
   if (!isAdminOrOwnerQuery) {
-    filter.$and = filter.$and || [];
-    filter.$and.push({
+    andClauses.push({
       $or: [
         { approvalStatus: "approved" },
         { isApproved: true },
-        // Legacy/seed businesses that don't have approvalStatus field set yet
         { approvalStatus: { $exists: false } },
       ],
     });
@@ -434,6 +490,10 @@ export async function searchBusinesses(params: BusinessSearchParams) {
     };
   }
 
+  if (andClauses.length > 0) {
+    filter.$and = andClauses;
+  }
+
   // Sort
   let sortOption: Record<string, any> = {};
   if (sort === "rating") sortOption = { ratingAvg: -1 };
@@ -444,14 +504,77 @@ export async function searchBusinesses(params: BusinessSearchParams) {
 
   const skip = (page - 1) * limit;
 
-  const [docs, total, allCount, pendingCount, verifiedCount, suspendedCount] = await Promise.all([
+  // Territory-scoped conditions for accurate badge counters on city and country dashboards
+  const territoryAnd: any[] = [];
+  if (targetCountry && targetCountry !== "all") {
+    const escCountry = targetCountry.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+    territoryAnd.push({
+      $or: [
+        { countryName: { $regex: new RegExp(`^${escCountry}$`, "i") } },
+        { countryId: targetCountry.trim() },
+      ],
+    });
+  }
+  if (targetCity && targetCity !== "all") {
+    const escCity = targetCity.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+    territoryAnd.push({
+      $or: [
+        { cityId: targetCity.trim() },
+        { cityName: { $regex: new RegExp(`^${escCity}$`, "i") } },
+      ],
+    });
+  }
+  const territoryBaseFilter = territoryAnd.length > 0 ? { $and: territoryAnd } : {};
+
+  const [
+    docs,
+    total,
+    allCount,
+    confirmationsCount,
+    pendingCount,
+    verifiedCount,
+    suspendedCount,
+    rejectedCount,
+    claimedCount,
+  ] = await Promise.all([
     BusinessModel.find(filter).sort(sortOption).skip(skip).limit(limit).lean(),
     BusinessModel.countDocuments(filter),
-    BusinessModel.countDocuments({}),
-    BusinessModel.countDocuments({ isVerified: false }),
-    BusinessModel.countDocuments({ isVerified: true }),
+    BusinessModel.countDocuments(territoryBaseFilter),
     BusinessModel.countDocuments({
-      $or: [{ status: "closed" }, { status: "temporarily_closed" }, { status: "suspended" }],
+      ...territoryBaseFilter,
+      $or: [
+        { approvalStatus: { $in: ["pending_city", "pending_country", "pending_super_admin"] } },
+        { existenceStatus: "pending_confirmation" },
+      ],
+    }),
+    BusinessModel.countDocuments({
+      ...territoryBaseFilter,
+      $or: [
+        { isVerified: false },
+        { approvalStatus: { $in: ["pending_city", "pending_country", "pending_super_admin"] } },
+      ],
+      approvalStatus: { $nin: ["rejected", "suspended"] },
+    }),
+    BusinessModel.countDocuments({
+      ...territoryBaseFilter,
+      $or: [{ approvalStatus: "approved" }, { isApproved: true }, { isVerified: true }],
+    }),
+    BusinessModel.countDocuments({
+      ...territoryBaseFilter,
+      $or: [
+        { status: "closed" },
+        { status: "temporarily_closed" },
+        { status: "suspended" },
+        { approvalStatus: "suspended" },
+      ],
+    }),
+    BusinessModel.countDocuments({
+      ...territoryBaseFilter,
+      $or: [{ verificationStatus: "rejected" }, { approvalStatus: "rejected" }],
+    }),
+    BusinessModel.countDocuments({
+      ...territoryBaseFilter,
+      ownerId: { $exists: true, $ne: null },
     }),
   ]);
 
@@ -465,11 +588,12 @@ export async function searchBusinesses(params: BusinessSearchParams) {
     businesses: docs.map(docToBusiness),
     counts: {
       all: allCount,
+      confirmations: confirmationsCount,
       pending: pendingCount,
       verified: verifiedCount,
       suspended: suspendedCount,
-      rejected: 0,
-      claimed: 0,
+      rejected: rejectedCount,
+      claimed: claimedCount,
     },
   };
 }
@@ -486,7 +610,10 @@ export async function getBusinessById(idOrSlug: string): Promise<Business | null
   const doc = await BusinessModel.findOne({
     $or: [{ id: idOrSlug }, { slug: idOrSlug }],
   }).lean();
-  if (!doc) return null;
+  if (!doc) {
+    const { SEED_BUSINESSES } = await import("@/lib/db/seed-data/businesses");
+    return SEED_BUSINESSES.find((b) => b.id === idOrSlug || b.slug === idOrSlug) || null;
+  }
   return docToBusiness(doc);
 }
 
@@ -605,6 +732,158 @@ export async function getBusinessesByOwner(ownerId: string): Promise<Business[]>
 }
 
 /**
+ * Synchronize all media items belonging to a business (covers, logos, gallery photos, videos)
+ * into MediaModel so that City Admin, Country Admin, and Super Admin dashboards immediately
+ * register them under their respective municipal and national jurisdictions.
+ */
+export async function syncBusinessMediaToDatabase(biz: any): Promise<void> {
+  if (!biz || !biz.id) return;
+  try {
+    await connectToDatabase();
+    const ops: any[] = [];
+    const cityName = biz.cityName || "";
+    const countryName = biz.countryName || "";
+
+    // 1. Cover
+    if (biz.coverUrl && typeof biz.coverUrl === "string" && biz.coverUrl.trim()) {
+      ops.push({
+        updateOne: {
+          filter: { id: `med-cov-${biz.id}` },
+          update: {
+            $set: {
+              id: `med-cov-${biz.id}`,
+              businessId: biz.id,
+              businessName: biz.name,
+              cityName,
+              countryName,
+              title: `${biz.name} – Cover Header`,
+              type: "Cover",
+              url: biz.coverUrl.trim(),
+              uploadedBy: "Business Owner",
+              status: "Approved",
+              sortOrder: 0,
+            },
+            $setOnInsert: {
+              uploadedAt: new Date().toISOString(),
+            },
+          },
+          upsert: true,
+        },
+      });
+    }
+
+    // 2. Logo
+    if (biz.logoUrl && typeof biz.logoUrl === "string" && biz.logoUrl.trim()) {
+      ops.push({
+        updateOne: {
+          filter: { id: `med-log-${biz.id}` },
+          update: {
+            $set: {
+              id: `med-log-${biz.id}`,
+              businessId: biz.id,
+              businessName: biz.name,
+              cityName,
+              countryName,
+              title: `${biz.name} – Brand Logo`,
+              type: "Logo",
+              url: biz.logoUrl.trim(),
+              uploadedBy: "Business Owner",
+              status: "Approved",
+              sortOrder: 1,
+            },
+            $setOnInsert: {
+              uploadedAt: new Date().toISOString(),
+            },
+          },
+          upsert: true,
+        },
+      });
+    }
+
+    // 3. Media items
+    if (Array.isArray(biz.media)) {
+      biz.media.forEach((m: any, idx: number) => {
+        if (!m || !m.url || typeof m.url !== "string" || !m.url.trim()) return;
+        const isVid = m.type === "video" || isYoutubeUrl(m.url);
+        const vId = isVid ? extractYoutubeVideoId(m.url) : null;
+        const normType = isVid
+          ? "Video"
+          : m.type === "cover"
+          ? "Cover"
+          : m.type === "logo"
+          ? "Logo"
+          : "Photo";
+        const mediaId = m.id || `med-item-${biz.id}-${idx}`;
+
+        ops.push({
+          updateOne: {
+            filter: { id: mediaId },
+            update: {
+              $set: {
+                id: mediaId,
+                businessId: biz.id,
+                businessName: biz.name,
+                cityName,
+                countryName,
+                title: m.title || `${biz.name} – ${isVid ? "Video Tour" : "Gallery Photo"}`,
+                type: normType,
+                url: m.url.trim(),
+                youtubeId: vId || undefined,
+                thumbnailUrl: m.thumbnailUrl || (vId ? getYoutubeThumbnail(vId) : undefined),
+                uploadedBy: "Business Owner",
+                status: "Approved",
+                sortOrder: typeof m.sortOrder === "number" ? m.sortOrder : idx + 2,
+              },
+              $setOnInsert: {
+                uploadedAt: m.uploadedAt || new Date().toISOString(),
+              },
+            },
+            upsert: true,
+          },
+        });
+      });
+    }
+
+    // 4. YouTube Video
+    if (biz.youtubeVideoId && typeof biz.youtubeVideoId === "string" && biz.youtubeVideoId.trim()) {
+      const vId = extractYoutubeVideoId(biz.youtubeVideoId) || biz.youtubeVideoId.trim();
+      ops.push({
+        updateOne: {
+          filter: { id: `med-vid-${biz.id}` },
+          update: {
+            $set: {
+              id: `med-vid-${biz.id}`,
+              businessId: biz.id,
+              businessName: biz.name,
+              cityName,
+              countryName,
+              title: `${biz.name} – Official Video Showcase Tour`,
+              type: "Video",
+              url: `https://www.youtube.com/watch?v=${vId}`,
+              youtubeId: vId,
+              thumbnailUrl: getYoutubeThumbnail(vId),
+              uploadedBy: "Business Owner",
+              status: "Approved",
+              sortOrder: 3,
+            },
+            $setOnInsert: {
+              uploadedAt: new Date().toISOString(),
+            },
+          },
+          upsert: true,
+        },
+      });
+    }
+
+    if (ops.length > 0) {
+      await MediaModel.bulkWrite(ops, { ordered: false });
+    }
+  } catch (err) {
+    console.error("[syncBusinessMediaToDatabase] error:", err);
+  }
+}
+
+/**
  * Create a new business listing.
  */
 export async function createBusiness(
@@ -630,13 +909,30 @@ export async function createBusiness(
   const categoryId = rest.categoryId || (rest as any).category || "general";
   const categoryName = rest.categoryName || (rest as any).category || "General Business";
   const addressLine = rest.addressLine || (rest as any).address || "Business Location";
-  const countryName = rest.countryName || (rest as any).country || "Ethiopia";
-  const cityName = rest.cityName || (rest as any).city || "Addis Ababa";
-  const districtName = rest.districtName || (rest as any).subcity || (rest as any).district || "";
+  const rawCountry = rest.countryName || (rest as any).country || "Ethiopia";
+  const rawCity = rest.cityName || (rest as any).city || "Addis Ababa";
+  const rawDistrict = rest.districtName || (rest as any).subcity || (rest as any).district || "";
   const telephone = rest.telephone || (rest as any).phone || "";
 
+  // Intelligently resolve true city & district to prevent incorrect default assignments
+  const resolvedLoc = resolveBusinessLocation({
+    latitude,
+    longitude,
+    cityName: rawCity,
+    districtName: rawDistrict,
+    regionName: rest.regionName || (rest as any).region,
+    addressLine,
+    name: rest.name,
+    countryName: rawCountry,
+  });
+
+  const countryName = resolvedLoc.countryName;
+  const cityName = resolvedLoc.cityName;
+  const districtName = resolvedLoc.districtName;
+  const regionName = resolvedLoc.regionName || rest.regionName;
+
   if (!conn) {
-    return {
+    const fallbackBiz: Business = {
       id,
       slug,
       name: rest.name,
@@ -721,6 +1017,94 @@ export async function createBusiness(
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+    try {
+      const { globalCityRegistry } = await import("@/lib/data/city-business-registry");
+      globalCityRegistry.registerBusiness(fallbackBiz);
+    } catch (e) {}
+    try {
+      await syncBusinessMediaToDatabase(fallbackBiz);
+    } catch (e) {}
+    return fallbackBiz;
+  }
+
+  // Auto-register category in MongoDB CategoryModel if not already present
+  let resolvedCatId = categoryId;
+  let resolvedCatName = categoryName;
+  if (conn && resolvedCatName && resolvedCatName !== "General Business") {
+    try {
+      const escapeReg = (s: string) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+      let catDoc = await CategoryModel.findOne({
+        $or: [
+          { id: resolvedCatId },
+          { name: new RegExp(`^${escapeReg(resolvedCatName)}$`, "i") },
+        ],
+      }).lean();
+
+      if (!catDoc) {
+        const cleanSlug = resolvedCatName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "") || `cat-${Date.now()}`;
+        const newId = resolvedCatId && resolvedCatId !== "general" ? resolvedCatId : `cat-${cleanSlug}`;
+        const createdCat = await CategoryModel.create({
+          id: newId,
+          parentId: null,
+          name: resolvedCatName.trim(),
+          slug: cleanSlug,
+          icon: "FolderTree",
+          level: 1,
+          featured: false,
+        });
+        resolvedCatId = createdCat.id;
+        resolvedCatName = createdCat.name;
+      } else {
+        resolvedCatId = (catDoc as any).id;
+        resolvedCatName = (catDoc as any).name;
+      }
+
+      if (rest.subcategoryName && rest.subcategoryName.trim()) {
+        const subName = rest.subcategoryName.trim();
+        const existingSub = await CategoryModel.findOne({
+          $or: [
+            { id: rest.subcategoryId },
+            { name: new RegExp(`^${escapeReg(subName)}$`, "i") },
+          ],
+        }).lean();
+
+        if (!existingSub) {
+          const subSlug = subName
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)/g, "") || `subcat-${Date.now()}`;
+          await CategoryModel.create({
+            id: rest.subcategoryId || `cat-${subSlug}`,
+            parentId: resolvedCatId,
+            name: subName,
+            slug: subSlug,
+            icon: "Tag",
+            level: 2,
+            featured: false,
+          });
+        }
+      }
+    } catch (catErr) {
+      console.warn("[createBusiness] Auto category registration notice:", catErr);
+    }
+  }
+
+  // Auto-register location nodes (Country, City, Subcity/District) into MongoDB LocationModel
+  if (conn) {
+    try {
+      await ensureBusinessLocationRegistered({
+        countryName,
+        cityName,
+        districtName,
+        latitude,
+        longitude,
+      });
+    } catch (locErr) {
+      console.warn("[createBusiness] Auto location registration notice:", locErr);
+    }
   }
 
   const initialApprovalStatus = rest.approvalStatus || "pending_city";
@@ -740,14 +1124,16 @@ export async function createBusiness(
     slug,
     name: rest.name,
     ownerId: rest.ownerId || null,
-    categoryId,
-    categoryName,
+    categoryId: resolvedCatId,
+    categoryName: resolvedCatName,
     subcategoryId: rest.subcategoryId,
     subcategoryName: rest.subcategoryName,
     subSubcategoryId: rest.subSubcategoryId,
     subSubcategoryName: rest.subSubcategoryName,
     countryId: rest.countryId,
     countryName,
+    regionId: rest.regionId,
+    regionName,
     cityId: rest.cityId,
     cityName,
     subcityId: rest.subcityId,
@@ -840,7 +1226,15 @@ export async function createBusiness(
     services: rest.services || [],
     verificationDocuments: rest.verificationDocuments || [],
   });
-  return docToBusiness(doc);
+  const bizObj = docToBusiness(doc);
+  try {
+    const { globalCityRegistry } = await import("@/lib/data/city-business-registry");
+    globalCityRegistry.registerBusiness(bizObj);
+  } catch (e) {}
+  try {
+    await syncBusinessMediaToDatabase(bizObj);
+  } catch (e) {}
+  return bizObj;
 }
 
 /**
@@ -855,6 +1249,27 @@ export async function updateBusiness(
   const update: Record<string, any> = { ...rest };
   if (latitude !== undefined && longitude !== undefined) {
     update.location = { type: "Point", coordinates: [longitude, latitude] };
+  }
+
+  if (
+    update.cityName ||
+    update.districtName ||
+    update.addressLine ||
+    (latitude !== undefined && longitude !== undefined)
+  ) {
+    const resolvedLoc = resolveBusinessLocation({
+      latitude,
+      longitude,
+      cityName: update.cityName,
+      districtName: update.districtName,
+      regionName: update.regionName,
+      addressLine: update.addressLine,
+      name: update.name,
+      countryName: update.countryName,
+    });
+    if (resolvedLoc.cityName) update.cityName = resolvedLoc.cityName;
+    if (resolvedLoc.districtName) update.districtName = resolvedLoc.districtName;
+    if (resolvedLoc.regionName) update.regionName = resolvedLoc.regionName;
   }
 
   // Ensure youtubeVideoId and media thumbnails are properly formatted
@@ -885,7 +1300,11 @@ export async function updateBusiness(
     { new: true }
   ).lean();
   if (!doc) return null;
-  return docToBusiness(doc);
+  const updatedBiz = docToBusiness(doc);
+  try {
+    await syncBusinessMediaToDatabase(updatedBiz);
+  } catch (e) {}
+  return updatedBiz;
 }
 
 /**
@@ -979,7 +1398,10 @@ export async function getAdminStats(filter?: { country?: string; city?: string }
       // Build user query filter
       const userQuery: any = {};
       if (countryFilter) {
-        userQuery.assignedCountry = new RegExp(`^${countryFilter}$`, "i");
+        userQuery.$or = [
+          { assignedCountry: new RegExp(`^${countryFilter}$`, "i") },
+          { country: new RegExp(`^${countryFilter}$`, "i") },
+        ];
       }
       if (cityFilter) {
         userQuery.assignedCity = new RegExp(`^${cityFilter}$`, "i");
@@ -1090,15 +1512,16 @@ export async function getAdminStats(filter?: { country?: string; city?: string }
   let filteredReports = SEED_REPORTS;
 
   if (countryFilter) {
+    const cLower = countryFilter.toLowerCase();
     filteredBiz = SEED_BUSINESSES.filter(
       (b) =>
-        (b.countryName && b.countryName.toLowerCase() === countryFilter.toLowerCase()) ||
-        (countryFilter.toLowerCase() === "ethiopia") // Default seed businesses are Ethiopian
+        (b.countryName && b.countryName.toLowerCase() === cLower) ||
+        (b.countryName && b.countryName.toLowerCase() === cLower)
     );
     filteredUsers = SEED_USERS.filter(
       (u) =>
-        (u.assignedCountry && u.assignedCountry.toLowerCase() === countryFilter.toLowerCase()) ||
-        (!u.assignedCountry && countryFilter.toLowerCase() === "ethiopia")
+        (u.assignedCountry && u.assignedCountry.toLowerCase() === cLower) ||
+        (u.country && u.country.toLowerCase() === cLower)
     );
     filteredReports = SEED_REPORTS.filter((r) => r.status !== "resolved");
   }

@@ -12,9 +12,11 @@ export async function GET(request: Request) {
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "20");
   const status = searchParams.get("status") || "all";
+  const city = searchParams.get("city") || undefined;
+  const country = searchParams.get("country") || undefined;
 
   try {
-    const result = await getAllAdCampaigns({ page, limit, status });
+    const result = await getAllAdCampaigns({ page, limit, status, city, country });
     return NextResponse.json({ success: true, ...result });
   } catch (error: any) {
     console.error("[API /admin/ads/campaigns GET]", error);
@@ -35,6 +37,8 @@ export async function POST(request: Request) {
       dailyBudgetETB,
       durationDays,
       startDate,
+      cityName,
+      countryName,
     } = body;
 
     if (!businessName || !name || !placement || !dailyBudgetETB || !durationDays) {
@@ -55,7 +59,32 @@ export async function POST(request: Request) {
       dailyBudgetETB: Number(dailyBudgetETB),
       durationDays: Number(durationDays),
       startDate: startDate || new Date().toISOString().split("T")[0],
+      cityName: cityName || "",
+      countryName: countryName || "",
     });
+
+    // Dispatch multi-tier ad notifications across Super Admin, Country Admin, City Admin, and Owner
+    try {
+      const { dispatchAdCampaignNotifications } = await import(
+        "@/lib/notifications/ad-campaign"
+      );
+      await dispatchAdCampaignNotifications({
+        campaign: {
+          id: campaign.id,
+          name: campaign.name,
+          businessName: campaign.businessName,
+          businessId: campaign.businessId,
+          ownerId: campaign.ownerId,
+          placement: campaign.placement,
+          dailyBudgetETB: campaign.dailyBudgetETB,
+          cityName: campaign.cityName,
+          countryName: campaign.countryName,
+          targetLocation: campaign.targetLocation,
+        },
+      });
+    } catch (notifErr) {
+      console.warn("[API /admin/ads/campaigns POST] Failed to dispatch ad notifications:", notifErr);
+    }
 
     return NextResponse.json({ success: true, campaign }, { status: 201 });
   } catch (error: any) {

@@ -201,7 +201,20 @@ export async function getAnalytics(
         filter.eventType = eventType;
       }
       if (businessId) {
-        filter.businessId = businessId;
+        let matchingBizName: string | undefined;
+        try {
+          const { SEED_BUSINESSES } = await import("@/lib/db/seed-data/businesses");
+          matchingBizName = SEED_BUSINESSES.find((b) => b.id === businessId)?.name;
+        } catch (_) {}
+
+        const bizConditions: any[] = [
+          { businessId: businessId },
+          { "metadata.businessId": businessId },
+        ];
+        if (matchingBizName) {
+          bizConditions.push({ businessName: new RegExp(`^${matchingBizName}$`, "i") });
+        }
+        filter.$or = bizConditions;
       }
       if (city) {
         filter.city = new RegExp(`^${city}$`, "i");
@@ -210,13 +223,19 @@ export async function getAnalytics(
         filter.country = new RegExp(`^${country}$`, "i");
       }
       if (search) {
-        filter.$or = [
+        const searchConditions = [
           { businessName: { $regex: search, $options: "i" } },
           { searchTerm: { $regex: search, $options: "i" } },
           { city: { $regex: search, $options: "i" } },
           { userName: { $regex: search, $options: "i" } },
           { id: { $regex: search, $options: "i" } },
         ];
+        if (filter.$or) {
+          filter.$and = [{ $or: filter.$or }, { $or: searchConditions }];
+          delete filter.$or;
+        } else {
+          filter.$or = searchConditions;
+        }
       }
 
       const total = await AnalyticsModel.countDocuments(filter);
@@ -252,11 +271,33 @@ export async function getAnalytics(
       }));
 
       // Fetch sample of recent events for calculating aggregate statistics
+      // Strictly scope to businessId, city, and country so KPIs match the active territory
       const allFilter: Record<string, any> = {};
-      if (businessId) allFilter.businessId = businessId;
+      if (businessId) {
+        let matchingBizName: string | undefined;
+        try {
+          const { SEED_BUSINESSES } = await import("@/lib/db/seed-data/businesses");
+          matchingBizName = SEED_BUSINESSES.find((b) => b.id === businessId)?.name;
+        } catch (_) {}
+
+        const bizConditions: any[] = [
+          { businessId: businessId },
+          { "metadata.businessId": businessId },
+        ];
+        if (matchingBizName) {
+          bizConditions.push({ businessName: new RegExp(`^${matchingBizName}$`, "i") });
+        }
+        allFilter.$or = bizConditions;
+      }
+      if (city) {
+        allFilter.city = new RegExp(`^${city}$`, "i");
+      }
+      if (country) {
+        allFilter.country = new RegExp(`^${country}$`, "i");
+      }
       const recentDocs = await AnalyticsModel.find(allFilter)
         .sort({ createdAt: -1 })
-        .limit(500)
+        .limit(1000)
         .lean();
 
       const statsItems: IAnalyticsEvent[] = recentDocs.map((d: any) => ({
@@ -302,7 +343,18 @@ export async function getAnalytics(
     filtered = filtered.filter((i) => i.eventType === eventType);
   }
   if (businessId) {
-    filtered = filtered.filter((i) => i.businessId === businessId);
+    let matchingBizName: string | undefined;
+    try {
+      const { SEED_BUSINESSES } = require("@/lib/db/seed-data/businesses");
+      matchingBizName = SEED_BUSINESSES.find((b: any) => b.id === businessId)?.name;
+    } catch (_) {}
+
+    filtered = filtered.filter(
+      (i) =>
+        i.businessId === businessId ||
+        i.metadata?.businessId === businessId ||
+        (matchingBizName && i.businessName?.toLowerCase() === matchingBizName.toLowerCase())
+    );
   }
   if (city) {
     filtered = filtered.filter((i) => i.city.toLowerCase() === city.toLowerCase());
@@ -332,9 +384,29 @@ export async function getAnalytics(
   const startIndex = (page - 1) * limit;
   const paginatedEvents = filtered.slice(startIndex, startIndex + limit);
 
-  const stats = calculateAnalyticsStats(
-    businessId ? inMemoryAnalytics.filter((i) => i.businessId === businessId) : inMemoryAnalytics
-  );
+  let statsScope = inMemoryAnalytics;
+  if (businessId) {
+    let matchingBizName: string | undefined;
+    try {
+      const { SEED_BUSINESSES } = require("@/lib/db/seed-data/businesses");
+      matchingBizName = SEED_BUSINESSES.find((b: any) => b.id === businessId)?.name;
+    } catch (_) {}
+
+    statsScope = statsScope.filter(
+      (i) =>
+        i.businessId === businessId ||
+        i.metadata?.businessId === businessId ||
+        (matchingBizName && i.businessName?.toLowerCase() === matchingBizName.toLowerCase())
+    );
+  }
+  if (city) {
+    statsScope = statsScope.filter((i) => i.city.toLowerCase() === city.toLowerCase());
+  }
+  if (country) {
+    statsScope = statsScope.filter((i) => i.country.toLowerCase() === country.toLowerCase());
+  }
+
+  const stats = calculateAnalyticsStats(statsScope);
 
   return {
     success: true,

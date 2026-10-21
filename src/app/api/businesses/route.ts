@@ -4,6 +4,8 @@ import { searchBusinesses, createBusiness } from "@/lib/db/queries/businesses";
 import { SEED_BUSINESSES } from "@/lib/db/seed-data/businesses";
 import { processBusinessImagesForCloudinary } from "@/lib/cloudinary";
 
+import { globalCityRegistry } from "@/lib/data/city-business-registry";
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
@@ -60,25 +62,80 @@ export async function GET(request: Request) {
       ownerId,
     } as any);
 
-    return NextResponse.json(result);
+    if (result && Array.isArray(result.businesses)) {
+      if (result.businesses.length > 0 || (result.counts && result.counts.all > 0) || result.total > 0) {
+        return NextResponse.json({ ...result, success: true });
+      }
+    }
+    // Database has no businesses for this query, fall through to shared global city registry
   } catch (error) {
-    console.error("[API /businesses GET]", error);
-    // Graceful fallback to seed data during development
-    let results = [...SEED_BUSINESSES];
-    if (featured) results = results.filter((b) => b.isFeatured);
-    if (ownerId) results = results.filter((b) => b.ownerId === ownerId);
-    const start = (page - 1) * limit;
-    const paginated = results.slice(start, start + limit);
-    const totalPages = Math.max(1, Math.ceil(results.length / limit));
-    return NextResponse.json({
-      total: results.length,
-      page,
-      limit,
-      totalPages,
-      businesses: paginated,
-      success: true,
-    });
+    console.error("[API /businesses GET] Fallback to globalCityRegistry:", error);
   }
+
+  // Strict territorial isolation fallback & shared global city registry
+  let results: any[] = [];
+  if (city && city !== "all") {
+    results = globalCityRegistry.getBusinessesForCity(city, country || "Ethiopia");
+  } else if (country && country !== "all") {
+    results = globalCityRegistry.getBusinessesForCountry(country, city);
+  } else {
+    results = globalCityRegistry.getAllBusinessesGlobal(country, city);
+  }
+
+  if (q) {
+    const qLower = q.toLowerCase();
+    results = results.filter(
+      (b) =>
+        b.name.toLowerCase().includes(qLower) ||
+        b.categoryName?.toLowerCase().includes(qLower) ||
+        b.description?.toLowerCase().includes(qLower) ||
+        b.districtName?.toLowerCase().includes(qLower)
+    );
+  }
+  if (category && category !== "all") {
+    results = results.filter((b) => b.categoryId === category || b.categoryName === category);
+  }
+  if (featured) results = results.filter((b) => b.isFeatured);
+  if (verified) results = results.filter((b) => b.isVerified);
+
+  // Compute counts for all queues before status filtering
+  const allScopedResults = [...results];
+  const counts = {
+    all: allScopedResults.length,
+    confirmations: allScopedResults.filter((b) => b.approvalStatus === "pending_city" || (b as any).existenceStatus === "pending_confirmation").length,
+    pending: allScopedResults.filter((b) => !b.isVerified && b.approvalStatus !== "rejected" && b.approvalStatus !== "suspended" && b.approvalStatus !== "pending_city").length,
+    verified: allScopedResults.filter((b) => b.isVerified && b.approvalStatus === "approved").length,
+    suspended: allScopedResults.filter((b) => b.approvalStatus === "suspended").length,
+    rejected: allScopedResults.filter((b) => b.approvalStatus === "rejected").length,
+    claimed: allScopedResults.filter((b) => Boolean(b.ownerId)).length,
+  };
+
+  if (status === "confirmations" || status === "pending_city" || status === "pending_confirmations") {
+    results = results.filter((b) => b.approvalStatus === "pending_city" || (b as any).existenceStatus === "pending_confirmation");
+  } else if (status === "pending") {
+    results = results.filter((b) => !b.isVerified && b.approvalStatus !== "rejected" && b.approvalStatus !== "suspended" && b.approvalStatus !== "pending_city");
+  } else if (status === "verified") {
+    results = results.filter((b) => b.isVerified && b.approvalStatus === "approved");
+  } else if (status === "rejected") {
+    results = results.filter((b) => b.approvalStatus === "rejected");
+  } else if (status === "suspended") {
+    results = results.filter((b) => b.approvalStatus === "suspended");
+  } else if (status === "claims" || status === "claimed") {
+    results = results.filter((b) => Boolean(b.ownerId));
+  }
+
+  const start = (page - 1) * limit;
+  const paginated = results.slice(start, start + limit);
+  const totalPages = Math.max(1, Math.ceil(results.length / limit));
+  return NextResponse.json({
+    total: results.length,
+    page,
+    limit,
+    totalPages,
+    businesses: paginated,
+    counts,
+    success: true,
+  });
 }
 
 export async function POST(request: Request) {
@@ -106,6 +163,32 @@ export async function POST(request: Request) {
       isPublished: body.isPublished !== undefined ? body.isPublished : (isSubmitAdmin ? true : false),
       isVerified: body.isVerified !== undefined ? body.isVerified : (isSubmitAdmin ? true : false),
     });
+
+    // Also register in shared global city registry
+    globalCityRegistry.registerBusiness(business);
+
+    // Immediately register and associate user with business city and country in UserModel
+    try {
+      const { UserModel } = await import("@/lib/db/models/User");
+      const targetCountry = business.countryName || body.countryName || body.country;
+      const targetCity = business.cityName || body.cityName || body.city;
+      if (ownerId && (targetCountry || targetCity)) {
+        await UserModel.findOneAndUpdate(
+          { $or: [{ id: ownerId }, { clerkId: ownerId }] },
+          {
+            $set: {
+              ...(targetCountry && { country: targetCountry, assignedCountry: targetCountry }),
+              ...(targetCity && { city: targetCity, assignedCity: targetCity }),
+              role: "owner",
+              updatedAt: new Date(),
+            },
+            $addToSet: { claimedBusinessIds: business.id },
+          }
+        );
+      }
+    } catch (uErr) {
+      console.warn("[API /businesses POST] User geo-update warning:", uErr);
+    }
 
     // Dispatch Multi-Tier Confirmation Alerts for Super Admin, Country Admin & City Admin
     try {

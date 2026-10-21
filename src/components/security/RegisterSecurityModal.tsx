@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +28,8 @@ import {
   Send,
   Loader2,
   Terminal,
+  Building2,
+  Store,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -42,18 +44,35 @@ interface RegisterSecurityModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSecurityEventRegistered: (event: ISecurityEvent) => void;
+  businessesList?: Array<{
+    id: string;
+    name: string;
+    cityName?: string;
+    city?: string;
+    countryName?: string;
+    country?: string;
+  }>;
+  preselectedBusinessId?: string;
+  preselectedBusinessName?: string;
   currentAdminName?: string;
   currentAdminRole?: "super_admin" | "admin" | "country_admin" | "city_admin" | "owner" | "user";
   defaultTargetResource?: string;
+  defaultCity?: string;
+  defaultCountry?: string;
 }
 
 export function RegisterSecurityModal({
   isOpen,
   onClose,
   onSecurityEventRegistered,
+  businessesList = [],
+  preselectedBusinessId,
+  preselectedBusinessName,
   currentAdminName = "Alex Rivera (Super Admin)",
   currentAdminRole = "super_admin",
   defaultTargetResource = "/admin/security",
+  defaultCity = "Addis Ababa",
+  defaultCountry = "Ethiopia",
 }: RegisterSecurityModalProps) {
   const [eventType, setEventType] = useState<SecurityEventType>("brute_force_blocked");
   const [severity, setSeverity] = useState<SecuritySeverity>("high");
@@ -62,9 +81,11 @@ export function RegisterSecurityModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [targetResource, setTargetResource] = useState(defaultTargetResource);
+  const [selectedBizId, setSelectedBizId] = useState(preselectedBusinessId || "");
+  const [selectedBizName, setSelectedBizName] = useState(preselectedBusinessName || "");
   const [ipAddress, setIpAddress] = useState("196.188.15.4");
-  const [city, setCity] = useState("Addis Ababa");
-  const [country, setCountry] = useState("Ethiopia");
+  const [city, setCity] = useState(defaultCity || "Addis Ababa");
+  const [country, setCountry] = useState(defaultCountry || "Ethiopia");
   const [device, setDevice] = useState<"Desktop" | "Mobile" | "Tablet" | "Server" | "Bot">("Bot");
   const [browser, setBrowser] = useState("Python-Requests/2.31");
   const [os, setOs] = useState("Linux x86_64");
@@ -73,6 +94,31 @@ export function RegisterSecurityModal({
   const [actorRole, setActorRole] = useState<ISecurityEvent["actorRole"]>("anonymous");
   const [isFlagged, setIsFlagged] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (preselectedBusinessId) setSelectedBizId(preselectedBusinessId);
+    if (preselectedBusinessName) setSelectedBizName(preselectedBusinessName);
+    if (defaultCity && defaultCity !== "all") setCity(defaultCity);
+    if (defaultCountry && defaultCountry !== "all") setCountry(defaultCountry);
+    if (defaultTargetResource) setTargetResource(defaultTargetResource);
+  }, [preselectedBusinessId, preselectedBusinessName, defaultCity, defaultCountry, defaultTargetResource, isOpen]);
+
+  const handleSelectBusiness = (bizId: string) => {
+    setSelectedBizId(bizId);
+    if (!bizId) {
+      setSelectedBizName("");
+      return;
+    }
+    const found = businessesList.find((b) => b.id === bizId);
+    if (found) {
+      setSelectedBizName(found.name);
+      const bCity = found.cityName || (found as any).city;
+      const bCountry = found.countryName || (found as any).country;
+      if (bCity && bCity !== "all") setCity(bCity);
+      if (bCountry && bCountry !== "all") setCountry(bCountry);
+      setTargetResource(`/business/${found.id}`);
+    }
+  };
 
   // Event Type presets
   const EVENT_PRESETS: Array<{
@@ -183,8 +229,10 @@ export function RegisterSecurityModal({
           description: description.trim(),
           targetResource: targetResource.trim() || "/admin/security",
           ipAddress: ipAddress.trim() || "196.188.15.4",
-          city: city.trim() || "Addis Ababa",
-          country: country.trim() || "Ethiopia",
+          city: city.trim() || defaultCity || "Addis Ababa",
+          country: country.trim() || defaultCountry || "Ethiopia",
+          businessId: selectedBizId.trim() || undefined,
+          businessName: selectedBizName.trim() || undefined,
           device,
           browser: browser.trim() || "Chrome 128",
           os: os.trim() || "Windows 11",
@@ -197,6 +245,8 @@ export function RegisterSecurityModal({
             registeredBy: currentAdminName,
             registeredAt: new Date().toISOString(),
             incidentCategory: "Forensic Registration",
+            businessId: selectedBizId.trim() || undefined,
+            businessName: selectedBizName.trim() || undefined,
           },
         }),
       });
@@ -269,6 +319,83 @@ export function RegisterSecurityModal({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* 2. Target Business / Merchant Scope */}
+          <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/80 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="font-bold text-foreground flex items-center gap-1.5 text-xs">
+                <Building2 className="w-4 h-4 text-primary" />
+                <span>2. Associated Business &amp; Storefront Target</span>
+              </label>
+              {selectedBizName && (
+                <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-bold gap-1">
+                  <Store className="w-3 h-3" />
+                  <span>{selectedBizName}</span>
+                </Badge>
+              )}
+            </div>
+
+            {businessesList && businessesList.length > 0 ? (
+              <div className="space-y-2">
+                <select
+                  value={selectedBizId}
+                  onChange={(e) => handleSelectBusiness(e.target.value)}
+                  className="w-full h-9 rounded-xl border border-input bg-background px-3 text-xs font-semibold focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">-- Platform-wide / No specific business --</option>
+                  {businessesList.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} ({b.cityName || (b as any).city || "Addis Ababa"}, {b.countryName || (b as any).country || "Ethiopia"})
+                    </option>
+                  ))}
+                </select>
+
+                {/* Quick Chips */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                  <span className="text-[10px] text-muted-foreground font-semibold">Quick Select:</span>
+                  {businessesList.slice(0, 4).map((b) => (
+                    <button
+                      type="button"
+                      key={b.id}
+                      onClick={() => handleSelectBusiness(b.id)}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
+                        selectedBizId === b.id
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "bg-background border border-border text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {b.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                    Business Name (Optional)
+                  </label>
+                  <Input
+                    value={selectedBizName}
+                    onChange={(e) => setSelectedBizName(e.target.value)}
+                    placeholder="e.g. Kategna Ethiopian Restaurant"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                    Business ID (Optional)
+                  </label>
+                  <Input
+                    value={selectedBizId}
+                    onChange={(e) => setSelectedBizId(e.target.value)}
+                    placeholder="e.g. biz-1"
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Severity & Action Taken */}

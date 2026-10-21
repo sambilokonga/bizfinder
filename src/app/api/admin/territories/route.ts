@@ -50,6 +50,94 @@ export async function GET(req: Request) {
       }
     }
 
+    // Auto-sync any businesses with cities/districts/countries not yet in LocationModel
+    try {
+      const distinctBizLocations = await BusinessModel.aggregate([
+        {
+          $match: {
+            countryName: { $exists: true, $ne: "" },
+            cityName: { $exists: true, $ne: "" },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              country: "$countryName",
+              city: "$cityName",
+              district: "$districtName",
+            },
+            lat: { $first: "$latitude" },
+            lng: { $first: "$longitude" },
+          },
+        },
+      ]);
+
+      const existingNames = new Set(docs.map((d: any) => (d.name || "").toLowerCase()));
+      const toInsert: any[] = [];
+
+      for (const loc of distinctBizLocations) {
+        const cName = loc._id.country?.trim();
+        const ciName = loc._id.city?.trim();
+        const distName = loc._id.district?.trim();
+        const lat = Number(loc.lat) || 9.010793;
+        const lng = Number(loc.lng) || 38.761252;
+
+        let cId: string | null = null;
+        if (cName) {
+          const cSlug = cName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+          cId = `loc-${cSlug}`;
+          if (!existingNames.has(cName.toLowerCase())) {
+            existingNames.add(cName.toLowerCase());
+            toInsert.push({
+              id: cId,
+              parentId: null,
+              name: cName,
+              type: "country",
+              latitude: lat,
+              longitude: lng,
+            });
+          }
+        }
+
+        let ciId: string | null = null;
+        if (ciName) {
+          const ciSlug = ciName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+          ciId = `loc-${ciSlug}`;
+          if (!existingNames.has(ciName.toLowerCase())) {
+            existingNames.add(ciName.toLowerCase());
+            toInsert.push({
+              id: ciId,
+              parentId: cId,
+              name: ciName,
+              type: "city",
+              latitude: lat,
+              longitude: lng,
+            });
+          }
+        }
+
+        if (distName && distName.toLowerCase() !== ciName?.toLowerCase() && !existingNames.has(distName.toLowerCase())) {
+          existingNames.add(distName.toLowerCase());
+          const distSlug = distName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+          toInsert.push({
+            id: `loc-${distSlug}-${Date.now().toString().slice(-4)}`,
+            parentId: ciId,
+            name: distName,
+            type: "subcity",
+            latitude: lat,
+            longitude: lng,
+          });
+        }
+      }
+
+      if (toInsert.length > 0) {
+        await LocationModel.insertMany(toInsert, { ordered: false }).catch(() => {});
+        docs = await LocationModel.find(filter).sort({ name: 1 }).lean();
+      }
+    } catch (syncErr) {
+      console.warn("[Territories API Auto-sync Notice]", syncErr);
+    }
+
     // Dynamic business count aggregation
     let bizCountsByCity: Record<string, number> = {};
     let bizCountsByCountry: Record<string, number> = {};

@@ -26,6 +26,8 @@ export async function POST(req: Request) {
       title: `[${city} City Notice] ${title.trim()}`,
       body: message.trim(),
       target: target as any,
+      targetCity: city,
+      targetCountry: country,
       type: "system",
       priority: priority as any,
       sentBy: `${city} Municipal Administration`,

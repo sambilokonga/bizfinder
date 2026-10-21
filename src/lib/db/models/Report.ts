@@ -10,6 +10,8 @@ export interface IReportDoc extends Document {
   targetId: string;
   targetName: string;
   targetType: string;
+  businessId?: string;
+  businessName?: string;
   reporterName: string;
   reporterEmail?: string;
   reporterId?: string;
@@ -42,6 +44,8 @@ const ReportSchema = new Schema<IReportDoc>(
     targetId: { type: String, required: true, index: true },
     targetName: { type: String, required: true, index: true },
     targetType: { type: String, default: "business" },
+    businessId: { type: String, index: true },
+    businessName: { type: String, index: true },
     reporterName: { type: String, required: true },
     reporterEmail: { type: String },
     reporterId: { type: String, index: true },

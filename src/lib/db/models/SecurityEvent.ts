@@ -74,6 +74,8 @@ const SecurityEventSchema = new Schema<ISecurityEventDoc>(
     ipAddress: { type: String, required: true, index: true },
     city: { type: String, default: "Addis Ababa", index: true },
     country: { type: String, default: "Ethiopia", index: true },
+    businessId: { type: String, index: true },
+    businessName: { type: String },
     device: {
       type: String,
       enum: ["Desktop", "Mobile", "Tablet", "Server", "Bot"],

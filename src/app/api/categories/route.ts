@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { CategoryModel } from "@/lib/db/models/Category";
+import { BusinessModel } from "@/lib/db/models/Business";
 import { SEED_CATEGORIES } from "@/lib/db/seed-data/categories";
+import { globalCityRegistry, CityCategoryBreakdown } from "@/lib/data/city-business-registry";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const city = searchParams.get("city");
+    const country = searchParams.get("country");
+    const hasCity = Boolean(city && city !== "all");
+    const hasCountry = Boolean(country && country !== "all");
+
     await connectToDatabase();
     let docs = await CategoryModel.find({}).sort({ level: 1, name: 1 }).lean();
 
@@ -27,7 +35,7 @@ export async function GET() {
         return NextResponse.json({ categories: SEED_CATEGORIES, seeded: false });
       }
     } else {
-      // If new categories (like updated Shops & Retail taxonomy) were added to SEED_CATEGORIES, sync them
+      // If new categories were added to SEED_CATEGORIES, sync them
       const existingIds = new Set(docs.map((d: any) => d.id));
       const missingSeed = SEED_CATEGORIES.filter((c) => !existingIds.has(c.id));
       if (missingSeed.length > 0) {
@@ -49,8 +57,7 @@ export async function GET() {
       }
     }
 
-    // Ensure legacy "Shopping & Retail" (cat-5) and categories now consolidated under
-    // Shops & Retail are removed from DB to avoid duplicate Primary Industry entries.
+    // Ensure legacy "Shopping & Retail" (cat-5) and obsolete categories are removed
     const LEGACY_REMOVED_IDS = new Set([
       "cat-5",  // Shopping & Retail (old name)
       "cat-2",  // Cafés & Beverages
@@ -78,6 +85,66 @@ export async function GET() {
       // Ignore cleanup error if DB not ready
     }
 
+    // Query real businesses from MongoDB for this city/country scope
+    const escapeRegex = (s: string) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+    const mongoQuery: any = {};
+    if (hasCity) {
+      const cRegex = new RegExp(`^${escapeRegex(city!)}$`, "i");
+      mongoQuery.$or = [{ cityName: cRegex }, { city: cRegex }];
+    }
+    if (hasCountry) {
+      const coRegex = new RegExp(`^${escapeRegex(country!)}$`, "i");
+      if (mongoQuery.$or) {
+        mongoQuery.$and = [{ $or: [{ countryName: coRegex }, { country: coRegex }] }];
+      } else {
+        mongoQuery.$or = [{ countryName: coRegex }, { country: coRegex }];
+      }
+    }
+
+    const dbBusinesses = await BusinessModel.find(mongoQuery).lean();
+
+    // Synchronize MongoDB businesses into globalCityRegistry
+    for (const b of dbBusinesses) {
+      try {
+        globalCityRegistry.registerBusiness({
+          id: b.id || (b as any)._id?.toString(),
+          name: b.name,
+          slug: b.slug,
+          ownerId: b.ownerId,
+          categoryId: b.categoryId,
+          categoryName: b.categoryName,
+          subcategoryId: b.subcategoryId,
+          subcategoryName: b.subcategoryName,
+          countryName: b.countryName || (b as any).country,
+          cityName: b.cityName || (b as any).city,
+          districtName: b.districtName || (b as any).district,
+          approvalStatus: b.approvalStatus,
+          isApproved: b.isApproved,
+          isVerified: b.isVerified,
+          ratingAvg: b.ratingAvg,
+          reviewCount: b.reviewCount,
+        });
+      } catch {}
+    }
+
+    // Query breakdown from globalCityRegistry (which now computes live real business counts)
+    let cityCategories: CityCategoryBreakdown[] = [];
+    if (hasCity) {
+      cityCategories = globalCityRegistry.getCategoriesForCity(city!, country || "Ethiopia");
+    } else if (hasCountry) {
+      cityCategories = globalCityRegistry.getCategoriesForCountry(country!);
+    } else {
+      cityCategories = globalCityRegistry.getCategoriesForCountry("Global");
+    }
+
+    // Combine distinct businesses for this scope
+    const scopedBizs = hasCity
+      ? globalCityRegistry.getBusinessesForCity(city!, country || "Ethiopia")
+      : hasCountry
+      ? globalCityRegistry.getBusinessesForCountry(country!)
+      : globalCityRegistry.getAllBusinessesGlobal();
+
+    // Build Category[] taxonomy with computed businessCount for each category
     const categories = docs
       .filter((d: any) => {
         const id = d.id as string;
@@ -87,17 +154,37 @@ export async function GET() {
         if (d.name === "Shopping & Retail") return false;
         return true;
       })
-      .map((d: any) => ({
-        id: d.id,
-        parentId: d.parentId ?? null,
-        name: d.name,
-        slug: d.slug,
-        icon: d.icon || "Folder",
-        level: d.level,
-        featured: d.featured ?? false,
-      }));
+      .map((d: any) => {
+        const id = d.id;
+        const name = d.name;
+        const bCount = scopedBizs.filter((b) => {
+          const matchCatId = b.categoryId === id || b.subcategoryId === id;
+          const matchCatName = b.categoryName?.toLowerCase() === name.toLowerCase() ||
+                               b.subcategoryName?.toLowerCase() === name.toLowerCase();
+          return matchCatId || matchCatName;
+        }).length;
 
-    return NextResponse.json({ categories, total: categories.length, success: true });
+        return {
+          id: d.id,
+          parentId: d.parentId ?? null,
+          name: d.name,
+          slug: d.slug,
+          icon: d.icon || "Folder",
+          level: d.level,
+          featured: d.featured ?? false,
+          businessCount: bCount,
+        };
+      });
+
+    return NextResponse.json({
+      categories,
+      cityCategories,
+      breakdown: cityCategories,
+      total: categories.length,
+      city: city || undefined,
+      country: country || undefined,
+      success: true,
+    });
   } catch (error) {
     console.error("[API /categories GET]", error);
     return NextResponse.json({ categories: SEED_CATEGORIES, total: SEED_CATEGORIES.length, success: false });

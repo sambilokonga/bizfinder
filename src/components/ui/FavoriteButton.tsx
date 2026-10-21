@@ -100,7 +100,8 @@ export function FavoriteButton({
           animating && "scale-125",
           className
         )}
-        title={saved ? "Saved in Favorites" : "Add to Favorites"}
+        title={saved ? "Remove from Favorites" : "Add to Favorites"}
+        aria-label={saved ? "Remove from Favorites" : "Add to Favorites"}
       >
         <Heart
           className={cn(
@@ -126,7 +127,8 @@ export function FavoriteButton({
         animating && "scale-110",
         className
       )}
-      title={saved ? "Saved in Favorites" : "Add to Favorites"}
+      title={saved ? "Remove from Favorites" : "Add to Favorites"}
+      aria-label={saved ? "Remove from Favorites" : "Add to Favorites"}
     >
       <Heart
         className={cn(

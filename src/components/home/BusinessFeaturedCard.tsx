@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { FavoriteButton } from "@/components/ui/FavoriteButton";
 import { Business } from "@/types/business";
 import { getLiveOpeningStatus } from "@/lib/utils/opening-hours";
+import { getBusinessCardLocation } from "@/lib/utils/business-location";
+import { getCategoryLucideIcon } from "@/lib/utils/category-icon-helper";
 
 const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
   hotels: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80",
@@ -45,6 +47,8 @@ export function BusinessFeaturedCard({ biz }: BusinessFeaturedCardProps) {
   const fallbackImg = getBusinessFallbackImage(biz);
   const [imgSrc, setImgSrc] = useState(biz.coverUrl || fallbackImg);
 
+  const CategoryIcon = getCategoryLucideIcon(undefined, biz.categoryName);
+
   const isRecent = (() => {
     if (!biz.createdAt) return false;
     const createdDate = new Date(biz.createdAt).getTime();
@@ -54,7 +58,7 @@ export function BusinessFeaturedCard({ biz }: BusinessFeaturedCardProps) {
   })();
 
   return (
-    <div className="group relative flex flex-col rounded-2xl sm:rounded-3xl bg-card border border-border/80 hover:border-primary/50 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+    <div className="group relative flex flex-col rounded-xl xs:rounded-2xl sm:rounded-3xl bg-card border border-border/80 hover:border-primary/50 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
       {/* Thumbnail Image Container */}
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
         <Link href={`/business/${biz.id}`} className="block w-full h-full">
@@ -68,20 +72,23 @@ export function BusinessFeaturedCard({ biz }: BusinessFeaturedCardProps) {
         </Link>
 
         {/* Category & New Pill Overlay */}
-        <div className="absolute top-2.5 left-2.5 xs:top-3 xs:left-3 flex flex-wrap items-center gap-1.5 pointer-events-none">
-          <span className="px-2 xs:px-2.5 py-0.5 xs:py-1 rounded-full text-[10px] xs:text-[11px] font-bold bg-black/60 backdrop-blur-md text-white border border-white/20">
-            {biz.categoryName}
-          </span>
+        <div className="absolute top-2 left-2 xs:top-2.5 xs:left-2.5 sm:top-3 sm:left-3 flex flex-wrap items-center gap-1 xs:gap-1.5 pointer-events-none">
+          {biz.categoryName && (
+            <span className="px-1.5 xs:px-2 sm:px-2.5 py-0.5 rounded-full text-[9px] xs:text-[10px] sm:text-[11px] font-bold bg-black/60 backdrop-blur-md text-white border border-white/20 flex items-center gap-1 xs:gap-1.5 shadow-xs">
+              <CategoryIcon className="w-2.5 h-2.5 xs:w-3 xs:h-3 text-indigo-300" />
+              <span>{biz.categoryName}</span>
+            </span>
+          )}
           {isRecent && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md flex items-center gap-0.5">
-              <Sparkles className="w-2.5 h-2.5" />
+            <span className="px-1.5 xs:px-2 py-0.5 rounded-full text-[9px] xs:text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xs flex items-center gap-0.5">
+              <Sparkles className="w-2 h-2 xs:w-2.5 xs:h-2.5" />
               NEW
             </span>
           )}
         </div>
 
         {/* Top-Right Favorite Heart Button */}
-        <div className="absolute top-2.5 right-2.5 xs:top-3 xs:right-3 z-10">
+        <div className="absolute top-2 right-2 xs:top-2.5 xs:right-2.5 sm:top-3 sm:right-3 z-10">
           <FavoriteButton
             businessId={biz.id}
             businessName={biz.name}
@@ -93,10 +100,10 @@ export function BusinessFeaturedCard({ biz }: BusinessFeaturedCardProps) {
         </div>
 
         {/* Live Status Badge */}
-        <div className="absolute bottom-2.5 left-2.5 xs:bottom-3 xs:left-3 pointer-events-none">
+        <div className="absolute bottom-2 left-2 xs:bottom-2.5 xs:left-2.5 sm:bottom-3 sm:left-3 pointer-events-none">
           <Badge
             variant={liveStatus.isOpen ? "success" : "destructive"}
-            className="backdrop-blur-md font-bold text-[10px] xs:text-[11px] shadow-sm px-2 py-0.5"
+            className="backdrop-blur-md font-bold text-[9px] xs:text-[10px] sm:text-[11px] shadow-xs px-1.5 xs:px-2 py-0.5"
           >
             {liveStatus.statusText}
           </Badge>
@@ -104,41 +111,41 @@ export function BusinessFeaturedCard({ biz }: BusinessFeaturedCardProps) {
       </div>
 
       {/* Card Body */}
-      <Link href={`/business/${biz.id}`} className="p-3.5 xs:p-4 sm:p-5 flex-1 flex flex-col justify-between">
+      <Link href={`/business/${biz.id}`} className="p-3 xs:p-3.5 sm:p-5 flex-1 flex flex-col justify-between">
         <div>
-          <div className="flex items-start justify-between gap-2 mb-1.5">
-            <h3 className="font-bold text-sm xs:text-base text-foreground group-hover:text-primary transition-colors line-clamp-1">
+          <div className="flex items-start justify-between gap-1.5 xs:gap-2 mb-1">
+            <h3 className="font-bold text-xs xs:text-sm sm:text-base text-foreground group-hover:text-primary transition-colors line-clamp-1">
               {biz.name}
             </h3>
             {biz.isVerified && (
-              <CheckCircle2 className="w-4 h-4 text-blue-500 fill-blue-500/10 shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 fill-blue-500/10 shrink-0 mt-0.5" />
             )}
           </div>
 
-          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mb-3">
+          <p className="text-[11px] xs:text-xs text-muted-foreground line-clamp-2 leading-relaxed mb-2.5 xs:mb-3">
             {biz.shortDescription || biz.description}
           </p>
         </div>
 
-        <div className="pt-2.5 sm:pt-3 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="pt-2 xs:pt-2.5 sm:pt-3 border-t border-border/60 flex items-center justify-between text-[11px] xs:text-xs text-muted-foreground">
           {biz.reviewCount > 0 ? (
             <div className="flex items-center gap-1 font-bold text-foreground">
-              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
+              <Star className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-amber-500 fill-amber-500 shrink-0" />
               <span>{biz.ratingAvg.toFixed(1)}</span>
-              <span className="text-muted-foreground font-normal text-[11px]">
+              <span className="text-muted-foreground font-normal text-[10px] xs:text-[11px]">
                 ({biz.reviewCount})
               </span>
             </div>
           ) : (
-            <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-              <Sparkles className="w-3 h-3 shrink-0" />
+            <div className="flex items-center gap-1 text-[10px] xs:text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+              <Sparkles className="w-2.5 h-2.5 xs:w-3 xs:h-3 shrink-0" />
               <span>Newly Listed</span>
             </div>
           )}
 
-          <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground truncate max-w-[120px] xs:max-w-[140px]">
-            <MapPin className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-            <span className="truncate">{biz.districtName || biz.cityName}</span>
+          <div className="flex items-center gap-1 text-[10px] xs:text-[11px] font-medium text-muted-foreground truncate max-w-[110px] xs:max-w-[130px] sm:max-w-[150px]">
+            <MapPin className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-indigo-500 shrink-0" />
+            <span className="truncate" title={getBusinessCardLocation(biz)}>{getBusinessCardLocation(biz)}</span>
           </div>
         </div>
       </Link>

@@ -14,6 +14,8 @@ export interface IBusinessDoc extends Document {
   subSubcategoryName?: string;
   countryId?: string;
   countryName?: string;
+  regionId?: string;
+  regionName?: string;
   cityId?: string;
   cityName?: string;
   subcityId?: string;
@@ -185,6 +187,8 @@ const BusinessSchema = new Schema<IBusinessDoc>(
     subSubcategoryName: { type: String },
     countryId: { type: String, index: true },
     countryName: { type: String },
+    regionId: { type: String, index: true },
+    regionName: { type: String },
     cityId: { type: String, index: true },
     cityName: { type: String },
     subcityId: { type: String, index: true },

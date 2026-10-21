@@ -454,8 +454,8 @@ export function GeoAdminsManagement({
           )}
 
           {/* Search Box */}
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+          <div className="relative flex-1 min-w-[180px] sm:min-w-[200px]">
+            <Search className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 text-muted-foreground absolute left-2.5 xs:left-3 top-1/2 -translate-y-1/2" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -464,7 +464,7 @@ export function GeoAdminsManagement({
                   ? "Search by nation name or lead administrator email..."
                   : `Search cities in ${selectedCountryForCities} or admin name...`
               }
-              className="pl-9 text-xs h-9"
+              className="pl-7.5 xs:pl-8 sm:pl-9 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs h-7.5 xs:h-8 sm:h-8.5 md:h-9 truncate"
             />
           </div>
 

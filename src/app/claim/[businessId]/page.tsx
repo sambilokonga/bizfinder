@@ -1,23 +1,24 @@
 "use client";
 
-import React, { useEffect, use } from "react";
-import { useRouter } from "next/navigation";
+import React, { use, Suspense } from "react";
+import { ClaimBusinessWizardContent } from "@/components/claim/ClaimBusinessWizardContent";
 
-export default function ClaimRedirectPage({
+export default function ClaimBusinessPage({
   params,
 }: {
   params: Promise<{ businessId: string }>;
 }) {
   const { businessId } = use(params);
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace(`/claim?bizId=${businessId}`);
-  }, [businessId, router]);
 
   return (
-    <div className="w-full py-20 text-center text-xs text-muted-foreground">
-      Redirecting to Business Claiming & Verification Wizard...
-    </div>
+    <Suspense
+      fallback={
+        <div className="min-h-[50vh] flex items-center justify-center bg-background">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        </div>
+      }
+    >
+      <ClaimBusinessWizardContent initialBizId={businessId} />
+    </Suspense>
   );
 }

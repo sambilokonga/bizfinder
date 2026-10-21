@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Shield,
@@ -58,6 +58,7 @@ import {
   ShieldCheck,
   ArrowUpRight,
   Zap,
+  Compass,
   Clock,
   Loader2,
   Star,
@@ -135,6 +136,7 @@ import { exportBusinessesToCSV, exportBusinessesToJSON } from "@/lib/utils/expor
 import { exportPaymentsToCSV, exportPaymentsToJSON } from "@/lib/utils/export-payments";
 import { RegisterAnalyticsModal } from "@/components/admin/RegisterAnalyticsModal";
 import { IAnalyticsEvent, AnalyticsStats } from "@/types/analytics";
+import { TerritoryMap, TerritoryMapPin } from "@/components/admin/TerritoryMap";
 import { RegisterReportModal } from "@/components/admin/RegisterReportModal";
 import { ReportDetailModal } from "@/components/admin/ReportDetailModal";
 import { IReport, ReportStats } from "@/types/report";
@@ -150,6 +152,7 @@ import { FourMonthAuditHub } from "@/components/admin/FourMonthAuditHub";
 import { SecurityWorkstation } from "@/components/security/SecurityWorkstation";
 import { GlobalVisitorsMatrix } from "@/components/admin/GlobalVisitorsMatrix";
 import { CountryCityAdminsHub } from "@/components/admin/CountryCityAdminsHub";
+import { globalCityRegistry, CityCategoryBreakdown, CityCategoryPetition } from "@/lib/data/city-business-registry";
 
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
@@ -241,40 +244,80 @@ export default function AdminControlPanel() {
   const [geoScopeRole, setGeoScopeRole] = useState<"super_admin" | "country_admin" | "city_admin" | "admin">(
     (currentRole as any) || "super_admin"
   );
-  const [geoSelectedCountry, setGeoSelectedCountry] = useState<string>(
-    currentRole === "country_admin" ? (currentUser?.assignedCountry || "Ethiopia") : "all"
-  );
-  const [geoSelectedCity, setGeoSelectedCity] = useState<string>(
-    currentRole === "city_admin" ? (currentUser?.assignedCity || "Addis Ababa") : "all"
-  );
+
+  const resolveAdminCountry = useCallback(() => {
+    return currentUser?.assignedCountry || currentUser?.country || undefined;
+  }, [currentUser?.assignedCountry, currentUser?.country]);
+
+  const [geoSelectedCountry, setGeoSelectedCountry] = useState<string>(() => {
+    if (currentRole === "country_admin") {
+      return currentUser?.assignedCountry || currentUser?.country || "all";
+    }
+    return "all";
+  });
+  const [geoSelectedCity, setGeoSelectedCity] = useState<string>(() => {
+    if (currentRole === "city_admin") {
+      return currentUser?.assignedCity || currentUser?.city || "all";
+    }
+    return "all";
+  });
 
   const isSuperAdmin = currentRole === "super_admin" && geoScopeRole === "super_admin";
   const isCountryAdmin = currentRole === "country_admin" || geoScopeRole === "country_admin";
   const isCityAdmin = currentRole === "city_admin" || geoScopeRole === "city_admin";
 
-  // Auto-synchronize role and territory from user profile/role
+  // Auto-synchronize role and territory dynamically for any user and any assigned country/city
   useEffect(() => {
     if (currentRole === "country_admin") {
-      const country = currentUser?.assignedCountry || "Ethiopia";
+      const country = currentUser?.assignedCountry || currentUser?.country;
       setGeoScopeRole("country_admin");
-      setGeoSelectedCountry(country);
-      setGeoSelectedCity("all");
-      setBizFilterCountry(country);
-      setUserFilterCountry(country);
+      if (country && country !== "all") {
+        setGeoSelectedCountry(country);
+        setGeoSelectedCity("all");
+        setBizFilterCountry(country);
+        setUserFilterCountry(country);
+      }
     } else if (currentRole === "city_admin") {
-      const country = currentUser?.assignedCountry || "Ethiopia";
-      const city = currentUser?.assignedCity || "Addis Ababa";
+      const country = currentUser?.assignedCountry || currentUser?.country;
+      const city = currentUser?.assignedCity || currentUser?.city;
       setGeoScopeRole("city_admin");
-      setGeoSelectedCountry(country);
-      setGeoSelectedCity(city);
-      setBizFilterCountry(country);
-      setBizFilterCity(city);
-      setUserFilterCountry(country);
-      setUserFilterCity(city);
+      if (country && country !== "all") {
+        setGeoSelectedCountry(country);
+        setBizFilterCountry(country);
+        setUserFilterCountry(country);
+      }
+      if (city && city !== "all") {
+        setGeoSelectedCity(city);
+        setBizFilterCity(city);
+        setUserFilterCity(city);
+      }
     } else if (currentRole === "super_admin") {
       setGeoScopeRole("super_admin");
     }
-  }, [currentRole, currentUser?.assignedCountry, currentUser?.assignedCity]);
+  }, [currentRole, currentUser?.assignedCountry, currentUser?.country, currentUser?.assignedCity, currentUser?.city]);
+
+  // Dynamically query /api/users/me for ANY user to fetch their assigned country/city if not yet in client session
+  useEffect(() => {
+    if ((currentRole === "country_admin" || currentRole === "city_admin") && !currentUser?.assignedCountry) {
+      fetch("/api/users/me")
+        .then((res) => res.json())
+        .then((data) => {
+          const c = data.assignedCountry || data.user?.assignedCountry || data.user?.country;
+          const ci = data.assignedCity || data.user?.assignedCity || data.user?.city;
+          if (c && c !== "all") {
+            setGeoSelectedCountry(c);
+            setBizFilterCountry(c);
+            setUserFilterCountry(c);
+          }
+          if (ci && ci !== "all" && currentRole === "city_admin") {
+            setGeoSelectedCity(ci);
+            setBizFilterCity(ci);
+            setUserFilterCity(ci);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [currentRole, currentUser?.assignedCountry]);
 
   const toggleNavSection = (section: string) => {
     setExpandedNavSections((prev) =>
@@ -291,6 +334,14 @@ export default function AdminControlPanel() {
   const [locations, setLocations] = useState<LocationNode[]>(SEED_LOCATIONS);
   const [adminList, setAdminList] = useState<AdminAccount[]>([]);
 
+  // City-scoped sector breakdown for Commercial Sectors & Petition tabs
+  const [adminCityCategories, setAdminCityCategories] = useState<CityCategoryBreakdown[]>([]);
+  const [adminPetitions, setAdminPetitions] = useState<CityCategoryPetition[]>([]);
+  const [newPetitionName, setNewPetitionName] = useState("");
+  const [newPetitionParent, setNewPetitionParent] = useState("");
+  const [newPetitionJustification, setNewPetitionJustification] = useState("");
+  const [newPetitionEstCount, setNewPetitionEstCount] = useState("5-15");
+
   // Businesses Roster & Pagination State (20 per page)
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [bizPage, setBizPage] = useState<number>(1);
@@ -302,11 +353,12 @@ export default function AdminControlPanel() {
   const [bizCounts, setBizCounts] = useState<{
     all: number;
     pending: number;
+    confirmations: number;
     verified: number;
     suspended: number;
     rejected: number;
     claimed: number;
-  }>({ all: 0, pending: 0, verified: 0, suspended: 0, rejected: 0, claimed: 0 });
+  }>({ all: 0, pending: 0, confirmations: 0, verified: 0, suspended: 0, rejected: 0, claimed: 0 });
 
   // ── Dashboard Overview Real Stats ────────────────────────────────────────────
   const [dashboardStats, setDashboardStats] = useState<{
@@ -408,13 +460,13 @@ export default function AdminControlPanel() {
       const qParam = businessSearch.trim() ? `&q=${encodeURIComponent(businessSearch.trim())}` : "";
       // Effective territory: strictly enforce country for country_admin, and city for city_admin
       const effectiveCountry = isCountryAdmin
-        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || "Ethiopia"))
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || ""))
         : isCityAdmin
-        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || "Ethiopia"))
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || ""))
         : (bizFilterCountry !== "all" ? bizFilterCountry : (geoSelectedCountry !== "all" ? geoSelectedCountry : ""));
 
       const effectiveCity = isCityAdmin
-        ? (geoSelectedCity !== "all" ? geoSelectedCity : (currentUser?.assignedCity || "Addis Ababa"))
+        ? (geoSelectedCity !== "all" ? geoSelectedCity : (currentUser?.assignedCity || ""))
         : (bizFilterCity !== "all" ? bizFilterCity : (geoSelectedCity !== "all" ? geoSelectedCity : ""));
 
       const countryParam = effectiveCountry ? `&country=${encodeURIComponent(effectiveCountry)}` : "";
@@ -423,7 +475,7 @@ export default function AdminControlPanel() {
         `/api/businesses?page=${page}&limit=20&status=${statusParam}${qParam}${countryParam}${cityParam}`
       );
       const data = await res.json();
-      if (data?.businesses && Array.isArray(data.businesses)) {
+      if (data?.businesses && Array.isArray(data.businesses) && (data.businesses.length > 0 || (data.counts && data.counts.all > 0) || data.total !== undefined || data.success)) {
         setBusinesses(data.businesses);
         setBizTotalCount(data.total ?? data.businesses.length);
         setBizTotalPages(
@@ -433,9 +485,53 @@ export default function AdminControlPanel() {
         if (data.counts) {
           setBizCounts(data.counts);
         }
+      } else {
+        let fallbackList: Business[] = [];
+        if (effectiveCity && effectiveCity !== "all") {
+          fallbackList = globalCityRegistry.getBusinessesForCity(effectiveCity, effectiveCountry || "Ethiopia");
+        } else if (effectiveCountry && effectiveCountry !== "all") {
+          fallbackList = globalCityRegistry.getBusinessesForCountry(effectiveCountry, effectiveCity);
+        } else {
+          fallbackList = globalCityRegistry.getAllBusinessesGlobal();
+        }
+
+        const confirmationsList = fallbackList.filter((b) => b.approvalStatus === "pending_city" || (b as any).existenceStatus === "pending_confirmation");
+        const pendingList = fallbackList.filter((b) => !b.isVerified && b.approvalStatus !== "rejected" && b.approvalStatus !== "suspended" && b.approvalStatus !== "pending_city");
+        const counts = {
+          all: fallbackList.length,
+          confirmations: confirmationsList.length,
+          pending: pendingList.length,
+          verified: fallbackList.filter((b) => b.isVerified && b.approvalStatus === "approved").length,
+          suspended: fallbackList.filter((b) => b.approvalStatus === "suspended").length,
+          rejected: fallbackList.filter((b) => b.approvalStatus === "rejected").length,
+          claimed: fallbackList.filter((b) => Boolean(b.ownerId)).length,
+        };
+        setBizCounts(counts as any);
+
+        if (statusParam === "confirmations" || statusParam === "pending_city" || statusParam === "pending_confirmations") {
+          fallbackList = fallbackList.filter((b) => b.approvalStatus === "pending_city" || (b as any).existenceStatus === "pending_confirmation");
+        } else if (statusParam === "pending") {
+          fallbackList = fallbackList.filter((b) => !b.isVerified && b.approvalStatus !== "rejected" && b.approvalStatus !== "suspended" && b.approvalStatus !== "pending_city");
+        } else if (statusParam === "verified") {
+          fallbackList = fallbackList.filter((b) => b.isVerified && b.approvalStatus === "approved");
+        } else if (statusParam === "rejected") {
+          fallbackList = fallbackList.filter((b) => b.approvalStatus === "rejected");
+        } else if (statusParam === "suspended") {
+          fallbackList = fallbackList.filter((b) => b.approvalStatus === "suspended");
+        } else if (statusParam === "claims" || statusParam === "claimed") {
+          fallbackList = fallbackList.filter((b) => Boolean(b.ownerId));
+        }
+
+        setBusinesses(fallbackList);
+        setBizTotalCount(fallbackList.length);
+        setBizTotalPages(Math.max(1, Math.ceil(fallbackList.length / 20)));
       }
     } catch (err) {
-      console.error("Failed to fetch businesses:", err);
+      console.error("Failed to fetch businesses, using global registry fallback:", err);
+      let fallbackList = globalCityRegistry.getAllBusinessesGlobal();
+      setBusinesses(fallbackList.slice(0, 20));
+      setBizTotalCount(fallbackList.length);
+      setBizTotalPages(Math.max(1, Math.ceil(fallbackList.length / 20)));
     } finally {
       setIsBizLoading(false);
     }
@@ -447,9 +543,9 @@ export default function AdminControlPanel() {
       const statusParam = activeNav === "businesses" ? activeSubnav : "all";
       const qParam = businessSearch.trim() ? `&q=${encodeURIComponent(businessSearch.trim())}` : "";
       const effectiveCountry = isCountryAdmin
-        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || "Ethiopia"))
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || ""))
         : isCityAdmin
-        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || "Ethiopia"))
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || ""))
         : (bizFilterCountry !== "all" ? bizFilterCountry : (geoSelectedCountry !== "all" ? geoSelectedCountry : ""));
 
       const effectiveCity = isCityAdmin
@@ -581,8 +677,21 @@ export default function AdminControlPanel() {
     try {
       const statusParam = activeNav === "reviews" ? activeSubnav : "all";
       const qParam = reviewSearch.trim() ? `&search=${encodeURIComponent(reviewSearch.trim())}` : "";
+      // Geo-scope: resolve effective city/country for scoped admins & banner filters
+      const effCountry = geoSelectedCountry !== "all" && geoSelectedCountry
+        ? geoSelectedCountry
+        : (isCityAdmin || isCountryAdmin)
+        ? (currentUser?.assignedCountry || "")
+        : "";
+      const effCity = geoSelectedCity !== "all" && geoSelectedCity
+        ? geoSelectedCity
+        : isCityAdmin
+        ? (currentUser?.assignedCity || "")
+        : "";
+      const countryParam = effCountry ? `&country=${encodeURIComponent(effCountry)}` : "";
+      const cityParam = effCity ? `&city=${encodeURIComponent(effCity)}` : "";
       const res = await fetch(
-        `/api/reviews?page=${page}&limit=20&status=${statusParam}${qParam}`
+        `/api/reviews?page=${page}&limit=20&status=${statusParam}${qParam}${countryParam}${cityParam}`
       );
       const data = await res.json();
       if (data?.success && Array.isArray(data.reviews)) {
@@ -642,7 +751,18 @@ export default function AdminControlPanel() {
     try {
       const typeParam = activeNav === "media" ? activeSubnav : "all";
       const qParam = mediaSearch.trim() ? `&search=${encodeURIComponent(mediaSearch.trim())}` : "";
-      const res = await fetch(`/api/admin/media?page=${page}&limit=10&type=${typeParam}${qParam}`);
+      // Geo-scope
+      const effCountry = isCityAdmin
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || ""))
+        : isCountryAdmin
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || ""))
+        : "";
+      const effCity = isCityAdmin
+        ? (geoSelectedCity !== "all" ? geoSelectedCity : (currentUser?.assignedCity || ""))
+        : "";
+      const countryParam = effCountry ? `&country=${encodeURIComponent(effCountry)}` : "";
+      const cityParam = effCity ? `&city=${encodeURIComponent(effCity)}` : "";
+      const res = await fetch(`/api/admin/media?page=${page}&limit=10&type=${typeParam}${qParam}${countryParam}${cityParam}`);
       const data = await res.json();
       if (data?.success && Array.isArray(data.media)) {
         setMediaList(data.media);
@@ -737,7 +857,18 @@ export default function AdminControlPanel() {
     setIsAdsLoading(true);
     try {
       const statusParam = activeNav === "advertisements" && activeSubnav !== "create" ? activeSubnav : "all";
-      const res = await fetch(`/api/admin/ads/campaigns?page=${page}&limit=20&status=${statusParam}`);
+      // Geo-scope
+      const effCountry = isCityAdmin
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || ""))
+        : isCountryAdmin
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || ""))
+        : "";
+      const effCity = isCityAdmin
+        ? (geoSelectedCity !== "all" ? geoSelectedCity : (currentUser?.assignedCity || ""))
+        : "";
+      const countryParam = effCountry ? `&country=${encodeURIComponent(effCountry)}` : "";
+      const cityParam = effCity ? `&city=${encodeURIComponent(effCity)}` : "";
+      const res = await fetch(`/api/admin/ads/campaigns?page=${page}&limit=20&status=${statusParam}${countryParam}${cityParam}`);
       const data = await res.json();
       if (data?.success && Array.isArray(data.campaigns)) {
         setAdCampaignsList(data.campaigns);
@@ -758,6 +889,15 @@ export default function AdminControlPanel() {
     if (!adFormBizName.trim() || !adFormName.trim()) return;
     setIsAdFormSaving(true);
     try {
+      const effCountry = isCityAdmin
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || ""))
+        : isCountryAdmin
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || ""))
+        : (geoSelectedCountry !== "all" ? geoSelectedCountry : "");
+      const effCity = isCityAdmin
+        ? (geoSelectedCity !== "all" ? geoSelectedCity : (currentUser?.assignedCity || ""))
+        : (geoSelectedCity !== "all" ? geoSelectedCity : "");
+
       const res = await fetch("/api/admin/ads/campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -770,6 +910,8 @@ export default function AdminControlPanel() {
           dailyBudgetETB: Number(adFormBudget),
           durationDays: Number(adFormDuration),
           startDate: new Date().toISOString().split("T")[0],
+          cityName: effCity || adFormLocation.trim(),
+          countryName: effCountry || "",
         }),
       });
       const data = await res.json();
@@ -879,12 +1021,81 @@ export default function AdminControlPanel() {
     fetchTickets(1);
     // Fetch Platform / Territory Admin Stats from live DB
     fetchDashboardStats();
+    // Fetch Businesses for current territory on mount
+    fetchBusinesses(1);
   }, []);
 
   // Synchronize dashboard statistics dynamically when geo territory / jurisdiction changes
   useEffect(() => {
     fetchDashboardStats(geoSelectedCountry, geoSelectedCity);
   }, [geoSelectedCountry, geoSelectedCity]);
+
+  // Synchronize categories dynamically when geo territory / jurisdiction changes
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (geoSelectedCountry && geoSelectedCountry !== "all") params.set("country", geoSelectedCountry);
+    if (geoSelectedCity && geoSelectedCity !== "all") params.set("city", geoSelectedCity);
+    const catUrl = `/api/categories${params.toString() ? `?${params.toString()}` : ""}`;
+    fetch(catUrl)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.categories && Array.isArray(data.categories) && data.categories.length > 0) {
+          setCategories(data.categories);
+        }
+        if (data?.cityCategories && Array.isArray(data.cityCategories) && data.cityCategories.length > 0) {
+          setAdminCityCategories(data.cityCategories);
+          if (data.cityCategories[0]?.name) {
+            setNewPetitionParent(data.cityCategories[0].name);
+          }
+        }
+      })
+      .catch((err) => console.error("Failed to load categories for geo scope:", err));
+
+    // Populate city-scoped sector breakdown for Commercial Sectors & Petition views
+    const scopedCity = geoSelectedCity !== "all" ? geoSelectedCity : (isCityAdmin ? (currentUser?.assignedCity || "") : "");
+    const scopedCountry = geoSelectedCountry !== "all" ? geoSelectedCountry : (isCountryAdmin || isCityAdmin ? (currentUser?.assignedCountry || "") : "");
+
+    // Fetch live petitions from API
+    const pParams = new URLSearchParams();
+    if (scopedCity) pParams.set("city", scopedCity);
+    if (scopedCountry) pParams.set("country", scopedCountry);
+    fetch(`/api/categories/petitions?${pParams.toString()}`)
+      .then((res) => res.json())
+      .then((pData) => {
+        if (pData?.petitions && Array.isArray(pData.petitions)) {
+          setAdminPetitions(pData.petitions);
+        } else {
+          const fallback = scopedCity
+            ? globalCityRegistry.getPetitionsForCity(scopedCity, scopedCountry || "Ethiopia")
+            : scopedCountry
+            ? globalCityRegistry.getPetitionsForCountry(scopedCountry)
+            : globalCityRegistry.getPetitionsForCountry("Global");
+          setAdminPetitions(fallback);
+        }
+      })
+      .catch(() => {
+        const fallback = scopedCity
+          ? globalCityRegistry.getPetitionsForCity(scopedCity, scopedCountry || "Ethiopia")
+          : scopedCountry
+          ? globalCityRegistry.getPetitionsForCountry(scopedCountry)
+          : globalCityRegistry.getPetitionsForCountry("Global");
+        setAdminPetitions(fallback);
+      });
+
+    if (scopedCity) {
+      const cityBreakdown = globalCityRegistry.getCategoriesForCity(scopedCity, scopedCountry || "Ethiopia");
+      setAdminCityCategories(cityBreakdown);
+      setNewPetitionParent(cityBreakdown[0]?.name || "Food & Dining");
+    } else if (scopedCountry) {
+      const countryBreakdown = globalCityRegistry.getCategoriesForCountry(scopedCountry);
+      setAdminCityCategories(countryBreakdown);
+      setNewPetitionParent(countryBreakdown[0]?.name || "Food & Dining");
+    } else {
+      const globalBreakdown = globalCityRegistry.getCategoriesForCountry("Global");
+      setAdminCityCategories(globalBreakdown);
+      setNewPetitionParent(globalBreakdown[0]?.name || "Food & Dining");
+    }
+  }, [geoSelectedCountry, geoSelectedCity, isCityAdmin, isCountryAdmin, currentUser?.assignedCity, currentUser?.assignedCountry]);
 
   useEffect(() => {
     if (activeNav === "media") {
@@ -893,7 +1104,7 @@ export default function AdminControlPanel() {
       }, 200);
       return () => clearTimeout(handler);
     }
-  }, [activeNav, mediaPage, activeSubnav, mediaSearch]);
+  }, [activeNav, mediaPage, activeSubnav, mediaSearch, geoSelectedCountry, geoSelectedCity]);
 
   useEffect(() => {
     if (activeNav === "users") {
@@ -905,13 +1116,11 @@ export default function AdminControlPanel() {
   }, [activeNav, userPage, activeSubnav, userSearch, userFilterCountry, userFilterCity]);
 
   useEffect(() => {
-    if (activeNav === "businesses") {
-      const handler = setTimeout(() => {
-        fetchBusinesses(1);
-        setBizPage(1);
-      }, 250);
-      return () => clearTimeout(handler);
-    }
+    const handler = setTimeout(() => {
+      fetchBusinesses(1);
+      setBizPage(1);
+    }, 250);
+    return () => clearTimeout(handler);
   }, [activeNav, activeSubnav, businessSearch, bizFilterCountry, bizFilterCity, geoSelectedCountry, geoSelectedCity]);
 
   useEffect(() => {
@@ -928,13 +1137,23 @@ export default function AdminControlPanel() {
       }, 250);
       return () => clearTimeout(handler);
     }
-  }, [activeNav, activeSubnav, reviewSearch]);
+  }, [activeNav, activeSubnav, reviewSearch, geoSelectedCountry, geoSelectedCity]);
 
   useEffect(() => {
     if (activeNav === "reviews") {
       fetchReviews(reviewPage);
     }
   }, [reviewPage]);
+
+  // Re-fetch all geo-scoped modules when territory changes
+  useEffect(() => {
+    fetchReviews(1);
+    setReviewPage(1);
+    fetchMedia(1);
+    setMediaPage(1);
+    fetchAdCampaigns(1);
+    setAdPage(1);
+  }, [geoSelectedCountry, geoSelectedCity]);
 
   useEffect(() => {
     if (activeNav === "advertisements" && activeSubnav !== "create") {
@@ -995,6 +1214,18 @@ export default function AdminControlPanel() {
         params.set("category", ticketCategoryFilter);
       }
 
+      // Geo-scope for support tickets
+      const effCountry = isCityAdmin
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || ""))
+        : isCountryAdmin
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || ""))
+        : (geoSelectedCountry !== "all" ? geoSelectedCountry : "");
+      const effCity = isCityAdmin
+        ? (geoSelectedCity !== "all" ? geoSelectedCity : (currentUser?.assignedCity || ""))
+        : (geoSelectedCity !== "all" ? geoSelectedCity : "");
+      if (effCountry) params.set("country", effCountry);
+      if (effCity) params.set("city", effCity);
+
       const res = await fetch(`/api/support/tickets?${params.toString()}`);
       const data = await res.json();
       if (data?.success && Array.isArray(data.tickets)) {
@@ -1029,6 +1260,8 @@ export default function AdminControlPanel() {
     ticketPriorityFilter,
     ticketCategoryFilter,
     ticketSearch,
+    geoSelectedCountry,
+    geoSelectedCity,
   ]);
 
   // Real Payments & Financial Ledger State
@@ -1041,21 +1274,32 @@ export default function AdminControlPanel() {
   const [paySearch, setPaySearch] = useState<string>("");
   const [payStatusFilter, setPayStatusFilter] = useState<string>("all");
   const [payProviderFilter, setPayProviderFilter] = useState<string>("all");
-  const [payCountryFilter, setPayCountryFilter] = useState<string>(
-    currentRole === "country_admin" ? "Ethiopia" : "all"
-  );
-  const [payCityFilter, setPayCityFilter] = useState<string>("all");
+  const [payCountryFilter, setPayCountryFilter] = useState<string>(() => {
+    if (currentRole === "country_admin") return currentUser?.assignedCountry || currentUser?.country || "all";
+    if (currentRole === "city_admin") return currentUser?.assignedCountry || currentUser?.country || "all";
+    return "all";
+  });
+  const [payCityFilter, setPayCityFilter] = useState<string>(() => {
+    if (currentRole === "city_admin") return currentUser?.assignedCity || currentUser?.city || "all";
+    return "all";
+  });
   const [payStats, setPayStats] = useState<PaymentStats | null>(null);
   const [payGeoBreakdown, setPayGeoBreakdown] = useState<GeoPaymentSummary[]>([]);
   const [isRegisterPaymentModalOpen, setIsRegisterPaymentModalOpen] = useState(false);
   const [selectedPaymentForReceipt, setSelectedPaymentForReceipt] = useState<IPayment | null>(null);
 
-  // Synchronize country admin geoScope to payment country filter
+  // Synchronize geo-scope to payment filters for scoped admins
   useEffect(() => {
     if ((geoScopeRole === "country_admin" || currentRole === "country_admin") && geoSelectedCountry && geoSelectedCountry !== "all") {
       setPayCountryFilter(geoSelectedCountry);
     }
-  }, [geoScopeRole, currentRole, geoSelectedCountry]);
+    if ((geoScopeRole === "city_admin" || currentRole === "city_admin") && geoSelectedCountry && geoSelectedCountry !== "all") {
+      setPayCountryFilter(geoSelectedCountry);
+    }
+    if ((geoScopeRole === "city_admin" || currentRole === "city_admin") && geoSelectedCity && geoSelectedCity !== "all") {
+      setPayCityFilter(geoSelectedCity);
+    }
+  }, [geoScopeRole, currentRole, geoSelectedCountry, geoSelectedCity]);
 
   // Fetch real payments from /api/payments with server pagination
   const fetchPayments = async (page = payPage) => {
@@ -1119,12 +1363,17 @@ export default function AdminControlPanel() {
       if (analyticsTypeFilter && analyticsTypeFilter !== "all") {
         params.set("type", analyticsTypeFilter);
       }
-      if (geoSelectedCity && geoSelectedCity !== "all") {
-        params.set("city", geoSelectedCity);
-      }
-      if (geoSelectedCountry && geoSelectedCountry !== "all") {
-        params.set("country", geoSelectedCountry);
-      }
+      // Geo-scope for analytics
+      const effCountry = isCityAdmin
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || ""))
+        : isCountryAdmin
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || ""))
+        : (geoSelectedCountry !== "all" ? geoSelectedCountry : "");
+      const effCity = isCityAdmin
+        ? (geoSelectedCity !== "all" ? geoSelectedCity : (currentUser?.assignedCity || ""))
+        : (geoSelectedCity !== "all" ? geoSelectedCity : "");
+      if (effCity) params.set("city", effCity);
+      if (effCountry) params.set("country", effCountry);
 
       const res = await fetch(`/api/analytics?${params.toString()}`);
       const data = await res.json();
@@ -1150,6 +1399,56 @@ export default function AdminControlPanel() {
       return () => clearTimeout(handler);
     }
   }, [activeNav, analyticsPage, analyticsTypeFilter, analyticsSearch, geoSelectedCity, geoSelectedCountry]);
+
+  const adminLocationMapPins = useMemo<TerritoryMapPin[]>(() => {
+    const coordsMap: Record<string, [number, number]> = {
+      "Addis Ababa": [9.010793, 38.761252],
+      "Hawassa": [7.0504, 38.4716],
+      "Dire Dawa": [9.5931, 41.8661],
+      "Bahir Dar": [11.5742, 37.3614],
+      "Bishoftu": [8.7523, 38.9785],
+      "Adama": [8.5414, 39.2689],
+      "Gondar": [12.6075, 37.4667],
+      "Mekelle": [13.4967, 39.4753],
+      "Jimma": [7.6734, 36.8344],
+      "Nairobi": [-1.2921, 36.8219],
+      "Mombasa": [-4.0435, 39.6682],
+      "Kisumu": [-0.0917, 34.768],
+      "Kampala": [0.3476, 32.5825],
+      "Kigali": [-1.9441, 30.0619],
+    };
+
+    const distList =
+      analyticsStats?.geoDistribution && analyticsStats.geoDistribution.length > 0
+        ? analyticsStats.geoDistribution
+        : [
+            { city: "Addis Ababa", country: "Ethiopia", count: 48, percentage: 65 },
+            { city: "Hawassa", country: "Ethiopia", count: 10, percentage: 14 },
+            { city: "Dire Dawa", country: "Ethiopia", count: 6, percentage: 8 },
+            { city: "Bahir Dar", country: "Ethiopia", count: 5, percentage: 7 },
+            { city: "Nairobi", country: "Kenya", count: 4, percentage: 6 },
+          ];
+
+    return distList.map((g, idx) => {
+      const coords = coordsMap[g.city] || [
+        9.0 + (idx * 0.4 - 0.8),
+        38.7 + (idx * 0.4 - 0.8),
+      ];
+      return {
+        id: `geo-pin-${g.city.toLowerCase().replace(/\s+/g, "-")}`,
+        name: `${g.city}, ${g.country}`,
+        type: "city",
+        latitude: coords[0],
+        longitude: coords[1],
+        businessCount: g.count,
+        assignedAdmin: {
+          name: `${g.city} Territory Lead`,
+          email: `admin@${g.city.toLowerCase().replace(/\s+/g, "")}.bizfinder.et`,
+          role: "Territory Officer",
+        },
+      };
+    });
+  }, [analyticsStats?.geoDistribution]);
 
   // ─── Real Reports & Moderation Queue State ────────────────────────────────
   const [reportsList, setReportsList] = useState<IReport[]>([]);
@@ -1194,6 +1493,18 @@ export default function AdminControlPanel() {
         params.set("priority", reportPriorityFilter);
       }
 
+      // Geo-scope for reports
+      const effCountry = isCityAdmin
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || ""))
+        : isCountryAdmin
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || ""))
+        : "";
+      const effCity = isCityAdmin
+        ? (geoSelectedCity !== "all" ? geoSelectedCity : (currentUser?.assignedCity || ""))
+        : "";
+      if (effCountry) params.set("country", effCountry);
+      if (effCity) params.set("city", effCity);
+
       const res = await fetch(`/api/reports?${params.toString()}`);
       const data = await res.json();
       if (data.success) {
@@ -1225,6 +1536,8 @@ export default function AdminControlPanel() {
     reportStatusFilter,
     reportPriorityFilter,
     reportSearch,
+    geoSelectedCountry,
+    geoSelectedCity,
   ]);
 
 
@@ -1801,6 +2114,21 @@ export default function AdminControlPanel() {
       if (notifTypeFilter && notifTypeFilter !== "all") params.set("type", notifTypeFilter);
       if (notifPriorityFilter && notifPriorityFilter !== "all") params.set("priority", notifPriorityFilter);
 
+      // Geo-scope: pass role + city/country so notifications are scoped to admin's territory
+      // Use effective role — geoScopeRole may differ from currentRole when a super_admin simulates a lower role
+      const effectiveRole = isCityAdmin ? "city_admin" : isCountryAdmin ? "country_admin" : "super_admin";
+      params.set("role", effectiveRole);
+      const effCountry = isCityAdmin
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || currentUser?.country || ""))
+        : isCountryAdmin
+        ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || currentUser?.country || ""))
+        : (geoSelectedCountry !== "all" ? geoSelectedCountry : "");
+      const effCity = isCityAdmin
+        ? (geoSelectedCity !== "all" ? geoSelectedCity : (currentUser?.assignedCity || currentUser?.city || ""))
+        : (geoSelectedCity !== "all" ? geoSelectedCity : "");
+      if (effCountry) params.set("country", effCountry);
+      if (effCity) params.set("city", effCity);
+
       const res = await fetch(`/api/admin/notifications?${params.toString()}`);
       const data = await res.json();
       if (data.success) {
@@ -1825,7 +2153,7 @@ export default function AdminControlPanel() {
       else if (activeSubnav === "all") target = "all";
       fetchNotifications(notifPage, target);
     }
-  }, [notifPage, activeSubnav, activeNav]);
+  }, [notifPage, activeSubnav, activeNav, geoSelectedCountry, geoSelectedCity, currentRole, geoScopeRole, isCountryAdmin, isCityAdmin]);
 
   const handleDeleteNotification = async (id: string) => {
     setNotificationsList((prev) => prev.filter((n) => n.id !== id));
@@ -1844,7 +2172,7 @@ export default function AdminControlPanel() {
     label: string,
     icon: React.ReactNode,
     superAdminOnly = false,
-    subItems?: Array<{ key: string; label: string; count?: number }>
+    subItems?: Array<{ key: string; label: string; count?: number; alert?: boolean }>
   ) => {
     const isSelected = activeNav === key;
     const isExpanded = expandedNavSections.includes(key);
@@ -1989,35 +2317,35 @@ export default function AdminControlPanel() {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-background text-foreground flex flex-col">
       {/* ─── Top Admin Bar ────────────────────────────────────────────── */}
-      <div className="border-b border-border/80 bg-card/60 backdrop-blur-xl px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-4 sticky top-16 z-30">
-        <div className="flex items-center gap-3">
+      <div className="border-b border-border/80 bg-card/60 backdrop-blur-xl px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4 sticky top-16 z-30">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {/* Hamburger — mobile only */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className="md:hidden p-2 rounded-xl border border-border/60 bg-card hover:bg-accent transition-colors"
+            className="md:hidden p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-border/60 bg-card hover:bg-accent transition-colors shrink-0"
             aria-label="Open navigation menu"
           >
-            <Menu className="w-5 h-5 text-foreground" />
+            <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-foreground" />
           </button>
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-            <Building2 className="w-5 h-5" />
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
+            <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-black tracking-tight text-foreground">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              <h1 className="text-xs sm:text-base font-black tracking-tight text-foreground truncate">
                 Admin Ecosystem Control
               </h1>
-              <Badge variant="outline" className="text-[10px] uppercase font-bold border-indigo-500/30 text-indigo-600 dark:text-indigo-400">
-                {isSuperAdmin ? "👑 Super Admin Mode" : "Admin Operations"}
+              <Badge variant="outline" className="text-[9px] sm:text-[10px] uppercase font-bold border-indigo-500/30 text-indigo-600 dark:text-indigo-400 py-0 sm:py-0.5">
+                {isSuperAdmin ? "👑 Super Admin" : "Admin Operations"}
               </Badge>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate hidden sm:block">
               Universal Business Directory, Taxonomy & Platform Operations
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Dark / Light Theme Toggle in Admin Top Bar */}
           <ThemeToggle variant="pill" />
 
@@ -2025,10 +2353,10 @@ export default function AdminControlPanel() {
             size="sm"
             variant="outline"
             onClick={() => setIsHealthModalOpen(true)}
-            className="gap-1.5 text-xs font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+            className="h-7 sm:h-8 px-2 sm:px-3 gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
           >
-            <Activity className="w-3.5 h-3.5 text-emerald-500" />
-            System Health: 99.98%
+            <Activity className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-500" />
+            <span className="hidden xs:inline">System Health:</span> 99.98%
           </Button>
 
           {isSuperAdmin && (
@@ -2036,10 +2364,10 @@ export default function AdminControlPanel() {
               size="sm"
               variant="gradient"
               onClick={() => setIsAssignGeoModalOpen(true)}
-              className="gap-1.5 text-xs font-bold shadow-md shadow-indigo-500/20"
+              className="h-7 sm:h-8 px-2.5 sm:px-3 gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-bold shadow-md shadow-indigo-500/20"
               title="Assign or Appoint Territory Admin with Clerk Dashboard Sync"
             >
-              <UserPlus className="w-3.5 h-3.5" />
+              <UserPlus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               New Admin
             </Button>
           )}
@@ -2104,25 +2432,27 @@ export default function AdminControlPanel() {
                 ]
               )}
               {renderSidebarItem("businesses", isCountryAdmin ? `Businesses (${geoSelectedCountry})` : isCityAdmin ? `Businesses (${geoSelectedCity})` : "Businesses", <Building2 className="w-4 h-4 text-emerald-500" />, false, [
-                { key: "all", label: "All Businesses", count: bizTotalCount },
-                { key: "new", label: "+ New Listing Wizard" },
-                { key: "pending_confirmations", label: "🔔 Pending Confirmations", count: bizCounts.pending },
-                { key: "pending", label: "Pending Approval", count: bizCounts.pending },
+                { key: "all", label: "All City Listings", count: bizCounts.all || bizTotalCount },
+                { key: "pending_confirmations", label: "🔔 Confirmations", count: (bizCounts as any).confirmations ?? 0, alert: ((bizCounts as any).confirmations ?? 0) > 0 },
+                { key: "pending", label: "Pending Verification", count: bizCounts.pending },
                 { key: "verified", label: "Verified", count: bizCounts.verified },
-                { key: "rejected", label: "Rejected" },
+                { key: "claimed", label: "Owner Claims Queue", count: bizCounts.claimed },
+                { key: "rejected", label: "Rejected / Remediation", count: bizCounts.rejected },
                 { key: "suspended", label: "Suspended", count: bizCounts.suspended },
-                { key: "claimed", label: "Claimed", count: bizCounts.claimed },
+                { key: "new", label: "+ New Listing Wizard" },
               ])}
-              {renderSidebarItem("categories", "Categories", <FolderTree className="w-4 h-4 text-purple-500" />, false, [
-                { key: "all", label: "All Categories", count: categories.length },
-                { key: "industries", label: "Industries" },
-                { key: "subcategories", label: "Subcategories" },
+              {renderSidebarItem("categories", (geoSelectedCity !== "all" || isCityAdmin) ? `Categories (${geoSelectedCity !== "all" ? geoSelectedCity : currentUser?.assignedCity || "City"})` : (geoSelectedCountry !== "all" || isCountryAdmin) ? `Categories (${geoSelectedCountry !== "all" ? geoSelectedCountry : currentUser?.assignedCountry || "Country"})` : "Categories", <FolderTree className="w-4 h-4 text-purple-500" />, false, [
+                { key: "all", label: (geoSelectedCity !== "all" || isCityAdmin) ? "All City Categories" : (geoSelectedCountry !== "all" || isCountryAdmin) ? "All Country Categories" : "All Categories", count: categories.length },
+                { key: "industries", label: "Industries", count: industryGroups.length },
+                { key: "subcategories", label: "Subcategories", count: categories.filter((c) => c.level > 1).length },
               ])}
               {renderSidebarItem("locations", "Locations", <MapPin className="w-4 h-4 text-rose-500" />, false, [
+                { key: "map_radar", label: "Geographic Radar Map" },
                 { key: "countries", label: "Countries", count: 195 },
                 { key: "regions", label: "States / Regions" },
                 { key: "cities", label: "Cities", count: locations.length },
                 { key: "districts", label: "Districts" },
+                { key: "register", label: "+ Register Location" },
               ])}
             </div>
 
@@ -2212,6 +2542,7 @@ export default function AdminControlPanel() {
                 { key: "notifications", label: "Notifications" },
                 { key: "payments", label: "Payment Gateway" },
                 { key: "security", label: "Security Policy" },
+                ...(isCountryAdmin || isCityAdmin ? [{ key: "liaison", label: "National Liaison" }] : []),
                 { key: "maintenance", label: "Maintenance" },
               ])}
               {renderSidebarItem("security", "Security", <Lock className="w-4 h-4 text-rose-500" />, true, [
@@ -2247,33 +2578,33 @@ export default function AdminControlPanel() {
         {/* ── Main Content Area ──────────────────────────────────────── */}
         <main className="flex-1 overflow-y-auto bg-background">
           {/* Breadcrumb / Location Strip */}
-          <div className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-md px-6 sm:px-8 py-2 flex items-center gap-2 text-xs text-muted-foreground">
-            <Building2 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+          <div className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-md px-3 sm:px-6 lg:px-8 py-1.5 sm:py-2 flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-muted-foreground">
+            <Building2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-500 shrink-0" />
             <span className="font-semibold text-foreground">Admin Panel</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="capitalize font-semibold text-primary">
+            <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <span className="capitalize font-semibold text-primary truncate">
               {activeNav.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
             </span>
             {activeSubnav && activeSubnav !== "all" && (
               <>
-                <ChevronRight className="w-3.5 h-3.5" />
-                <span className="capitalize text-muted-foreground">
+                <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span className="capitalize text-muted-foreground truncate">
                   {activeSubnav.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                 </span>
               </>
             )}
-            <div className="ml-auto flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Live</span>
+            <div className="ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[9px] sm:text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Live</span>
             </div>
           </div>
-          <div className="p-6 sm:p-8">
+          <div className="p-3.5 sm:p-6 lg:p-8">
           {/* Animated key wrapper — re-mounts and slides in on every nav change */}
           <div key={activeNav + "-" + activeSubnav} className="animate-page-enter">
           {/* ════════════════════════════════════════════════════════════════════
               🌐 GEO-SCOPE JURISDICTION BANNER (Shown on all pages)
              ════════════════════════════════════════════════════════════════════ */}
-          <div className="mb-6 max-w-7xl mx-auto">
+          <div className="mb-4 sm:mb-6 max-w-7xl mx-auto">
             <GeoScopeBanner
               currentRole={geoScopeRole}
               onRoleChange={setGeoScopeRole}
@@ -2288,7 +2619,7 @@ export default function AdminControlPanel() {
               🌍 16. TERRITORY ADMINISTRATION — Geo-Scoped Admin Management
              ════════════════════════════════════════════════════════════════════ */}
           {activeNav === "geo_admins" && (
-            <div className="space-y-6 max-w-7xl mx-auto">
+            <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto">
               <TerritoryAdministrationView
                 currentRole={geoScopeRole}
                 currentCountry={geoSelectedCountry === "all" ? "Ethiopia" : geoSelectedCountry}
@@ -2304,7 +2635,7 @@ export default function AdminControlPanel() {
               🌐 GLOBAL VISITORS TELEMETRY TAB
              ════════════════════════════════════════════════════════════════════ */}
           {activeNav === "global_visitors" && (
-            <div className="space-y-6 max-w-7xl mx-auto">
+            <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto">
               <GlobalVisitorsMatrix
                 currentRole={geoScopeRole}
                 targetCountry={geoSelectedCountry}
@@ -2334,10 +2665,10 @@ export default function AdminControlPanel() {
               1. 🏠 DASHBOARD PAGE
              ════════════════════════════════════════════════════════════════════ */}
           {activeNav === "dashboard" && (
-            <div className="space-y-6 max-w-7xl mx-auto">
-              <div className="flex items-center justify-between">
+            <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                 <div>
-                  <h2 className="text-2xl font-black text-foreground">
+                  <h2 className="text-base sm:text-xl lg:text-2xl font-black text-foreground">
                     {isSuperAdmin
                       ? "Worldwide Super Admin Ecosystem"
                       : isCountryAdmin
@@ -2346,7 +2677,7 @@ export default function AdminControlPanel() {
                       ? `🏙️ ${geoSelectedCity || "City"} Municipal Portal (${geoSelectedCountry})`
                       : "Admin Ecosystem Overview"}
                   </h2>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">
                     {isSuperAdmin
                       ? "Comprehensive platform telemetry across all 195 countries."
                       : isCountryAdmin
@@ -2356,15 +2687,15 @@ export default function AdminControlPanel() {
                       : "Platform operations overview."}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                   {isSuperAdmin && (
                     <Button
                       size="sm"
                       variant="gradient"
                       onClick={() => setIsAssignGeoModalOpen(true)}
-                      className="text-xs font-bold gap-1.5 shadow-md shadow-primary/20"
+                      className="h-7 sm:h-8 text-[11px] sm:text-xs font-bold gap-1 sm:gap-1.5 px-2.5 sm:px-3 shadow-md shadow-primary/20"
                     >
-                      <Crown className="w-3.5 h-3.5" />
+                      <Crown className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                       Assign Territory Admin
                     </Button>
                   )}
@@ -2373,49 +2704,49 @@ export default function AdminControlPanel() {
                       size="sm"
                       variant="gradient"
                       onClick={() => setIsAssignGeoModalOpen(true)}
-                      className="text-xs font-bold gap-1.5 shadow-md shadow-primary/20"
+                      className="h-7 sm:h-8 text-[11px] sm:text-xs font-bold gap-1 sm:gap-1.5 px-2.5 sm:px-3 shadow-md shadow-primary/20"
                     >
-                      <UserPlus className="w-3.5 h-3.5" />
+                      <UserPlus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                       Appoint City Admin
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" onClick={() => { fetchDashboardStats(); fetchBusinesses(1); toast.success("Dashboard refreshed!"); }} className="text-xs">
-                    <RefreshCw className={`w-3.5 h-3.5 mr-1 ${isDashStatsLoading ? "animate-spin" : ""}`} /> Refresh
+                  <Button size="sm" variant="outline" onClick={() => { fetchDashboardStats(); fetchBusinesses(1); toast.success("Dashboard refreshed!"); }} className="h-7 sm:h-8 text-[11px] sm:text-xs px-2.5 sm:px-3">
+                    <RefreshCw className={`w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1 ${isDashStatsLoading ? "animate-spin" : ""}`} /> Refresh
                   </Button>
                 </div>
               </div>
 
               {/* ─── Role-Tailored Leadership & Jurisdiction Banner ─── */}
               {isSuperAdmin ? (
-                <div className="p-5 sm:p-6 rounded-3xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/90 via-slate-900 to-purple-950/90 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+                <div className="p-4 sm:p-5 lg:p-6 rounded-2xl sm:rounded-3xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/90 via-slate-900 to-purple-950/90 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-5">
                   <div className="space-y-1.5 max-w-2xl">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Crown className="w-5 h-5 text-amber-400" />
-                      <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+                      <h3 className="text-sm sm:text-base lg:text-lg font-black tracking-tight text-white">
                         Super Admin Role Delegation & Clerk Dashboard Integration
                       </h3>
-                      <Badge className="bg-amber-400/20 text-amber-300 border-amber-400/30 text-[10px] font-bold">
+                      <Badge className="bg-amber-400/20 text-amber-300 border-amber-400/30 text-[9px] sm:text-[10px] font-bold py-0 sm:py-0.5">
                         Super Admin Exclusive
                       </Badge>
                     </div>
-                    <p className="text-xs text-slate-300 leading-relaxed">
+                    <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
                       Appoint <strong>Country Main Admins</strong> (195 nations) and <strong>City Admins</strong> (30 cities per country). All assignments are instantly synchronized to your <strong>Clerk Dashboard publicMetadata</strong> and MongoDB.
                     </p>
-                    <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] font-medium text-slate-300">
-                      <span className="bg-white/10 px-2.5 py-0.5 rounded-full">👑 Worldwide Super Admin</span>
-                      <span className="bg-white/10 px-2.5 py-0.5 rounded-full">🌍 195 Country Leads</span>
-                      <span className="bg-white/10 px-2.5 py-0.5 rounded-full">🏙️ 5,850 City Admins</span>
-                      <span className="bg-white/10 px-2.5 py-0.5 rounded-full">🔐 Clerk PublicMetadata Sync</span>
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-1 text-[10px] sm:text-[11px] font-medium text-slate-300">
+                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">👑 Worldwide Super Admin</span>
+                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">🌍 195 Country Leads</span>
+                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">🏙️ 5,850 City Admins</span>
+                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">🔐 Clerk PublicMetadata Sync</span>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
                     <Button
                       size="sm"
                       onClick={() => setIsAssignGeoModalOpen(true)}
-                      className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs gap-1.5 shadow-lg shadow-indigo-500/30"
+                      className="h-7 sm:h-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-[11px] sm:text-xs gap-1 sm:gap-1.5 px-2.5 sm:px-3 shadow-lg shadow-indigo-500/30"
                     >
-                      <UserPlus className="w-3.5 h-3.5" />
+                      <UserPlus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                       Appoint Territory Admin
                     </Button>
                     <Button
@@ -2429,72 +2760,72 @@ export default function AdminControlPanel() {
                   </div>
                 </div>
               ) : isCountryAdmin ? (
-                <div className="p-5 sm:p-6 rounded-3xl border border-indigo-500/30 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+                <div className="p-4 sm:p-5 lg:p-6 rounded-2xl sm:rounded-3xl border border-indigo-500/30 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-5">
                   <div className="space-y-1.5 max-w-2xl">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-2xl">🌍</span>
-                      <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <span className="text-xl sm:text-2xl">🌍</span>
+                      <h3 className="text-sm sm:text-base lg:text-lg font-black tracking-tight text-white">
                         {geoSelectedCountry} National Governance & Municipal Leadership
                       </h3>
-                      <Badge className="bg-indigo-500/20 text-indigo-300 border-indigo-500/40 text-[10px] font-bold">
+                      <Badge className="bg-indigo-500/20 text-indigo-300 border-indigo-500/40 text-[9px] sm:text-[10px] font-bold py-0 sm:py-0.5">
                         National Lead Admin
                       </Badge>
                     </div>
-                    <p className="text-xs text-slate-300 leading-relaxed">
+                    <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
                       You have national administrative authority for <strong>{geoSelectedCountry}</strong>. You can appoint and oversee <strong>City Admins</strong> across all 30 cities, verify national listings, and monitor global visitors viewing your country&apos;s businesses.
                     </p>
-                    <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] font-medium text-slate-300">
-                      <span className="bg-white/10 px-2.5 py-0.5 rounded-full">🌍 {geoSelectedCountry} National Territory</span>
-                      <span className="bg-white/10 px-2.5 py-0.5 rounded-full">🏙️ 30 Municipal Districts</span>
-                      <span className="bg-white/10 px-2.5 py-0.5 rounded-full">🌐 International Visitor Tracking</span>
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-1 text-[10px] sm:text-[11px] font-medium text-slate-300">
+                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">🌍 {geoSelectedCountry} National Territory</span>
+                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">🏙️ 30 Municipal Districts</span>
+                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">🌐 International Visitor Tracking</span>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
                     <Button
                       size="sm"
                       onClick={() => setIsAssignGeoModalOpen(true)}
-                      className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs gap-1.5 shadow-lg shadow-indigo-500/30"
+                      className="h-7 sm:h-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-[11px] sm:text-xs gap-1 sm:gap-1.5 px-2.5 sm:px-3 shadow-lg shadow-indigo-500/30"
                     >
-                      <UserPlus className="w-3.5 h-3.5" />
+                      <UserPlus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                       Appoint City Admin
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => setActiveNav("geo_admins")}
-                      className="border-white/20 bg-white/10 hover:bg-white/20 text-white text-xs font-bold"
+                      className="h-7 sm:h-8 border-white/20 bg-white/10 hover:bg-white/20 text-white text-[11px] sm:text-xs font-bold px-2.5 sm:px-3"
                     >
                       Manage City Admins →
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div className="p-5 sm:p-6 rounded-3xl border border-sky-500/30 bg-gradient-to-r from-slate-950 via-sky-950 to-slate-900 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+                <div className="p-4 sm:p-5 lg:p-6 rounded-2xl sm:rounded-3xl border border-sky-500/30 bg-gradient-to-r from-slate-950 via-sky-950 to-slate-900 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-5">
                   <div className="space-y-1.5 max-w-2xl">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-2xl">🏙️</span>
-                      <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <span className="text-xl sm:text-2xl">🏙️</span>
+                      <h3 className="text-sm sm:text-base lg:text-lg font-black tracking-tight text-white">
                         {geoSelectedCity || "City"} Municipal Command Center
                       </h3>
-                      <Badge className="bg-sky-500/20 text-sky-300 border-sky-500/40 text-[10px] font-bold">
+                      <Badge className="bg-sky-500/20 text-sky-300 border-sky-500/40 text-[9px] sm:text-[10px] font-bold py-0 sm:py-0.5">
                         Municipal Admin
                       </Badge>
                     </div>
-                    <p className="text-xs text-slate-300 leading-relaxed">
+                    <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
                       Municipal authority for <strong>{geoSelectedCity || "Addis Ababa"}</strong>, {geoSelectedCountry}. Manage business verification queues, local citizen claims, and track international users viewing listings in your city.
                     </p>
-                    <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] font-medium text-slate-300">
-                      <span className="bg-white/10 px-2.5 py-0.5 rounded-full">🏙️ {geoSelectedCity || "Addis Ababa"} City</span>
-                      <span className="bg-white/10 px-2.5 py-0.5 rounded-full">🌍 {geoSelectedCountry} Jurisdiction</span>
-                      <span className="bg-white/10 px-2.5 py-0.5 rounded-full">⚡ Real-Time Local Activity</span>
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-1 text-[10px] sm:text-[11px] font-medium text-slate-300">
+                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">🏙️ {geoSelectedCity || "Addis Ababa"} City</span>
+                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">🌍 {geoSelectedCountry} Jurisdiction</span>
+                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">⚡ Real-Time Local Activity</span>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
                     <a
                       href="/city-admin"
-                      className="px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs gap-1.5 shadow-lg shadow-sky-500/30 inline-flex items-center"
+                      className="h-7 sm:h-8 px-2.5 sm:px-3.5 rounded-lg sm:rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-[11px] sm:text-xs gap-1 sm:gap-1.5 shadow-lg shadow-sky-500/30 inline-flex items-center"
                     >
                       <span>Open Municipal Portal →</span>
                     </a>
@@ -2503,134 +2834,134 @@ export default function AdminControlPanel() {
               )}
 
               {/* Top Statistics Cards — Live data from /api/admin/stats */}
-              <div className={`grid gap-3 ${isCountryAdmin ? "grid-cols-2 sm:grid-cols-4 lg:grid-cols-4" : "grid-cols-2 sm:grid-cols-4 lg:grid-cols-8"}`}>
+              <div className={`grid gap-2 sm:gap-3 ${isCountryAdmin ? "grid-cols-2 sm:grid-cols-4 lg:grid-cols-4" : "grid-cols-2 sm:grid-cols-4 lg:grid-cols-8"}`}>
                 {/* Users — adapts label for country admin */}
                 <div
-                  className={`p-3.5 rounded-2xl bg-card border relative overflow-hidden cursor-pointer transition-all hover:shadow-md ${
+                  className={`p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-card border relative overflow-hidden cursor-pointer transition-all hover:shadow-md ${
                     isCountryAdmin ? "border-sky-500/30 hover:border-sky-400/50" : "border-border"
                   }`}
                   onClick={() => isCountryAdmin ? (setActiveNav("users"), setActiveSubnav("all")) : undefined}
                   title={isCountryAdmin ? "View all regular users in your territory" : undefined}
                 >
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase">
+                  <div className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase truncate">
                     {isCountryAdmin ? "👥 Regular Users" : "👥 Users"}
                   </div>
                   {isDashStatsLoading ? (
-                    <div className="h-6 w-14 mt-1 rounded bg-muted animate-pulse" />
+                    <div className="h-5 sm:h-6 w-12 sm:w-14 mt-1 rounded bg-muted animate-pulse" />
                   ) : (
-                    <div className="text-lg font-black text-foreground mt-1">
+                    <div className="text-base sm:text-lg font-black text-foreground mt-0.5 sm:mt-1 truncate">
                       {isCountryAdmin
                         ? ((dashboardStats?.totalNormalUsers ?? dashboardStats?.totalUsers ?? userTotalCount) || "—").toLocaleString()
                         : (dashboardStats ? dashboardStats.totalUsers.toLocaleString() : userTotalCount.toLocaleString() || "—")}
                     </div>
                   )}
                   {isCountryAdmin && (
-                    <div className="text-[10px] text-sky-500 font-bold mt-0.5">Customers + Owners</div>
+                    <div className="text-[9px] sm:text-[10px] text-sky-500 font-bold mt-0.5 truncate">Customers + Owners</div>
                   )}
                 </div>
 
                 {/* City Admins Card — only for Country Admin */}
                 {isCountryAdmin && (
                   <div
-                    className="p-3.5 rounded-2xl bg-card border border-amber-500/30 relative overflow-hidden cursor-pointer transition-all hover:border-amber-400/60 hover:shadow-md hover:shadow-amber-500/10"
+                    className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-card border border-amber-500/30 relative overflow-hidden cursor-pointer transition-all hover:border-amber-400/60 hover:shadow-md hover:shadow-amber-500/10"
                     onClick={() => { setActiveNav("city_admins_hub"); setActiveSubnav("all"); }}
                     title="Open City Admins Hub"
                   >
-                    <div className="text-[10px] font-bold text-muted-foreground uppercase">🛡️ City Admins</div>
+                    <div className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase truncate">🛡️ City Admins</div>
                     {isDashStatsLoading ? (
-                      <div className="h-6 w-10 mt-1 rounded bg-muted animate-pulse" />
+                      <div className="h-5 sm:h-6 w-8 sm:w-10 mt-1 rounded bg-muted animate-pulse" />
                     ) : (
-                      <div className="text-lg font-black text-amber-600 dark:text-amber-400 mt-1">
+                      <div className="text-base sm:text-lg font-black text-amber-600 dark:text-amber-400 mt-0.5 sm:mt-1 truncate">
                         {(dashboardStats?.totalCityAdmins ?? userCounts.cityAdmins ?? 4).toLocaleString()}
                       </div>
                     )}
-                    <div className="text-[10px] text-amber-500 font-bold mt-0.5">Municipal Leads</div>
+                    <div className="text-[9px] sm:text-[10px] text-amber-500 font-bold mt-0.5 truncate">Municipal Leads</div>
                   </div>
                 )}
 
                 {/* Vacant Cities Card — only for Country Admin */}
                 {isCountryAdmin && (
                   <div
-                    className="p-3.5 rounded-2xl bg-card border border-rose-500/20 relative overflow-hidden cursor-pointer transition-all hover:border-rose-400/40 hover:shadow-sm"
+                    className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-card border border-rose-500/20 relative overflow-hidden cursor-pointer transition-all hover:border-rose-400/40 hover:shadow-sm"
                     onClick={() => { setActiveNav("city_admins_hub"); setActiveSubnav("vacant"); }}
                     title="View vacant municipalities"
                   >
-                    <div className="text-[10px] font-bold text-muted-foreground uppercase">⚠️ Vacant</div>
+                    <div className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase truncate">⚠️ Vacant</div>
                     {isDashStatsLoading ? (
-                      <div className="h-6 w-8 mt-1 rounded bg-muted animate-pulse" />
+                      <div className="h-5 sm:h-6 w-7 sm:w-8 mt-1 rounded bg-muted animate-pulse" />
                     ) : (
-                      <div className="text-lg font-black text-rose-500 dark:text-rose-400 mt-1">
+                      <div className="text-base sm:text-lg font-black text-rose-500 dark:text-rose-400 mt-0.5 sm:mt-1 truncate">
                         {(dashboardStats?.totalVacantCities ?? Math.max(0, (dashboardStats?.totalCities ?? 30) - (dashboardStats?.totalCityAdmins ?? 4))).toLocaleString()}
                       </div>
                     )}
-                    <div className="text-[10px] text-rose-400 font-bold mt-0.5">Unassigned Cities</div>
+                    <div className="text-[9px] sm:text-[10px] text-rose-400 font-bold mt-0.5 truncate">Unassigned Cities</div>
                   </div>
                 )}
 
                 {/* Businesses */}
-                <div className="p-3.5 rounded-2xl bg-card border border-border">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase">🏢 Businesses</div>
+                <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-card border border-border">
+                  <div className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase truncate">🏢 Businesses</div>
                   {isDashStatsLoading ? (
-                    <div className="h-6 w-14 mt-1 rounded bg-muted animate-pulse" />
+                    <div className="h-5 sm:h-6 w-12 sm:w-14 mt-1 rounded bg-muted animate-pulse" />
                   ) : (
-                    <div className="text-lg font-black text-foreground mt-1">
+                    <div className="text-base sm:text-lg font-black text-foreground mt-0.5 sm:mt-1 truncate">
                       {dashboardStats ? dashboardStats.totalBusinesses.toLocaleString() : bizTotalCount.toLocaleString() || "—"}
                     </div>
                   )}
                 </div>
                 {/* Pending */}
-                <div className="p-3.5 rounded-2xl bg-card border border-border">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase">⏳ Pending</div>
+                <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-card border border-border">
+                  <div className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase truncate">⏳ Pending</div>
                   {isDashStatsLoading ? (
-                    <div className="h-6 w-10 mt-1 rounded bg-muted animate-pulse" />
+                    <div className="h-5 sm:h-6 w-8 sm:w-10 mt-1 rounded bg-muted animate-pulse" />
                   ) : (
-                    <div className="text-lg font-black text-amber-500 mt-1">
+                    <div className="text-base sm:text-lg font-black text-amber-500 mt-0.5 sm:mt-1 truncate">
                       {dashboardStats ? dashboardStats.pendingBusinesses.toLocaleString() : bizCounts.pending.toLocaleString() || "—"}
                     </div>
                   )}
                 </div>
                 {/* Reviews */}
-                <div className="p-3.5 rounded-2xl bg-card border border-border">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase">⭐ Reviews</div>
+                <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-card border border-border">
+                  <div className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase truncate">⭐ Reviews</div>
                   {isDashStatsLoading ? (
-                    <div className="h-6 w-14 mt-1 rounded bg-muted animate-pulse" />
+                    <div className="h-5 sm:h-6 w-12 sm:w-14 mt-1 rounded bg-muted animate-pulse" />
                   ) : (
-                    <div className="text-lg font-black text-foreground mt-1">
+                    <div className="text-base sm:text-lg font-black text-foreground mt-0.5 sm:mt-1 truncate">
                       {dashboardStats ? dashboardStats.totalReviews.toLocaleString() : reviewTotalCount.toLocaleString() || "—"}
                     </div>
                   )}
                 </div>
                 {/* Countries — only for super admin */}
                 {!isCountryAdmin && !isCityAdmin && (
-                  <div className="p-3.5 rounded-2xl bg-card border border-border">
-                    <div className="text-[10px] font-bold text-muted-foreground uppercase">🌍 Countries</div>
+                  <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-card border border-border">
+                    <div className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase truncate">🌍 Countries</div>
                     {isDashStatsLoading ? (
-                      <div className="h-6 w-10 mt-1 rounded bg-muted animate-pulse" />
+                      <div className="h-5 sm:h-6 w-8 sm:w-10 mt-1 rounded bg-muted animate-pulse" />
                     ) : (
-                      <div className="text-lg font-black text-foreground mt-1">
+                      <div className="text-base sm:text-lg font-black text-foreground mt-0.5 sm:mt-1 truncate">
                         {dashboardStats ? (dashboardStats.totalCountries || "—") : "—"}
                       </div>
                     )}
                   </div>
                 )}
                 {/* Cities */}
-                <div className="p-3.5 rounded-2xl bg-card border border-border">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase">🏙️ Cities</div>
+                <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-card border border-border">
+                  <div className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase truncate">🏙️ Cities</div>
                   {isDashStatsLoading ? (
-                    <div className="h-6 w-10 mt-1 rounded bg-muted animate-pulse" />
+                    <div className="h-5 sm:h-6 w-8 sm:w-10 mt-1 rounded bg-muted animate-pulse" />
                   ) : (
-                    <div className="text-lg font-black text-foreground mt-1">
+                    <div className="text-base sm:text-lg font-black text-foreground mt-0.5 sm:mt-1 truncate">
                       {dashboardStats ? dashboardStats.totalCities.toLocaleString() : "—"}
                     </div>
                   )}
                 </div>
                 {/* Revenue */}
-                <div className="p-3.5 rounded-2xl bg-card border border-border">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase">💰 Revenue</div>
+                <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-card border border-border">
+                  <div className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase truncate">💰 Revenue</div>
                   {isDashStatsLoading ? (
-                    <div className="h-6 w-16 mt-1 rounded bg-muted animate-pulse" />
+                    <div className="h-5 sm:h-6 w-12 sm:w-16 mt-1 rounded bg-muted animate-pulse" />
                   ) : (
-                    <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                    <div className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5 sm:mt-1 truncate">
                       {dashboardStats
                         ? `$${dashboardStats.totalRevenue.toLocaleString()}`
                         : "—"}
@@ -2638,12 +2969,12 @@ export default function AdminControlPanel() {
                   )}
                 </div>
                 {/* Reports */}
-                <div className="p-3.5 rounded-2xl bg-card border border-border">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase">🚨 Reports</div>
+                <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-card border border-border">
+                  <div className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase truncate">🚨 Reports</div>
                   {isDashStatsLoading ? (
-                    <div className="h-6 w-8 mt-1 rounded bg-muted animate-pulse" />
+                    <div className="h-5 sm:h-6 w-7 sm:w-8 mt-1 rounded bg-muted animate-pulse" />
                   ) : (
-                    <div className="text-lg font-black text-red-500 mt-1">
+                    <div className="text-base sm:text-lg font-black text-red-500 mt-0.5 sm:mt-1 truncate">
                       {dashboardStats ? dashboardStats.openReports.toLocaleString() : reportTotalCount.toLocaleString() || "—"}
                     </div>
                   )}
@@ -2676,13 +3007,13 @@ export default function AdminControlPanel() {
               </div>
 
               {/* 2 Growth Charts */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="p-5 rounded-3xl bg-card border border-border space-y-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-border space-y-2.5 sm:space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <Users className="w-4 h-4 text-sky-500" /> User Growth
+                    <h3 className="text-[11px] sm:text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-500" /> User Growth
                     </h3>
-                    <Badge variant="outline" className="text-[10px] font-mono">
+                    <Badge variant="outline" className="text-[9px] sm:text-[10px] font-mono">
                       {dashboardStats
                         ? (dashboardStats.totalUsers >= 1000
                             ? `${(dashboardStats.totalUsers / 1000).toFixed(1)}k`
@@ -2692,7 +3023,7 @@ export default function AdminControlPanel() {
                             : userTotalCount.toLocaleString() || "0")}
                     </Badge>
                   </div>
-                  <div className="h-48 w-full">
+                  <div className="h-40 sm:h-48 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={userGrowthChartData}>
                         <defs>
@@ -2711,12 +3042,12 @@ export default function AdminControlPanel() {
                   </div>
                 </div>
 
-                <div className="p-5 rounded-3xl bg-card border border-border space-y-3">
+                <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-border space-y-2.5 sm:space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <Building2 className="w-4 h-4 text-emerald-500" /> Business Growth
+                    <h3 className="text-[11px] sm:text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500" /> Business Growth
                     </h3>
-                    <Badge variant="outline" className="text-[10px] font-mono">
+                    <Badge variant="outline" className="text-[9px] sm:text-[10px] font-mono">
                       {dashboardStats
                         ? (dashboardStats.totalBusinesses >= 1000
                             ? `${(dashboardStats.totalBusinesses / 1000).toFixed(1)}k`
@@ -2726,7 +3057,7 @@ export default function AdminControlPanel() {
                             : bizTotalCount.toLocaleString() || "0")}
                     </Badge>
                   </div>
-                  <div className="h-48 w-full">
+                  <div className="h-40 sm:h-48 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={bizGrowthChartData}>
                         <defs>
@@ -2747,22 +3078,22 @@ export default function AdminControlPanel() {
               </div>
 
               {/* Recent Businesses + Recent Users Side by Side */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="p-5 rounded-3xl bg-card border border-border space-y-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-border space-y-2.5 sm:space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-foreground">Recent Businesses</h3>
-                    <Button variant="ghost" size="sm" onClick={() => setActiveNav("businesses")} className="text-[11px] h-6 text-primary">
+                    <h3 className="text-[11px] sm:text-xs font-bold text-foreground">Recent Businesses</h3>
+                    <Button variant="ghost" size="sm" onClick={() => setActiveNav("businesses")} className="text-[10px] sm:text-[11px] h-6 text-primary px-2">
                       View All →
                     </Button>
                   </div>
                   <div className="space-y-2">
                     {businesses.slice(0, 3).map((b) => (
-                      <div key={b.id} className="p-3 rounded-2xl bg-background border border-border flex items-center justify-between text-xs">
-                        <div>
-                          <div className="font-bold text-foreground">{b.name}</div>
-                          <div className="text-[11px] text-muted-foreground">{b.categoryName} • {b.cityName}</div>
+                      <div key={b.id} className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-background border border-border flex items-center justify-between text-xs gap-2">
+                        <div className="min-w-0">
+                          <div className="font-bold text-[11px] sm:text-xs text-foreground truncate">{b.name}</div>
+                          <div className="text-[10px] sm:text-[11px] text-muted-foreground truncate">{b.categoryName} • {b.cityName}</div>
                         </div>
-                        <Button size="sm" variant="outline" onClick={() => setInspectingBusiness(b)} className="h-6 text-[10px]">
+                        <Button size="sm" variant="outline" onClick={() => setInspectingBusiness(b)} className="h-6 text-[10px] px-2 shrink-0">
                           View
                         </Button>
                       </div>
@@ -2770,21 +3101,21 @@ export default function AdminControlPanel() {
                   </div>
                 </div>
 
-                <div className="p-5 rounded-3xl bg-card border border-border space-y-3">
+                <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-border space-y-2.5 sm:space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-foreground">Recent Users</h3>
-                    <Button variant="ghost" size="sm" onClick={() => setActiveNav("users")} className="text-[11px] h-6 text-primary">
+                    <h3 className="text-[11px] sm:text-xs font-bold text-foreground">Recent Users</h3>
+                    <Button variant="ghost" size="sm" onClick={() => setActiveNav("users")} className="text-[10px] sm:text-[11px] h-6 text-primary px-2">
                       View All →
                     </Button>
                   </div>
                   <div className="space-y-2">
                     {usersList.slice(0, 3).map((u) => (
-                      <div key={u.id} className="p-3 rounded-2xl bg-background border border-border flex items-center justify-between text-xs">
-                        <div>
-                          <div className="font-bold text-foreground">{u.name}</div>
-                          <div className="text-[11px] text-muted-foreground">{u.email} • {u.country}</div>
+                      <div key={u.id} className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-background border border-border flex items-center justify-between text-xs gap-2">
+                        <div className="min-w-0">
+                          <div className="font-bold text-[11px] sm:text-xs text-foreground truncate">{u.name}</div>
+                          <div className="text-[10px] sm:text-[11px] text-muted-foreground truncate">{u.email} • {u.country}</div>
                         </div>
-                        <Badge variant="outline" className="text-[10px] capitalize">{u.role}</Badge>
+                        <Badge variant="outline" className="text-[9px] sm:text-[10px] capitalize shrink-0">{u.role}</Badge>
                       </div>
                     ))}
                   </div>
@@ -2792,70 +3123,70 @@ export default function AdminControlPanel() {
               </div>
 
               {/* Pending Approvals Table */}
-              <div className="p-5 rounded-3xl bg-card border border-border space-y-4">
-                <div className="flex items-center justify-between">
+              <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-border space-y-3 sm:space-y-4">
+                <div className="flex items-center justify-between gap-2">
                   <div>
-                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-amber-500" /> Pending Business Approvals
+                    <h3 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5 sm:gap-2">
+                      <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" /> Pending Business Approvals
                     </h3>
-                    <p className="text-xs text-muted-foreground">Listings awaiting admin review and verification.</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Listings awaiting admin review and verification.</p>
                   </div>
-                  <Badge variant="outline" className="text-xs">{businesses.filter(b => !b.isVerified || (b as any).verificationStatus === "pending").length} Pending</Badge>
+                  <Badge variant="outline" className="text-[10px] sm:text-xs shrink-0">{businesses.filter(b => !b.isVerified || (b as any).verificationStatus === "pending").length} Pending</Badge>
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-muted/50 text-muted-foreground uppercase text-[10px] font-bold border-b border-border">
+                    <thead className="bg-muted/50 text-muted-foreground uppercase text-[9px] sm:text-[10px] font-bold border-b border-border">
                       <tr>
-                        <th className="px-4 py-3">Business</th>
-                        <th className="px-4 py-3">Category</th>
-                        <th className="px-4 py-3">Location</th>
-                        <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3 text-right">Action</th>
+                        <th className="px-3 sm:px-4 py-2.5 sm:py-3">Business</th>
+                        <th className="px-3 sm:px-4 py-2.5 sm:py-3">Category</th>
+                        <th className="px-3 sm:px-4 py-2.5 sm:py-3">Location</th>
+                        <th className="px-3 sm:px-4 py-2.5 sm:py-3">Status</th>
+                        <th className="px-3 sm:px-4 py-2.5 sm:py-3 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
                       {businesses.filter(b => !b.isVerified || (b as any).verificationStatus === "pending").slice(0, 10).map((b) => (
-                        <tr key={b.id} className="hover:bg-accent/20">
-                          <td className="px-4 py-3 font-bold text-foreground">{b.name}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{b.categoryName || (b as any).category || "General Business"}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{b.cityName || (b as any).city || "Addis Ababa"}, {b.countryName || (b as any).country || "Ethiopia"}</td>
-                          <td className="px-4 py-3">
+                        <tr key={b.id} className="hover:bg-accent/20 transition-colors">
+                          <td className="px-3 sm:px-4 py-2.5 sm:py-3 font-bold text-[11px] sm:text-xs text-foreground">{b.name}</td>
+                          <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-[11px] text-muted-foreground">{b.categoryName || (b as any).category || "General Business"}</td>
+                          <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-[11px] text-muted-foreground">{b.cityName || (b as any).city || "Addis Ababa"}, {b.countryName || (b as any).country || "Ethiopia"}</td>
+                          <td className="px-3 sm:px-4 py-2.5 sm:py-3">
                             {b.approvalStatus === "pending_city" && (
-                              <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 text-[10px]">
+                              <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 text-[9px] sm:text-[10px]">
                                 Stage 1: City Review
                               </Badge>
                             )}
                             {b.approvalStatus === "pending_country" && (
-                              <Badge className="bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20 text-[10px]">
+                              <Badge className="bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20 text-[9px] sm:text-[10px]">
                                 Stage 2: Country Lead
                               </Badge>
                             )}
                             {b.approvalStatus === "pending_super_admin" && (
-                              <Badge className="bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20 text-[10px]">
+                              <Badge className="bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20 text-[9px] sm:text-[10px]">
                                 Stage 3: Super Admin
                               </Badge>
                             )}
                             {(b.approvalStatus === "approved" || b.isVerified) && (
-                              <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 text-[10px]">
+                              <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 text-[9px] sm:text-[10px]">
                                 ✓ Approved
                               </Badge>
                             )}
                             {!b.approvalStatus && !b.isVerified && (
-                              <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px]">
+                              <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[9px] sm:text-[10px]">
                                 Pending Review
                               </Badge>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-right space-x-1.5 whitespace-nowrap">
-                            <Button size="sm" variant="outline" onClick={() => setInspectingBusiness(b)} className="h-6 text-[10px]">
+                          <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-right space-x-1 sm:space-x-1.5 whitespace-nowrap">
+                            <Button size="sm" variant="outline" onClick={() => setInspectingBusiness(b)} className="h-6 text-[9px] sm:text-[10px] px-2">
                               Review
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => handleApproveBusiness(b.id, b.name)} className="h-6 text-[10px] text-emerald-600 border-emerald-500/30">
+                            <Button size="sm" variant="outline" onClick={() => handleApproveBusiness(b.id, b.name)} className="h-6 text-[9px] sm:text-[10px] text-emerald-600 border-emerald-500/30 px-2">
                               Approve
                             </Button>
-                            <Button size="sm" onClick={() => handleSuperAdminOverride(b.id, b.name)} className="h-6 text-[10px] font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-xs" title="Super Admin Fast-Track: Post immediately without waiting for lower tiers">
-                              ⚡ Fast-Track Post
+                            <Button size="sm" onClick={() => handleSuperAdminOverride(b.id, b.name)} className="h-6 text-[9px] sm:text-[10px] font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-xs px-2" title="Super Admin Fast-Track: Post immediately without waiting for lower tiers">
+                              ⚡ Fast-Track
                             </Button>
                           </td>
                         </tr>
@@ -2873,70 +3204,70 @@ export default function AdminControlPanel() {
           {activeNav === "users" && (
             <div className="space-y-6 max-w-7xl mx-auto">
               <div className="flex flex-col gap-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                   <div>
-                    <h2 className="text-2xl font-black text-foreground flex items-center gap-2">
-                      <Users className="w-6 h-6 text-sky-500" />
+                    <h2 className="text-base sm:text-xl md:text-2xl font-black text-foreground flex items-center gap-2">
+                      <Users className="w-5 h-5 sm:w-6 sm:h-6 text-sky-500 shrink-0" />
                       User Management & Directory
                     </h2>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
                       Explore, filter by country and city, and download records for registered customers, business owners, and administrators.
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => handleExportUsers("csv")}
                       disabled={isExportingUsers || isUsersLoading}
-                      className="gap-1.5 text-xs font-bold shrink-0 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 shadow-xs"
+                      className="gap-1.5 text-[10px] sm:text-xs font-bold shrink-0 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 shadow-xs h-7.5 sm:h-8.5 px-2.5 sm:px-3"
                       title="Download filtered users roster in Excel/Spreadsheet CSV format"
                     >
-                      <Download className={`w-3.5 h-3.5 ${isExportingUsers ? "animate-bounce" : ""}`} />
-                      {isExportingUsers ? "Exporting…" : "Download CSV"}
+                      <Download className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isExportingUsers ? "animate-bounce" : ""}`} />
+                      <span>{isExportingUsers ? "Exporting…" : "CSV"}</span>
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => handleExportUsers("json")}
                       disabled={isExportingUsers || isUsersLoading}
-                      className="gap-1.5 text-xs font-bold shrink-0 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 shadow-xs"
+                      className="gap-1.5 text-[10px] sm:text-xs font-bold shrink-0 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 shadow-xs h-7.5 sm:h-8.5 px-2.5 sm:px-3"
                       title="Download filtered users roster in JSON format"
                     >
-                      <FileText className="w-3.5 h-3.5" />
-                      Download JSON
+                      <FileText className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      <span>JSON</span>
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => fetchUsers(userPage, true)}
                       disabled={isSyncingClerk || isUsersLoading}
-                      className="gap-1.5 text-xs font-bold shrink-0 border-border hover:bg-muted"
+                      className="gap-1.5 text-[10px] sm:text-xs font-bold shrink-0 border-border hover:bg-muted h-7.5 sm:h-8.5 px-2.5 sm:px-3"
                     >
-                      <RefreshCw className={`w-3.5 h-3.5 ${isSyncingClerk ? "animate-spin text-primary" : ""}`} />
-                      {isSyncingClerk ? "Syncing…" : "Sync Clerk"}
+                      <RefreshCw className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isSyncingClerk ? "animate-spin text-primary" : ""}`} />
+                      <span>{isSyncingClerk ? "Syncing…" : "Sync Clerk"}</span>
                     </Button>
                     {isSuperAdmin && (
                       <Button
                         size="sm"
                         variant="gradient"
                         onClick={() => setIsAssignGeoModalOpen(true)}
-                        className="gap-1 text-xs font-bold shrink-0"
+                        className="gap-1 text-[10px] sm:text-xs font-bold shrink-0 h-7.5 sm:h-8.5 px-2.5 sm:px-3"
                         title="Assign or Appoint Territory Admin with Clerk Dashboard Sync"
                       >
-                        <UserPlus className="w-3.5 h-3.5" />
-                        New Admin
+                        <UserPlus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        <span>New Admin</span>
                       </Button>
                     )}
                   </div>
                 </div>
 
                 {/* Modern Filter Controls Bar */}
-                <div className="p-4 rounded-2xl bg-card border border-border shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
-                    {/* Search Input */}
-                    <div className="relative flex-1 min-w-[200px]">
-                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <div className="p-3 sm:p-4 rounded-2xl bg-card border border-border shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 sm:gap-3">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 flex-1">
+                    {/* Modern Attractive Search Input */}
+                    <div className="relative flex-1 min-w-[180px] sm:min-w-[220px] group">
+                      <Search className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 absolute left-2.5 xs:left-3 top-1/2 -translate-y-1/2 text-muted-foreground/80 group-focus-within:text-primary transition-colors pointer-events-none" />
                       <Input
                         placeholder="Search by name, email, phone, role…"
                         value={userSearch}
@@ -2944,12 +3275,25 @@ export default function AdminControlPanel() {
                           setUserSearch(e.target.value);
                           setUserPage(1);
                         }}
-                        className="pl-8 text-xs h-9 bg-background/60"
+                        className="pl-7.5 xs:pl-8 sm:pl-9 pr-7 sm:pr-8 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs h-7.5 xs:h-8 sm:h-8.5 md:h-9 rounded-lg xs:rounded-xl sm:rounded-2xl bg-background/80 hover:bg-background border-border/70 hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 shadow-2xs hover:shadow-xs transition-all placeholder:text-muted-foreground/60 placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs truncate"
                       />
+                      {userSearch && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUserSearch("");
+                            setUserPage(1);
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                          title="Clear search"
+                        >
+                          <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        </button>
+                      )}
                     </div>
 
                     {/* Country Filter Dropdown */}
-                    <div className="relative min-w-[170px]">
+                    <div className="relative min-w-[150px] sm:min-w-[170px]">
                       <Globe className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                       <select
                         value={userFilterCountry}
@@ -2958,7 +3302,7 @@ export default function AdminControlPanel() {
                           setUserFilterCity("all");
                           setUserPage(1);
                         }}
-                        className="w-full h-9 pl-8 pr-7 text-xs rounded-xl bg-background/60 border border-border text-foreground font-medium focus:ring-2 focus:ring-primary focus:outline-none transition-all cursor-pointer appearance-none"
+                        className="w-full h-8.5 sm:h-9 pl-8 pr-7 text-[11px] sm:text-xs rounded-xl sm:rounded-2xl bg-background/80 hover:bg-background border border-border/70 hover:border-border text-foreground font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/50 focus:outline-none transition-all cursor-pointer appearance-none shadow-2xs"
                       >
                         <option value="all">🌍 All Countries</option>
                         {COUNTRIES_WITH_CITIES.map((c) => (
@@ -2971,7 +3315,7 @@ export default function AdminControlPanel() {
                     </div>
 
                     {/* City Filter Dropdown */}
-                    <div className="relative min-w-[170px]">
+                    <div className="relative min-w-[150px] sm:min-w-[170px]">
                       <MapPin className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                       <select
                         value={userFilterCity}
@@ -2979,7 +3323,7 @@ export default function AdminControlPanel() {
                           setUserFilterCity(e.target.value);
                           setUserPage(1);
                         }}
-                        className="w-full h-9 pl-8 pr-7 text-xs rounded-xl bg-background/60 border border-border text-foreground font-medium focus:ring-2 focus:ring-primary focus:outline-none transition-all cursor-pointer appearance-none"
+                        className="w-full h-8.5 sm:h-9 pl-8 pr-7 text-[11px] sm:text-xs rounded-xl sm:rounded-2xl bg-background/80 hover:bg-background border border-border/70 hover:border-border text-foreground font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/50 focus:outline-none transition-all cursor-pointer appearance-none shadow-2xs"
                       >
                         <option value="all">📍 All Cities</option>
                         {userFilterCities.map((cityName) => (
@@ -3010,21 +3354,21 @@ export default function AdminControlPanel() {
                           setUserSearch("");
                           setUserPage(1);
                         }}
-                        className="px-2.5 py-1.5 rounded-xl border border-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 text-xs font-bold transition-colors shrink-0"
+                        className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl border border-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 text-[10px] sm:text-xs font-bold transition-colors shrink-0"
                       >
-                        Reset Filters
+                        Reset
                       </button>
                     )}
                   </div>
 
                   {/* Summary counter */}
-                  <div className="text-xs font-bold text-muted-foreground flex items-center gap-1.5 shrink-0">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <div className="text-[10px] sm:text-xs font-bold text-muted-foreground flex items-center gap-1.5 shrink-0">
+                    <span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-emerald-500 animate-pulse" />
                     <span>
                       {userTotalCount || usersList.length} total user{userTotalCount === 1 ? "" : "s"}
                     </span>
                     {(userFilterCountry !== "all" || userFilterCity !== "all") && (
-                      <span className="text-[11px] font-medium text-primary">
+                      <span className="text-[9px] sm:text-[11px] font-medium text-primary">
                         ({userFilterCity !== "all" ? `${userFilterCity}, ` : ""}{userFilterCountry !== "all" ? userFilterCountry : ""})
                       </span>
                     )}
@@ -3033,7 +3377,7 @@ export default function AdminControlPanel() {
               </div>
 
               {/* Subnav Filter Badges */}
-              <div className="flex items-center gap-2 flex-wrap text-xs">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap text-xs">
                 {[
                   { key: "all", label: "All Users", count: userCounts.all || userTotalCount || usersList.length },
                   { key: "customers", label: "Customers", count: userCounts.customers },
@@ -3051,7 +3395,7 @@ export default function AdminControlPanel() {
                       setActiveSubnav(tab.key);
                       setUserPage(1);
                     }}
-                    className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs flex items-center gap-1.5 ${
+                    className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl font-bold transition-all text-[11px] sm:text-xs flex items-center gap-1.5 ${
                       activeSubnav === tab.key
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "bg-card text-muted-foreground border border-border hover:border-foreground/30"
@@ -3059,7 +3403,7 @@ export default function AdminControlPanel() {
                   >
                     <span>{tab.label}</span>
                     <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                      className={`text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded-full ${
                         activeSubnav === tab.key
                           ? "bg-primary-foreground/20 text-primary-foreground"
                           : "bg-muted text-muted-foreground"
@@ -3083,108 +3427,108 @@ export default function AdminControlPanel() {
                 )}
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-muted/50 text-muted-foreground uppercase text-[10px] font-bold border-b border-border">
+                    <thead className="bg-muted/50 text-muted-foreground uppercase text-[9px] sm:text-[10px] font-bold border-b border-border">
                       <tr>
-                        <th className="px-6 py-3.5">User</th>
-                        <th className="px-6 py-3.5">Email</th>
-                        <th className="px-6 py-3.5">Role</th>
-                        <th className="px-6 py-3.5">Territory</th>
-                        <th className="px-6 py-3.5">Status</th>
-                        <th className="px-6 py-3.5">Joined</th>
-                        <th className="px-6 py-3.5 text-right">Actions</th>
+                        <th className="px-3 sm:px-6 py-2.5 sm:py-3.5">User</th>
+                        <th className="px-3 sm:px-6 py-2.5 sm:py-3.5">Email</th>
+                        <th className="px-3 sm:px-6 py-2.5 sm:py-3.5">Role</th>
+                        <th className="px-3 sm:px-6 py-2.5 sm:py-3.5">Territory</th>
+                        <th className="px-3 sm:px-6 py-2.5 sm:py-3.5">Status</th>
+                        <th className="px-3 sm:px-6 py-2.5 sm:py-3.5">Joined</th>
+                        <th className="px-3 sm:px-6 py-2.5 sm:py-3.5 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
                       {filteredUsersList.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="px-6 py-12 text-center text-muted-foreground">
+                          <td colSpan={7} className="px-4 sm:px-6 py-8 sm:py-12 text-center text-[11px] sm:text-xs text-muted-foreground">
                             {isUsersLoading ? "Loading users…" : "No users found matching current filters."}
                           </td>
                         </tr>
                       ) : (
                         filteredUsersList.map((u) => (
                           <tr key={u.id} className="hover:bg-accent/30 transition-colors">
-                            <td className="px-6 py-3.5 font-bold text-foreground">
-                              <div className="flex items-center gap-2.5">
+                            <td className="px-3 sm:px-6 py-2.5 sm:py-3.5 font-bold text-foreground">
+                              <div className="flex items-center gap-2 sm:gap-2.5">
                                 {u.avatarUrl ? (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img
                                     src={u.avatarUrl}
                                     alt={u.name}
-                                    className="w-8 h-8 rounded-full object-cover border border-border shrink-0"
+                                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-border shrink-0"
                                   />
                                 ) : (
-                                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary/20 to-primary/5 text-primary font-black text-xs flex items-center justify-center border border-primary/20 shrink-0">
+                                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-primary/20 to-primary/5 text-primary font-black text-[11px] sm:text-xs flex items-center justify-center border border-primary/20 shrink-0">
                                     {u.name.charAt(0).toUpperCase()}
                                   </div>
                                 )}
-                                <div>
+                                <div className="min-w-0">
                                   <div className="flex items-center gap-1.5">
-                                    <span className="font-bold text-foreground">{u.name}</span>
+                                    <span className="font-bold text-[11px] sm:text-xs text-foreground truncate">{u.name}</span>
                                     {u.isClerkSynced && (
-                                      <span title="Clerk Verified User" className="text-[10px] text-emerald-500 font-bold">
+                                      <span title="Clerk Verified User" className="text-[9px] sm:text-[10px] text-emerald-500 font-bold shrink-0">
                                         ✓
                                       </span>
                                     )}
                                   </div>
-                                  <div className="text-[10px] text-muted-foreground font-mono">
+                                  <div className="text-[9px] sm:text-[10px] text-muted-foreground font-mono truncate">
                                     {u.id.startsWith("user_") ? u.id.slice(0, 14) + "…" : u.id}
                                   </div>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-3.5 text-muted-foreground font-mono">{u.email}</td>
-                            <td className="px-6 py-3.5">
+                            <td className="px-3 sm:px-6 py-2.5 sm:py-3.5 text-[10px] sm:text-xs text-muted-foreground font-mono truncate max-w-[160px]">{u.email}</td>
+                            <td className="px-3 sm:px-6 py-2.5 sm:py-3.5">
                               {u.role === "super_admin" ? (
-                                <Badge className="bg-purple-500/10 text-purple-600 border border-purple-500/30 text-[10px] font-bold gap-1">
-                                  <Crown className="w-3 h-3 text-purple-500" />
+                                <Badge className="bg-purple-500/10 text-purple-600 border border-purple-500/30 text-[9px] sm:text-[10px] font-bold gap-1 px-1.5 py-0.5">
+                                  <Crown className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-purple-500" />
                                   Super Admin
                                 </Badge>
                               ) : u.role === "country_admin" ? (
-                                <Badge className="bg-blue-500/10 text-blue-600 border border-blue-500/30 text-[10px] font-bold gap-1">
-                                  <Globe className="w-3 h-3 text-blue-500" />
+                                <Badge className="bg-blue-500/10 text-blue-600 border border-blue-500/30 text-[9px] sm:text-[10px] font-bold gap-1 px-1.5 py-0.5">
+                                  <Globe className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-blue-500" />
                                   Country Lead
                                 </Badge>
                               ) : u.role === "city_admin" || u.role === "admin" ? (
-                                <Badge className="bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[10px] font-bold gap-1">
-                                  <Shield className="w-3 h-3 text-amber-500" />
+                                <Badge className="bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[9px] sm:text-[10px] font-bold gap-1 px-1.5 py-0.5">
+                                  <Shield className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-500" />
                                   City Admin
                                 </Badge>
                               ) : u.role === "owner" ? (
-                                <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-[10px] font-bold gap-1">
-                                  <Building2 className="w-3 h-3 text-emerald-500" />
+                                <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-[9px] sm:text-[10px] font-bold gap-1 px-1.5 py-0.5">
+                                  <Building2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-500" />
                                   Business Owner
                                 </Badge>
                               ) : (
-                                <Badge variant="outline" className="text-[10px] text-muted-foreground capitalize">
+                                <Badge variant="outline" className="text-[9px] sm:text-[10px] text-muted-foreground capitalize px-1.5 py-0.5">
                                   Customer
                                 </Badge>
                               )}
                             </td>
-                            <td className="px-6 py-3.5">
-                              <div className="flex items-center gap-1.5 text-xs text-foreground font-medium">
-                                <MapPin className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                                <span>{u.city ? `${u.city}, ${u.country}` : u.country || "Global"}</span>
+                            <td className="px-3 sm:px-6 py-2.5 sm:py-3.5">
+                              <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-foreground font-medium truncate">
+                                <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-sky-500 shrink-0" />
+                                <span className="truncate">{u.city ? `${u.city}, ${u.country}` : u.country || "Global"}</span>
                               </div>
                             </td>
-                            <td className="px-6 py-3.5">
+                            <td className="px-3 sm:px-6 py-2.5 sm:py-3.5">
                               <Badge
                                 className={
                                   u.status === "active"
-                                    ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[10px] font-bold"
-                                    : "bg-red-500/10 text-red-600 border border-red-500/20 text-[10px] font-bold"
+                                    ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5"
+                                    : "bg-red-500/10 text-red-600 border border-red-500/20 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5"
                                 }
                               >
                                 {u.status === "active" ? "🟢 Active" : "🔴 Suspended"}
                               </Badge>
                             </td>
-                            <td className="px-6 py-3.5 text-muted-foreground">{u.joinedAt}</td>
-                            <td className="px-6 py-3.5 text-right space-x-1.5">
+                            <td className="px-3 sm:px-6 py-2.5 sm:py-3.5 text-[10px] sm:text-xs text-muted-foreground">{u.joinedAt}</td>
+                            <td className="px-3 sm:px-6 py-2.5 sm:py-3.5 text-right space-x-1 sm:space-x-1.5 whitespace-nowrap">
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => setViewingUser(u)}
-                                className="h-7 text-[11px] font-semibold"
+                                className="h-6 sm:h-7 text-[10px] sm:text-[11px] font-semibold px-2 sm:px-2.5"
                               >
                                 View Profile
                               </Button>
@@ -3192,7 +3536,7 @@ export default function AdminControlPanel() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleToggleUser(u.id, u.status)}
-                                className={`h-7 text-[11px] font-semibold ${
+                                className={`h-6 sm:h-7 text-[10px] sm:text-[11px] font-semibold px-2 sm:px-2.5 ${
                                   u.status === "active"
                                     ? "text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500/20"
                                     : "text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10 border-emerald-500/20"
@@ -3209,7 +3553,7 @@ export default function AdminControlPanel() {
                 </div>
 
                 {/* 20 Per Page Pagination Bar */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-muted/20 border-t border-border text-xs">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-muted/20 border-t border-border text-[10px] sm:text-xs">
                   <div className="text-muted-foreground font-medium">
                     Showing{" "}
                     <span className="font-bold text-foreground">
@@ -3294,67 +3638,68 @@ export default function AdminControlPanel() {
           {activeNav === "businesses" && (
             <div className="space-y-6 max-w-7xl mx-auto">
               <div className="flex flex-col gap-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                   <div>
-                    <h2 className="text-2xl font-black text-foreground flex items-center gap-2">
-                      <Building2 className="w-6 h-6 text-primary" />
+                    <h2 className="text-base sm:text-xl md:text-2xl font-black text-foreground flex items-center gap-2">
+                      <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
                       Businesses Ecosystem
                     </h2>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
                       Explore, filter by country and city, and download global listings with verified records and live MongoDB synchronization.
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                     {/* Export Buttons */}
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => handleExportBusinesses("csv")}
                       disabled={isExportingBusinesses || isBizLoading}
-                      className="gap-1.5 text-xs font-bold shrink-0 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 shadow-xs"
+                      className="gap-1.5 text-[10px] sm:text-xs font-bold shrink-0 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 shadow-xs h-7.5 sm:h-8.5 px-2.5 sm:px-3"
                       title="Download filtered businesses in Excel/Spreadsheet CSV format"
                     >
-                      <Download className={`w-3.5 h-3.5 ${isExportingBusinesses ? "animate-bounce" : ""}`} />
-                      {isExportingBusinesses ? "Exporting…" : "Download CSV"}
+                      <Download className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isExportingBusinesses ? "animate-bounce" : ""}`} />
+                      <span>{isExportingBusinesses ? "Exporting…" : "CSV"}</span>
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => handleExportBusinesses("json")}
                       disabled={isExportingBusinesses || isBizLoading}
-                      className="gap-1.5 text-xs font-bold shrink-0 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 shadow-xs"
+                      className="gap-1.5 text-[10px] sm:text-xs font-bold shrink-0 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 shadow-xs h-7.5 sm:h-8.5 px-2.5 sm:px-3"
                       title="Download filtered businesses in JSON format"
                     >
-                      <FileText className="w-3.5 h-3.5" />
-                      Download JSON
+                      <FileText className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      <span>JSON</span>
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => fetchBusinesses(bizPage)}
                       disabled={isBizLoading}
-                      className="gap-1.5 text-xs font-bold shrink-0 border-border hover:bg-muted"
+                      className="gap-1.5 text-[10px] sm:text-xs font-bold shrink-0 border-border hover:bg-muted h-7.5 sm:h-8.5 px-2.5 sm:px-3"
                     >
-                      <RefreshCw className={`w-3.5 h-3.5 ${isBizLoading ? "animate-spin text-primary" : ""}`} />
-                      Refresh
+                      <RefreshCw className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isBizLoading ? "animate-spin text-primary" : ""}`} />
+                      <span>Refresh</span>
                     </Button>
                     <Button
                       size="sm"
                       variant="gradient"
                       onClick={() => setIsAddBusinessModalOpen(true)}
-                      className="gap-1 text-xs font-bold shrink-0"
+                      className="gap-1 text-[10px] sm:text-xs font-bold shrink-0 h-7.5 sm:h-8.5 px-2.5 sm:px-3"
                     >
-                      <Plus className="w-4 h-4" /> Add Business
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Business</span>
                     </Button>
                   </div>
                 </div>
 
                 {/* Modern Filter Controls Bar */}
-                <div className="p-4 rounded-2xl bg-card border border-border shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
-                    {/* Search Input */}
-                    <div className="relative flex-1 min-w-[200px]">
-                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <div className="p-3 sm:p-4 rounded-2xl bg-card border border-border shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 sm:gap-3">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 flex-1">
+                    {/* Modern Attractive Search Input */}
+                    <div className="relative flex-1 min-w-[180px] sm:min-w-[220px] group">
+                      <Search className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 absolute left-2.5 xs:left-3 top-1/2 -translate-y-1/2 text-muted-foreground/80 group-focus-within:text-primary transition-colors pointer-events-none" />
                       <Input
                         placeholder="Search listings by name, category, subcity, street…"
                         value={businessSearch}
@@ -3362,18 +3707,31 @@ export default function AdminControlPanel() {
                           setBusinessSearch(e.target.value);
                           setBizPage(1);
                         }}
-                        className="pl-8 text-xs h-9 bg-background/60"
+                        className="pl-7.5 xs:pl-8 sm:pl-9 pr-7 sm:pr-8 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs h-7.5 xs:h-8 sm:h-8.5 md:h-9 rounded-lg xs:rounded-xl sm:rounded-2xl bg-background/80 hover:bg-background border-border/70 hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 shadow-2xs hover:shadow-xs transition-all placeholder:text-muted-foreground/60 placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs truncate"
                       />
+                      {businessSearch && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBusinessSearch("");
+                            setBizPage(1);
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                          title="Clear search"
+                        >
+                          <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        </button>
+                      )}
                     </div>
 
                     {/* Country Filter Dropdown */}
-                    <div className="relative min-w-[170px]">
+                    <div className="relative min-w-[150px] sm:min-w-[170px]">
                       <Globe className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                       {isCountryAdmin || isCityAdmin ? (
-                        <div className="w-full h-9 pl-8 pr-3 text-xs rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-foreground font-bold flex items-center gap-1.5 shadow-inner">
+                        <div className="w-full h-8.5 sm:h-9 pl-8 pr-3 text-[11px] sm:text-xs rounded-xl sm:rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-foreground font-bold flex items-center gap-1.5 shadow-inner">
                           <span>🌍</span>
                           <span className="truncate">{geoSelectedCountry}</span>
-                          <span className="text-[10px] text-indigo-400 font-semibold">(National)</span>
+                          <span className="text-[9px] sm:text-[10px] text-indigo-400 font-semibold">(National)</span>
                         </div>
                       ) : (
                         <>
@@ -3384,7 +3742,7 @@ export default function AdminControlPanel() {
                               setBizFilterCity("all");
                               setBizPage(1);
                             }}
-                            className="w-full h-9 pl-8 pr-7 text-xs rounded-xl bg-background/60 border border-border text-foreground font-medium focus:ring-2 focus:ring-primary focus:outline-none transition-all cursor-pointer appearance-none"
+                            className="w-full h-8.5 sm:h-9 pl-8 pr-7 text-[11px] sm:text-xs rounded-xl sm:rounded-2xl bg-background/80 hover:bg-background border border-border/70 hover:border-border text-foreground font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/50 focus:outline-none transition-all cursor-pointer appearance-none shadow-2xs"
                           >
                             <option value="all">🌍 All Countries</option>
                             {COUNTRIES_WITH_CITIES.map((c) => (
@@ -3399,13 +3757,13 @@ export default function AdminControlPanel() {
                     </div>
 
                     {/* City Filter Dropdown */}
-                    <div className="relative min-w-[170px]">
+                    <div className="relative min-w-[150px] sm:min-w-[170px]">
                       <MapPin className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                       {isCityAdmin ? (
-                        <div className="w-full h-9 pl-8 pr-3 text-xs rounded-xl bg-sky-950/40 border border-sky-500/30 text-foreground font-bold flex items-center gap-1.5 shadow-inner">
+                        <div className="w-full h-8.5 sm:h-9 pl-8 pr-3 text-[11px] sm:text-xs rounded-xl sm:rounded-2xl bg-sky-950/40 border border-sky-500/30 text-foreground font-bold flex items-center gap-1.5 shadow-inner">
                           <span>🏙️</span>
                           <span className="truncate">{geoSelectedCity || "Addis Ababa"}</span>
-                          <span className="text-[10px] text-sky-400 font-semibold">(City)</span>
+                          <span className="text-[9px] sm:text-[10px] text-sky-400 font-semibold">(City)</span>
                         </div>
                       ) : (
                         <>
@@ -3415,7 +3773,7 @@ export default function AdminControlPanel() {
                               setBizFilterCity(e.target.value);
                               setBizPage(1);
                             }}
-                            className="w-full h-9 pl-8 pr-7 text-xs rounded-xl bg-background/60 border border-border text-foreground font-medium focus:ring-2 focus:ring-primary focus:outline-none transition-all cursor-pointer appearance-none"
+                            className="w-full h-8.5 sm:h-9 pl-8 pr-7 text-[11px] sm:text-xs rounded-xl sm:rounded-2xl bg-background/80 hover:bg-background border border-border/70 hover:border-border text-foreground font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/50 focus:outline-none transition-all cursor-pointer appearance-none shadow-2xs"
                           >
                             <option value="all">📍 All Cities {isCountryAdmin ? `in ${geoSelectedCountry}` : ""}</option>
                             {bizFilterCities.map((cityName) => (
@@ -3448,21 +3806,21 @@ export default function AdminControlPanel() {
                           setBusinessSearch("");
                           setBizPage(1);
                         }}
-                        className="px-2.5 py-1.5 rounded-xl border border-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 text-xs font-bold transition-colors shrink-0"
+                        className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl border border-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 text-[10px] sm:text-xs font-bold transition-colors shrink-0"
                       >
-                        Reset Filters
+                        Reset
                       </button>
                     )}
                   </div>
 
                   {/* Summary counter */}
-                  <div className="text-xs font-bold text-muted-foreground flex items-center gap-1.5 shrink-0">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <div className="text-[10px] sm:text-xs font-bold text-muted-foreground flex items-center gap-1.5 shrink-0">
+                    <span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-emerald-500 animate-pulse" />
                     <span>
                       {bizTotalCount || businesses.length} business{(bizTotalCount || businesses.length) === 1 ? "" : "es"}
                     </span>
                     {(bizFilterCountry !== "all" || bizFilterCity !== "all") && (
-                      <span className="text-[11px] font-medium text-primary">
+                      <span className="text-[9px] sm:text-[11px] font-medium text-primary">
                         ({bizFilterCity !== "all" ? `${bizFilterCity}, ` : ""}{bizFilterCountry !== "all" ? bizFilterCountry : ""})
                       </span>
                     )}
@@ -3471,17 +3829,17 @@ export default function AdminControlPanel() {
               </div>
 
               {/* Subnav tabs using real server counts */}
-              <div className="flex items-center gap-2 flex-wrap text-xs">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap text-xs">
                 {[
                   { key: "all", label: "All Businesses", count: bizCounts.all || bizTotalCount },
                   { key: "four_month_audit", label: "⏱️ 4-Month Audit & Subscription Hub", alert: true },
                   { key: "new", label: "+ New Listing Wizard" },
-                  { key: "pending_confirmations", label: "🔔 Pending Confirmations", count: bizCounts.pending, alert: (bizCounts.pending ?? 0) > 0 },
-                  { key: "pending", label: "Pending Approval", count: bizCounts.pending },
+                  { key: "pending_confirmations", label: "🔔 Confirmations", count: (bizCounts as any).confirmations ?? 0, alert: ((bizCounts as any).confirmations ?? 0) > 0 },
+                  { key: "pending", label: "Pending Verification", count: bizCounts.pending },
                   { key: "verified", label: "Verified", count: bizCounts.verified },
-                  { key: "rejected", label: "Rejected", count: bizCounts.rejected },
+                  { key: "rejected", label: "Rejected / Remediation", count: bizCounts.rejected },
                   { key: "suspended", label: "Suspended", count: bizCounts.suspended },
-                  { key: "claimed", label: "Claimed", count: bizCounts.claimed },
+                  { key: "claimed", label: "Owner Claims Queue", count: bizCounts.claimed },
                   { key: "reports", label: "Business Reports" },
                 ].map((tab: any) => (
                   <button
@@ -3490,7 +3848,7 @@ export default function AdminControlPanel() {
                       setActiveSubnav(tab.key);
                       setBizPage(1);
                     }}
-                    className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs flex items-center gap-1.5 ${
+                    className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl font-bold transition-all text-[11px] sm:text-xs flex items-center gap-1.5 ${
                       activeSubnav === tab.key
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : tab.alert
@@ -3501,7 +3859,7 @@ export default function AdminControlPanel() {
                     <span>{tab.label}</span>
                     {tab.count !== undefined && (
                       <span
-                        className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                        className={`text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded-full ${
                           activeSubnav === tab.key
                             ? "bg-primary-foreground/20 text-primary-foreground"
                             : tab.alert
@@ -3524,7 +3882,7 @@ export default function AdminControlPanel() {
                 />
               ) : activeSubnav === "pending_confirmations" ? (
                 /* ── 🔔 Pending Confirmation Queue ──────────────────────────── */
-                <div className="p-5 sm:p-6 rounded-3xl bg-card border border-border shadow-sm">
+                <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-card border border-border shadow-sm">
                   <PendingConfirmationsQueue
                     role={isSuperAdmin ? "super_admin" : (currentRole as any)}
                     filterCountry={geoSelectedCountry !== "all" ? geoSelectedCountry : undefined}
@@ -3533,7 +3891,7 @@ export default function AdminControlPanel() {
                   />
                 </div>
               ) : activeSubnav === "new" ? (
-                <div className="p-4 sm:p-6 rounded-3xl bg-card border border-border shadow-sm">
+                <div className="p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl bg-card border border-border shadow-sm">
                   <EmbeddedListingWizard
                     mode="embedded"
                     isAdmin={true}
@@ -3556,99 +3914,99 @@ export default function AdminControlPanel() {
                     { id: "br-1", business: "Crypto Exchange Bole", reason: "Fraud / Unlicensed Financial Activity", reporter: "Abebe T.", date: "Aug 27", status: "Under Review" },
                     { id: "br-2", business: "Fake Hotel Listing", reason: "Impersonating verified business", reporter: "Sara K.", date: "Aug 25", status: "Investigation" },
                   ].map((r) => (
-                    <div key={r.id} className="p-5 rounded-3xl bg-card border border-border space-y-3">
+                    <div key={r.id} className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-border space-y-2.5 sm:space-y-3">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-bold text-foreground text-sm">{r.business}</h4>
-                        <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30">{r.status}</Badge>
+                        <h4 className="font-bold text-foreground text-xs sm:text-sm">{r.business}</h4>
+                        <Badge variant="outline" className="text-[9px] sm:text-[10px] text-amber-500 border-amber-500/30">{r.status}</Badge>
                       </div>
-                      <div className="text-xs text-muted-foreground">Reason: <strong className="text-foreground">{r.reason}</strong> • Reported by: {r.reporter} • {r.date}</div>
+                      <div className="text-[10px] sm:text-xs text-muted-foreground">Reason: <strong className="text-foreground">{r.reason}</strong> • Reported by: {r.reporter} • {r.date}</div>
                       <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-                        <Button size="sm" variant="outline" onClick={() => toast.success("Report dismissed")} className="text-xs">Dismiss</Button>
-                        <Button size="sm" variant="gradient" onClick={() => toast.success("Business suspended and reporter notified.")} className="text-xs">Resolve & Penalize</Button>
+                        <Button size="sm" variant="outline" onClick={() => toast.success("Report dismissed")} className="text-[10px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3">Dismiss</Button>
+                        <Button size="sm" variant="gradient" onClick={() => toast.success("Business suspended and reporter notified.")} className="text-[10px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3">Resolve & Penalize</Button>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="rounded-3xl bg-card border border-border overflow-hidden shadow-sm relative">
+                <div className="rounded-2xl sm:rounded-3xl bg-card border border-border overflow-hidden shadow-sm relative">
                   {isBizLoading && (
                     <div className="absolute inset-0 bg-background/50 backdrop-blur-xs z-10 flex items-center justify-center">
-                      <div className="flex items-center gap-2 bg-card px-4 py-2 rounded-2xl shadow border border-border text-xs font-bold text-muted-foreground">
-                        <RefreshCw className="w-4 h-4 animate-spin text-primary" />
+                      <div className="flex items-center gap-2 bg-card px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl shadow border border-border text-[10px] sm:text-xs font-bold text-muted-foreground">
+                        <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin text-primary" />
                         <span>Loading businesses from database…</span>
                       </div>
                     </div>
                   )}
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-muted/50 text-muted-foreground uppercase text-[10px] font-bold border-b border-border">
+                      <thead className="bg-muted/50 text-muted-foreground uppercase text-[9px] sm:text-[10px] font-bold border-b border-border">
                         <tr>
-                          <th className="px-6 py-3.5">Business</th>
-                          <th className="px-6 py-3.5">Category</th>
-                          <th className="px-6 py-3.5">Location</th>
-                          <th className="px-6 py-3.5">Verification</th>
-                          <th className="px-6 py-3.5">Rating</th>
-                          <th className="px-6 py-3.5 text-right">Actions</th>
+                          <th className="px-3 sm:px-6 py-2.5 sm:py-3.5">Business</th>
+                          <th className="px-3 sm:px-6 py-2.5 sm:py-3.5">Category</th>
+                          <th className="px-3 sm:px-6 py-2.5 sm:py-3.5">Location</th>
+                          <th className="px-3 sm:px-6 py-2.5 sm:py-3.5">Verification</th>
+                          <th className="px-3 sm:px-6 py-2.5 sm:py-3.5">Rating</th>
+                          <th className="px-3 sm:px-6 py-2.5 sm:py-3.5 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/50">
                         {businesses.length === 0 && !isBizLoading ? (
-                          <tr><td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">No businesses match this filter.</td></tr>
+                          <tr><td colSpan={6} className="px-4 sm:px-6 py-8 sm:py-12 text-center text-[11px] sm:text-xs text-muted-foreground">No businesses match this filter.</td></tr>
                         ) : businesses.map((b) => (
                           <tr key={b.id} className="hover:bg-accent/30 transition-colors">
-                            <td className="px-6 py-3.5 font-bold text-foreground">
-                              {b.name}
-                              <div className="text-[10px] text-muted-foreground font-mono">{b.id.length > 14 ? b.id.slice(0, 14) + "…" : b.id}</div>
+                            <td className="px-3 sm:px-6 py-2.5 sm:py-3.5 font-bold text-foreground">
+                              <div className="font-bold text-[11px] sm:text-xs text-foreground truncate max-w-[200px]">{b.name}</div>
+                              <div className="text-[9px] sm:text-[10px] text-muted-foreground font-mono truncate">{b.id.length > 14 ? b.id.slice(0, 14) + "…" : b.id}</div>
                             </td>
-                            <td className="px-6 py-3.5 text-muted-foreground">{b.categoryName || (b as any).category || "General Business"}</td>
-                            <td className="px-6 py-3.5 text-muted-foreground">{b.cityName || (b as any).city || "Addis Ababa"}, {b.countryName || (b as any).country || "Ethiopia"}</td>
-                            <td className="px-6 py-3.5">
+                            <td className="px-3 sm:px-6 py-2.5 sm:py-3.5 text-[10px] sm:text-xs text-muted-foreground">{b.categoryName || (b as any).category || "General Business"}</td>
+                            <td className="px-3 sm:px-6 py-2.5 sm:py-3.5 text-[10px] sm:text-xs text-muted-foreground">{b.cityName || (b as any).city || "Addis Ababa"}, {b.countryName || (b as any).country || "Ethiopia"}</td>
+                            <td className="px-3 sm:px-6 py-2.5 sm:py-3.5">
                               {b.approvalStatus === "pending_city" && (
-                                <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 text-[10px] font-bold">
+                                <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5">
                                   ⏳ Stage 1: City Review
                                 </Badge>
                               )}
                               {b.approvalStatus === "pending_country" && (
-                                <Badge className="bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 text-[10px] font-bold">
+                                <Badge className="bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5">
                                   ⏳ Stage 2: Country Lead
                                 </Badge>
                               )}
                               {b.approvalStatus === "pending_super_admin" && (
-                                <Badge className="bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20 text-[10px] font-bold">
-                                  ⏳ Stage 3: Super Admin Sign-off
+                                <Badge className="bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5">
+                                  ⏳ Stage 3: Super Admin
                                 </Badge>
                               )}
                               {(b.approvalStatus === "approved" || b.isVerified) && (
-                                <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[10px] font-bold">
-                                  ✅ Live & Verified
+                                <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5">
+                                  ✅ Verified
                                 </Badge>
                               )}
                               {(b.approvalStatus === "rejected" || (b as any).verificationStatus === "rejected") && (
-                                <Badge className="bg-red-500/10 text-red-600 border border-red-500/20 text-[10px] font-bold">
+                                <Badge className="bg-red-500/10 text-red-600 border border-red-500/20 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5">
                                   ❌ Rejected
                                 </Badge>
                               )}
                               {!b.approvalStatus && !b.isVerified && (
-                                <Badge className="bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[10px]">
+                                <Badge className="bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[9px] sm:text-[10px] px-1.5 py-0.5">
                                   ⏳ Pending
                                 </Badge>
                               )}
                             </td>
-                            <td className="px-6 py-3.5 text-amber-500 font-bold">⭐ {(b.ratingAvg ?? (b as any).rating ?? 0).toFixed(1)}</td>
-                            <td className="px-6 py-3.5 text-right space-x-1.5 whitespace-nowrap">
-                              <Button size="sm" variant="outline" onClick={() => setInspectingBusiness(b)} className="h-7 text-[11px] font-semibold">View Details</Button>
-                              <Button size="sm" variant="outline" onClick={() => setEditingBusiness(b)} className="h-7 text-[11px] font-semibold">Edit</Button>
+                            <td className="px-3 sm:px-6 py-2.5 sm:py-3.5 text-amber-500 font-bold text-[10px] sm:text-xs">⭐ {(b.ratingAvg ?? (b as any).rating ?? 0).toFixed(1)}</td>
+                            <td className="px-3 sm:px-6 py-2.5 sm:py-3.5 text-right space-x-1 sm:space-x-1.5 whitespace-nowrap">
+                              <Button size="sm" variant="outline" onClick={() => setInspectingBusiness(b)} className="h-6 sm:h-7 text-[10px] sm:text-[11px] font-semibold px-2 sm:px-2.5">Details</Button>
+                              <Button size="sm" variant="outline" onClick={() => setEditingBusiness(b)} className="h-6 sm:h-7 text-[10px] sm:text-[11px] font-semibold px-2 sm:px-2.5">Edit</Button>
                               {b.approvalStatus !== "approved" && !b.isVerified ? (
                                 <>
-                                  <Button size="sm" variant="outline" onClick={() => handleApproveBusiness(b.id, b.name)} className="h-7 text-[11px] font-semibold text-emerald-600 border-emerald-500/30">
-                                    Approve Stage
+                                  <Button size="sm" variant="outline" onClick={() => handleApproveBusiness(b.id, b.name)} className="h-6 sm:h-7 text-[10px] sm:text-[11px] font-semibold text-emerald-600 border-emerald-500/30 px-2 sm:px-2.5">
+                                    Approve
                                   </Button>
-                                  <Button size="sm" onClick={() => handleSuperAdminOverride(b.id, b.name)} className="h-7 text-[11px] font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-xs" title="Super Admin Fast-Track: Approve & post immediately">
-                                    ⚡ Fast-Track Post
+                                  <Button size="sm" onClick={() => handleSuperAdminOverride(b.id, b.name)} className="h-6 sm:h-7 text-[10px] sm:text-[11px] font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-xs px-2 sm:px-2.5" title="Super Admin Fast-Track: Approve & post immediately">
+                                    ⚡ Fast-Track
                                   </Button>
                                 </>
                               ) : (
-                                <Button size="sm" variant="outline" onClick={() => handleRejectBusiness(b.id, b.name)} className="h-7 text-[11px] font-semibold text-red-600 border-red-500/30">Suspend</Button>
+                                <Button size="sm" variant="outline" onClick={() => handleRejectBusiness(b.id, b.name)} className="h-6 sm:h-7 text-[10px] sm:text-[11px] font-semibold text-red-600 border-red-500/30 px-2 sm:px-2.5">Suspend</Button>
                               )}
                             </td>
                           </tr>
@@ -3658,7 +4016,7 @@ export default function AdminControlPanel() {
                   </div>
 
                   {/* 20 Per Page Pagination Bar */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-muted/20 border-t border-border text-xs">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-muted/20 border-t border-border text-[10px] sm:text-xs">
                     <div className="text-muted-foreground font-medium">
                       Showing{" "}
                       <span className="font-bold text-foreground">
@@ -3757,22 +4115,26 @@ export default function AdminControlPanel() {
           {activeNav === "categories" && (
             <div className="space-y-6 max-w-7xl mx-auto">
               {/* Header & Main Actions */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                 <div>
-                  <h2 className="text-2xl font-black text-foreground flex items-center gap-2.5">
-                    <FolderTree className="w-6 h-6 text-primary" />
+                  <h2 className="text-base sm:text-xl md:text-2xl font-black text-foreground flex items-center gap-2 sm:gap-2.5">
+                    <FolderTree className="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
                     <span>Category Taxonomy & Directory Tree</span>
                   </h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
                     Official database taxonomy registered directly to MongoDB. Kept at 3 industries per page for clean administrative oversight.
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      fetch("/api/categories")
+                      const params = new URLSearchParams();
+                      if (geoSelectedCountry && geoSelectedCountry !== "all") params.set("country", geoSelectedCountry);
+                      if (geoSelectedCity && geoSelectedCity !== "all") params.set("city", geoSelectedCity);
+                      const catUrl = `/api/categories${params.toString() ? `?${params.toString()}` : ""}`;
+                      fetch(catUrl)
                         .then((res) => res.json())
                         .then((data) => {
                           if (data?.categories) {
@@ -3781,9 +4143,9 @@ export default function AdminControlPanel() {
                           }
                         });
                     }}
-                    className="gap-1.5 text-xs font-semibold"
+                    className="gap-1.5 text-[10px] sm:text-xs font-semibold h-7.5 sm:h-8.5 px-2.5 sm:px-3"
                   >
-                    <RefreshCw className="w-3.5 h-3.5" /> Refresh
+                    <RefreshCw className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> <span>Refresh</span>
                   </Button>
                   <Button
                     variant="gradient"
@@ -3792,24 +4154,48 @@ export default function AdminControlPanel() {
                       setDefaultParentForAdd(undefined);
                       setIsAddCatModalOpen(true);
                     }}
-                    className="gap-1.5 text-xs font-bold shadow-md"
+                    className="gap-1.5 text-[10px] sm:text-xs font-bold shadow-md h-7.5 sm:h-8.5 px-2.5 sm:px-3"
                   >
-                    <Plus className="w-4 h-4" /> Register Category
+                    <Plus className="w-3.5 h-3.5" /> <span>Register Category</span>
                   </Button>
                 </div>
               </div>
 
               {/* Navigation Subtabs & Live Search Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                 {renderSubnavTabs([
-                  { key: "all", label: "All Industries & Trees", count: industryGroups.length },
+                  {
+                    key: "all",
+                    label: (geoSelectedCity !== "all" || isCityAdmin)
+                      ? `All City Categories (${geoSelectedCity !== "all" ? geoSelectedCity : currentUser?.assignedCity || "City"})`
+                      : (geoSelectedCountry !== "all" || isCountryAdmin)
+                      ? `All Country Categories (${geoSelectedCountry !== "all" ? geoSelectedCountry : currentUser?.assignedCountry || "Country"})`
+                      : "All Industries & Trees",
+                    count: (geoSelectedCity !== "all" || isCityAdmin || geoSelectedCountry !== "all" || isCountryAdmin)
+                      ? (adminCityCategories.filter(c => c.businessCount > 0).length || adminCityCategories.length)
+                      : industryGroups.length,
+                  },
                   { key: "industries", label: "Level 1 Industries", count: industryGroups.length },
                   { key: "subcategories", label: "Subcategories", count: categories.filter((c) => c.level > 1).length },
+                  {
+                    key: "commercial_sectors",
+                    label: (geoSelectedCity !== "all" || isCityAdmin)
+                      ? `Commercial Sectors (${geoSelectedCity !== "all" ? geoSelectedCity : currentUser?.assignedCity || "City"})`
+                      : (geoSelectedCountry !== "all" || isCountryAdmin)
+                      ? `Commercial Sectors (${geoSelectedCountry !== "all" ? geoSelectedCountry : currentUser?.assignedCountry || "Country"})`
+                      : "Commercial Sectors",
+                    count: adminCityCategories.filter(c => c.businessCount > 0).length || adminCityCategories.length,
+                  },
+                  {
+                    key: "petition",
+                    label: "Petition Country Lead",
+                    count: adminPetitions.length,
+                  },
                   { key: "pending", label: "Pending Verification" },
                 ])}
 
-                <div className="relative w-full sm:w-72">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <div className="relative w-full sm:w-72 group">
+                  <Search className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 absolute left-2.5 xs:left-3 top-1/2 -translate-y-1/2 text-muted-foreground/80 group-focus-within:text-primary transition-colors pointer-events-none" />
                   <Input
                     value={catSearch}
                     onChange={(e) => {
@@ -3817,24 +4203,359 @@ export default function AdminControlPanel() {
                       setCatPage(1);
                     }}
                     placeholder="Search industries & subcategories..."
-                    className="pl-8 text-xs h-9 rounded-xl bg-card border-border"
+                    className="pl-7.5 xs:pl-8 sm:pl-9 pr-7 sm:pr-8 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs h-7.5 xs:h-8 sm:h-8.5 md:h-9 rounded-lg xs:rounded-xl sm:rounded-2xl bg-card/80 hover:bg-card border-border/70 hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 shadow-2xs hover:shadow-xs transition-all placeholder:text-muted-foreground/60 placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs truncate"
                   />
                   {catSearch && (
                     <button
+                      type="button"
                       onClick={() => {
                         setCatSearch("");
                         setCatPage(1);
                       }}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                      title="Clear search"
                     >
-                      ✕
+                      <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Pending Tab */}
-              {activeSubnav === "pending" ? (
+              {/* Commercial Sectors Matrix Tab */}
+              {activeSubnav === "commercial_sectors" ? (
+                <div className="space-y-4">
+                  {adminCityCategories.length === 0 ? (
+                    <div className="p-12 rounded-3xl bg-card border border-border text-center text-muted-foreground space-y-3">
+                      <BarChart3 className="w-10 h-10 mx-auto opacity-30 text-primary" />
+                      <h3 className="font-bold text-foreground">No Geo Scope Selected</h3>
+                      <p className="text-xs max-w-md mx-auto">
+                        Select a country or city from the scope banner above to view its Commercial Sector matrix.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                          <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                            <BarChart3 className="w-4 h-4 text-purple-500" />
+                            {geoSelectedCity !== "all" ? geoSelectedCity : geoSelectedCountry !== "all" ? geoSelectedCountry : "Global"} Commercial Sector Matrix
+                          </h2>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Live sector density, compliance health, and municipal economic volume ranking.
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="font-mono text-xs px-3 py-1 text-purple-600 bg-purple-500/10 border-purple-500/30">
+                          {adminCityCategories.length} Active Taxonomy Sectors
+                        </Badge>
+                      </div>
+
+                      <div className="overflow-x-auto rounded-3xl border border-border bg-card shadow-sm">
+                        <table className="w-full text-xs text-left">
+                          <thead className="bg-muted/50 border-b border-border text-[11px] uppercase font-bold text-muted-foreground">
+                            <tr>
+                              <th className="py-3 px-4"># Rank</th>
+                              <th className="py-3 px-4">Commercial Sector</th>
+                              <th className="py-3 px-4">Volume &amp; Share</th>
+                              <th className="py-3 px-4">Verification Health</th>
+                              <th className="py-3 px-4">Top Establishment</th>
+                              <th className="py-3 px-4 text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {adminCityCategories.map((sec, idx) => (
+                              <tr key={sec.id} className="hover:bg-muted/30 transition-colors">
+                                <td className="py-3 px-4 font-mono font-bold text-muted-foreground">#{idx + 1}</td>
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                                      <FolderTree className="w-4 h-4 text-purple-500" />
+                                    </div>
+                                    <div>
+                                      <div className="font-bold text-foreground">{sec.name}</div>
+                                      <div className="text-[10px] text-muted-foreground font-mono">/{sec.slug}</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between text-[11px] font-bold">
+                                      <span>{sec.businessCount} listings</span>
+                                      <span className="text-purple-600 font-mono">{sec.economicShare}%</span>
+                                    </div>
+                                    <div className="w-28 h-1.5 rounded-full bg-muted overflow-hidden">
+                                      <div
+                                        className="h-full bg-purple-500 rounded-full transition-all"
+                                        style={{ width: `${Math.min(100, parseFloat(sec.economicShare) || 0)}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]">
+                                      {sec.verifiedCount} Verified
+                                    </Badge>
+                                    {sec.pendingCount > 0 && (
+                                      <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px]">
+                                        {sec.pendingCount} Queued
+                                      </Badge>
+                                    )}
+                                    {sec.rejectedCount > 0 && (
+                                      <Badge className="bg-rose-500/10 text-rose-600 border-rose-500/20 text-[10px]">
+                                        {sec.rejectedCount} Issues
+                                      </Badge>
+                                    )}
+                                    {sec.businessCount === 0 && (
+                                      <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                                        Awaiting Listings
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <div className="text-[11px] text-foreground font-medium truncate max-w-[180px]">
+                                    {sec.topBusinesses?.[0]?.name || <span className="text-muted-foreground italic">Sector awaiting registrations</span>}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setActiveNav("businesses");
+                                      setBusinessSearch(sec.name);
+                                    }}
+                                    className="h-7 text-xs font-bold text-purple-600 hover:bg-purple-500/10 border-purple-500/30"
+                                  >
+                                    Inspect Listings
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : activeSubnav === "petition" ? (
+                /* Petition Country Lead Tab */
+                <div className="space-y-6">
+                  <div className="p-6 rounded-3xl bg-card border border-border shadow-sm space-y-4">
+                    <div className="space-y-1">
+                      <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <Send className="w-4 h-4 text-purple-600" />
+                        Category Expansion Petition —{" "}
+                        {geoSelectedCity !== "all" ? geoSelectedCity : geoSelectedCountry !== "all" ? geoSelectedCountry : "Global Scope"}
+                      </h2>
+                      <p className="text-xs text-muted-foreground">
+                        Submit a petition to ratify custom local commercial subcategories for the selected territory.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-foreground">Proposed Category / Specialization Name</label>
+                        <Input
+                          placeholder="e.g. Nile Felucca & Riverfront Tourism"
+                          value={newPetitionName}
+                          onChange={(e) => setNewPetitionName(e.target.value)}
+                          className="h-10 rounded-2xl bg-background border-border text-xs"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-foreground">Parent Commercial Industry</label>
+                        <select
+                          value={newPetitionParent}
+                          onChange={(e) => setNewPetitionParent(e.target.value)}
+                          className="w-full h-10 px-3 rounded-2xl bg-background border border-border text-xs font-semibold text-foreground focus:outline-none"
+                        >
+                          {adminCityCategories.length > 0 ? (
+                            adminCityCategories.map((c) => (
+                              <option key={c.id} value={c.name}>{c.name}</option>
+                            ))
+                          ) : (
+                            categories.filter(c => c.level === 1).map((c) => (
+                              <option key={c.id} value={c.name}>{c.name}</option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="text-xs font-bold text-foreground">Municipal Economic Need &amp; Regulatory Justification</label>
+                        <Textarea
+                          placeholder={`Explain why this territory requires this specialized commercial taxonomy addition...`}
+                          value={newPetitionJustification}
+                          onChange={(e) => setNewPetitionJustification(e.target.value)}
+                          className="rounded-2xl bg-background border-border text-xs min-h-[90px]"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-foreground">Estimated Local Merchant Pool</label>
+                        <select
+                          value={newPetitionEstCount}
+                          onChange={(e) => setNewPetitionEstCount(e.target.value)}
+                          className="w-full h-10 px-3 rounded-2xl bg-background border border-border text-xs font-semibold text-foreground focus:outline-none"
+                        >
+                          <option value="5-15">5 – 15 Local Merchants</option>
+                          <option value="15-50">15 – 50 Local Merchants</option>
+                          <option value="50-150">50 – 150 Local Merchants</option>
+                          <option value="150+">150+ Established Storefronts</option>
+                        </select>
+                      </div>
+
+                      <div className="flex items-end">
+                        <Button
+                          onClick={async () => {
+                            if (!newPetitionName.trim()) {
+                              toast.error("Please enter a category name.");
+                              return;
+                            }
+                            const territory = geoSelectedCity !== "all" ? geoSelectedCity : geoSelectedCountry !== "all" ? geoSelectedCountry : "Global";
+                            try {
+                              const res = await fetch("/api/categories/petitions", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  city: geoSelectedCity !== "all" ? geoSelectedCity : undefined,
+                                  country: geoSelectedCountry !== "all" ? geoSelectedCountry : "Global",
+                                  categoryName: newPetitionName.trim(),
+                                  parentIndustry: newPetitionParent,
+                                  justification: newPetitionJustification.trim() || `Administrative petition for ${territory}.`,
+                                  merchantCount: parseInt(newPetitionEstCount.split("-")[0]) || 5,
+                                }),
+                              });
+                              const data = await res.json();
+                              if (data?.success && data?.petition) {
+                                setAdminPetitions((prev) => [data.petition, ...prev.filter(p => p.id !== data.petition.id)]);
+                                setNewPetitionName("");
+                                setNewPetitionJustification("");
+                                toast.success(`Petition submitted for "${data.petition.categoryName}" in ${territory}!`);
+                              } else {
+                                const newPet = {
+                                  id: `pet-admin-${Date.now()}`,
+                                  categoryName: newPetitionName.trim(),
+                                  parentIndustry: newPetitionParent,
+                                  justification: newPetitionJustification.trim() || "Pending justification.",
+                                  merchantCount: parseInt(newPetitionEstCount.split("-")[0]) || 5,
+                                  submittedAt: new Date().toISOString().slice(0, 10),
+                                  status: "pending_review" as const,
+                                };
+                                setAdminPetitions((prev) => [newPet, ...prev]);
+                                setNewPetitionName("");
+                                setNewPetitionJustification("");
+                                toast.success(`Petition submitted for "${newPet.categoryName}" in ${territory}!`);
+                              }
+                            } catch {
+                              toast.error("Failed to submit petition to server");
+                            }
+                          }}
+                          className="w-full h-10 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs gap-1.5"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          Submit Petition to Country Lead
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Active Petitions Table */}
+                  {adminPetitions.length > 0 && (
+                    <div className="rounded-3xl border border-border bg-card shadow-sm overflow-hidden">
+                      <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-foreground">Active Municipal Petitions</h3>
+                        <Badge variant="outline" className="font-mono text-xs">{adminPetitions.length} Petitions</Badge>
+                      </div>
+                      <div className="divide-y divide-border">
+                        {adminPetitions.map((pet) => (
+                          <div key={pet.id} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-foreground">{pet.categoryName}</span>
+                                <Badge
+                                  className={`text-[10px] font-mono ${
+                                    pet.status === "approved" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
+                                    pet.status === "under_review" ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
+                                    "bg-muted text-muted-foreground"
+                                  }`}
+                                >
+                                  {pet.status.replace("_", " ")}
+                                </Badge>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground">
+                                Parent: <span className="font-semibold text-foreground">{pet.parentIndustry}</span> · Est. {pet.merchantCount} merchants · Submitted {pet.submittedAt}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={async () => {
+                                  try {
+                                    const res = await fetch("/api/categories/petitions", {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({
+                                        id: pet.id,
+                                        status: "approved",
+                                        city: geoSelectedCity !== "all" ? geoSelectedCity : undefined,
+                                        country: geoSelectedCountry !== "all" ? geoSelectedCountry : "Global",
+                                      }),
+                                    });
+                                    const data = await res.json();
+                                    if (data?.success) {
+                                      setAdminPetitions((prev) => prev.map((p) => p.id === pet.id ? { ...p, status: "approved" } : p));
+                                      toast.success(`Petition "${pet.categoryName}" approved and registered!`);
+                                      // Re-fetch categories taxonomy & breakdown
+                                      const params = new URLSearchParams();
+                                      if (geoSelectedCountry && geoSelectedCountry !== "all") params.set("country", geoSelectedCountry);
+                                      if (geoSelectedCity && geoSelectedCity !== "all") params.set("city", geoSelectedCity);
+                                      fetch(`/api/categories${params.toString() ? `?${params.toString()}` : ""}`)
+                                        .then((r) => r.json())
+                                        .then((d) => {
+                                          if (d?.categories) setCategories(d.categories);
+                                          if (d?.cityCategories) setAdminCityCategories(d.cityCategories);
+                                        })
+                                        .catch(() => {});
+                                    } else {
+                                      setAdminPetitions((prev) => prev.map((p) => p.id === pet.id ? { ...p, status: "approved" } : p));
+                                      toast.success(`Petition "${pet.categoryName}" approved!`);
+                                    }
+                                  } catch {
+                                    setAdminPetitions((prev) => prev.map((p) => p.id === pet.id ? { ...p, status: "approved" } : p));
+                                    toast.success(`Petition "${pet.categoryName}" approved!`);
+                                  }
+                                }}
+                                className="h-7 text-xs font-bold text-emerald-600 hover:bg-emerald-500/10 border-emerald-500/30"
+                                disabled={pet.status === "approved"}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={async () => {
+                                  try {
+                                    await fetch(`/api/categories/petitions?id=${encodeURIComponent(pet.id)}`, { method: "DELETE" });
+                                  } catch {}
+                                  setAdminPetitions((prev) => prev.filter((p) => p.id !== pet.id));
+                                  toast.success("Petition removed");
+                                }}
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : activeSubnav === "pending" ? (
                 <div className="p-12 rounded-3xl bg-card border border-border text-center text-muted-foreground space-y-3">
                   <FolderTree className="w-10 h-10 mx-auto opacity-30 text-primary" />
                   <h3 className="font-bold text-foreground">No Pending Category Requests</h3>
@@ -4018,6 +4739,45 @@ export default function AdminControlPanel() {
                                 <Badge variant="outline" className="text-xs font-mono px-2.5 py-1">
                                   {ind.categories.length} Categories ({ind.totalCount} total nodes)
                                 </Badge>
+                                {(() => {
+                                  const citySector = adminCityCategories.find(
+                                    (s) =>
+                                      s.name.toLowerCase() === ind.name.toLowerCase() ||
+                                      ind.name.toLowerCase().includes(s.name.toLowerCase()) ||
+                                      s.name.toLowerCase().includes(ind.name.toLowerCase())
+                                  );
+                                  const matchingCount = citySector ? citySector.businessCount : businesses.filter(
+                                    (b) =>
+                                      b.categoryName?.toLowerCase().includes(ind.name.toLowerCase()) ||
+                                      ind.name.toLowerCase().includes((b.categoryName || "").toLowerCase())
+                                  ).length;
+                                  return (
+                                    <>
+                                      {matchingCount > 0 && (
+                                        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs font-mono font-bold">
+                                          {matchingCount} {geoSelectedCity !== "all" ? `${geoSelectedCity} Listings` : geoSelectedCountry !== "all" ? `${geoSelectedCountry} Listings` : "Listings"}
+                                          {citySector?.economicShare ? ` (${citySector.economicShare}%)` : ""}
+                                        </Badge>
+                                      )}
+                                      {citySector?.topBusinesses && citySector.topBusinesses.length > 0 && (
+                                        <span className="hidden xl:inline-block text-[11px] text-muted-foreground truncate max-w-[140px]" title={citySector.topBusinesses[0].name}>
+                                          Top: <strong className="text-foreground">{citySector.topBusinesses[0].name}</strong>
+                                        </span>
+                                      )}
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setActiveNav("businesses");
+                                          setBusinessSearch(ind.name);
+                                        }}
+                                        className="gap-1 text-xs font-bold text-primary border-primary/30 hover:bg-primary/10"
+                                      >
+                                        View Listings →
+                                      </Button>
+                                    </>
+                                  );
+                                })()}
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -4239,15 +4999,17 @@ export default function AdminControlPanel() {
           {/* ════════════════════════════════════════════════════════════════════
               5. 📍 LOCATIONS & TERRITORY HIERARCHY
              ════════════════════════════════════════════════════════════════════ */}
-          {activeNav === "locations" && (
+          {(activeNav === "locations" || activeNav === "geo_admins") && (
             <div className="space-y-6 max-w-7xl mx-auto">
               <TerritoryAdministrationView
-                currentRole={geoScopeRole}
-                currentCountry={geoSelectedCountry === "all" ? "Ethiopia" : geoSelectedCountry}
-                currentCity={geoSelectedCity === "all" ? "Addis Ababa" : geoSelectedCity}
+                currentRole={isCountryAdmin ? "country_admin" : isSuperAdmin ? "super_admin" : geoScopeRole}
+                currentCountry={geoSelectedCountry === "all" ? (currentUser?.assignedCountry || "Ethiopia") : geoSelectedCountry}
+                currentCity={geoSelectedCity === "all" ? (currentUser?.assignedCity || "Addis Ababa") : geoSelectedCity}
                 onRoleChange={setGeoScopeRole}
                 onCountryChange={setGeoSelectedCountry}
                 onCityChange={setGeoSelectedCity}
+                activeSubnav={activeSubnav}
+                onSubnavChange={setActiveSubnav}
               />
             </div>
           )}
@@ -4257,33 +5019,35 @@ export default function AdminControlPanel() {
              ════════════════════════════════════════════════════════════════════ */}
           {activeNav === "reviews" && (
             <div className="space-y-6 max-w-7xl mx-auto">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-black text-foreground">Reviews & Customer Feedback</h2>
-                    <Badge variant="outline" className="text-xs font-mono border-amber-500/30 text-amber-600 bg-amber-500/10">
+                    <h2 className="text-base sm:text-xl md:text-2xl font-black text-foreground">Reviews & Customer Feedback</h2>
+                    <Badge variant="outline" className="text-[9px] sm:text-[10px] font-mono border-amber-500/30 text-amber-600 bg-amber-500/10">
                       20 per page
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
                     Moderate real customer reviews from all users across the platform, register verified ratings, and investigate flags.
                   </p>
                 </div>
-                <div className="flex items-center gap-2.5">
-                  <div className="relative w-64">
-                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5">
+                  <div className="relative w-full sm:w-64 group">
+                    <Search className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 absolute left-2.5 xs:left-3 top-1/2 -translate-y-1/2 text-muted-foreground/80 group-focus-within:text-primary transition-colors pointer-events-none" />
                     <Input
                       placeholder="Search user, business, comment…"
                       value={reviewSearch}
                       onChange={(e) => setReviewSearch(e.target.value)}
-                      className="pl-8 text-xs rounded-2xl"
+                      className="pl-7.5 xs:pl-8 sm:pl-9 pr-7 sm:pr-8 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs h-7.5 xs:h-8 sm:h-8.5 md:h-9 rounded-lg xs:rounded-xl sm:rounded-2xl bg-card/80 hover:bg-card border-border/70 hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 shadow-2xs hover:shadow-xs transition-all placeholder:text-muted-foreground/60 placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs truncate"
                     />
                     {reviewSearch && (
                       <button
+                        type="button"
                         onClick={() => setReviewSearch("")}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                        title="Clear search"
                       >
-                        ✕
+                        <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                       </button>
                     )}
                   </div>
@@ -4291,7 +5055,7 @@ export default function AdminControlPanel() {
                     variant="gradient"
                     size="sm"
                     onClick={() => setIsAddReviewModalOpen(true)}
-                    className="gap-1.5 text-xs font-bold shadow-md shrink-0"
+                    className="gap-1.5 text-[10px] sm:text-xs font-bold shadow-md shrink-0 h-8 sm:h-8.5 px-2.5 sm:px-3"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Register Review</span>
@@ -4554,24 +5318,24 @@ export default function AdminControlPanel() {
           {activeNav === "media" && (
             <div className="space-y-6 max-w-7xl mx-auto">
               {/* Header & Main Actions */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-black text-foreground">Media Assets & Moderation</h2>
-                    <Badge variant="outline" className="text-xs font-mono border-primary/30 text-primary bg-primary/10">
+                    <h2 className="text-base sm:text-xl md:text-2xl font-black text-foreground">Media Assets & Moderation</h2>
+                    <Badge variant="outline" className="text-[9px] sm:text-[10px] font-mono border-primary/30 text-primary bg-primary/10">
                       10 per page
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
                     Register, moderate, and inspect business cover photos, logos, interior galleries, and promotional video showcases.
                   </p>
                 </div>
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2">
                   <Button
                     size="sm"
                     variant="gradient"
                     onClick={() => setIsRegisterMediaModalOpen(true)}
-                    className="gap-1.5 text-xs font-bold shadow-md"
+                    className="gap-1.5 text-[10px] sm:text-xs font-bold shadow-md h-7.5 sm:h-8.5 px-2.5 sm:px-3"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Upload & Register Media</span>
@@ -4580,9 +5344,9 @@ export default function AdminControlPanel() {
               </div>
 
               {/* Search Bar */}
-              <div className="flex flex-col sm:flex-row items-center gap-3 bg-card p-3 rounded-2xl border border-border shadow-sm">
-                <div className="relative flex-1 w-full">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 bg-card p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-border shadow-xs">
+                <div className="relative flex-1 w-full group">
+                  <Search className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 absolute left-2.5 xs:left-3 top-1/2 -translate-y-1/2 text-muted-foreground/80 group-focus-within:text-primary transition-colors pointer-events-none" />
                   <Input
                     placeholder="Search media by title, business name, or uploader..."
                     value={mediaSearch}
@@ -4590,10 +5354,23 @@ export default function AdminControlPanel() {
                       setMediaSearch(e.target.value);
                       setMediaPage(1);
                     }}
-                    className="text-xs pl-8 bg-background border-border"
+                    className="pl-7.5 xs:pl-8 sm:pl-9 pr-7 sm:pr-8 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs h-7.5 xs:h-8 sm:h-8.5 md:h-9 rounded-lg xs:rounded-xl sm:rounded-2xl bg-background/80 hover:bg-background border-border/70 hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 shadow-2xs hover:shadow-xs transition-all placeholder:text-muted-foreground/60 placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs truncate"
                   />
+                  {mediaSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMediaSearch("");
+                        setMediaPage(1);
+                      }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                      title="Clear search"
+                    >
+                      <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                    </button>
+                  )}
                 </div>
-                <div className="text-xs text-muted-foreground font-mono shrink-0">
+                <div className="text-[10px] sm:text-xs text-muted-foreground font-mono shrink-0">
                   Total: <span className="font-bold text-foreground">{mediaTotalCount}</span> assets
                 </div>
               </div>
@@ -5455,9 +6232,9 @@ export default function AdminControlPanel() {
                   />
 
                   {/* Search and Filter Controls */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-3xl bg-card border border-border shadow-sm">
-                    <div className="relative flex-1">
-                      <Search className="w-4 h-4 absolute left-3.5 top-3 text-muted-foreground" />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 p-3 sm:p-4 rounded-2xl sm:rounded-3xl bg-card border border-border shadow-xs">
+                    <div className="relative flex-1 group">
+                      <Search className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 absolute left-2.5 xs:left-3 top-1/2 -translate-y-1/2 text-muted-foreground/80 group-focus-within:text-primary transition-colors pointer-events-none" />
                       <Input
                         value={paySearch}
                         onChange={(e) => {
@@ -5465,8 +6242,21 @@ export default function AdminControlPanel() {
                           setPayPage(1);
                         }}
                         placeholder="Search by Transaction ID, business, payer name, or reference code..."
-                        className="pl-9 h-10 text-xs rounded-2xl bg-background border-border"
+                        className="pl-7.5 xs:pl-8 sm:pl-9 pr-7 sm:pr-8 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs h-7.5 xs:h-8 sm:h-8.5 md:h-9 rounded-lg xs:rounded-xl sm:rounded-2xl bg-background/80 hover:bg-background border-border/70 hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 shadow-2xs hover:shadow-xs transition-all placeholder:text-muted-foreground/60 placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs truncate"
                       />
+                      {paySearch && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPaySearch("");
+                            setPayPage(1);
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                          title="Clear search"
+                        >
+                          <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        </button>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0 flex-wrap">
@@ -6061,8 +6851,8 @@ export default function AdminControlPanel() {
                       ))}
                     </div>
 
-                    <div className="relative w-full sm:w-72">
-                      <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+                    <div className="relative w-full sm:w-72 group">
+                      <Search className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 absolute left-2.5 xs:left-3 top-1/2 -translate-y-1/2 text-muted-foreground/80 group-focus-within:text-primary transition-colors pointer-events-none" />
                       <Input
                         placeholder="Search business, query, city, ID..."
                         value={analyticsSearch}
@@ -6070,8 +6860,21 @@ export default function AdminControlPanel() {
                           setAnalyticsSearch(e.target.value);
                           setAnalyticsPage(1);
                         }}
-                        className="pl-9 h-9 text-xs rounded-xl bg-card border-border"
+                        className="pl-7.5 xs:pl-8 sm:pl-9 pr-7 sm:pr-8 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs h-7.5 xs:h-8 sm:h-8.5 md:h-9 rounded-lg xs:rounded-xl sm:rounded-2xl bg-card/80 hover:bg-card border-border/70 hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 shadow-2xs hover:shadow-xs transition-all placeholder:text-muted-foreground/60 placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs truncate"
                       />
+                      {analyticsSearch && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAnalyticsSearch("");
+                            setAnalyticsPage(1);
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                          title="Clear search"
+                        >
+                          <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -6405,47 +7208,76 @@ export default function AdminControlPanel() {
 
               {/* Subnav: Location Analytics */}
               {activeSubnav === "location" && (
-                <div className="p-6 rounded-3xl bg-card border border-border shadow-sm space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-rose-500" /> Geographic Visitor &amp; Listing Distribution
-                      </h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Breakdown of searches and interactions by city and region.
-                      </p>
+                <div className="space-y-6">
+                  {/* Interactive Geographic Map View */}
+                  <div className="p-6 rounded-3xl bg-card border border-border shadow-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-rose-500" />
+                          Platform Geographic Telemetry Radar Map
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Live visitor interactions, search origins, and business density mapped across active territories.
+                        </p>
+                      </div>
+                      <Badge className="bg-primary/10 text-primary border-primary/20 text-xs font-bold w-fit">
+                        {adminLocationMapPins.length} Regional Hubs Mapped
+                      </Badge>
+                    </div>
+
+                    <div className="overflow-hidden rounded-2xl border border-border shadow-inner">
+                      <TerritoryMap
+                        territories={adminLocationMapPins}
+                        className="h-[480px] w-full"
+                        center={[9.010793, 38.761252]}
+                        zoom={6}
+                      />
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    {(analyticsStats?.geoDistribution && analyticsStats.geoDistribution.length > 0
-                      ? analyticsStats.geoDistribution
-                      : [
-                          { city: "Addis Ababa", country: "Ethiopia", count: 48, percentage: 65 },
-                          { city: "Hawassa", country: "Ethiopia", count: 10, percentage: 14 },
-                          { city: "Dire Dawa", country: "Ethiopia", count: 6, percentage: 8 },
-                          { city: "Bahir Dar", country: "Ethiopia", count: 5, percentage: 7 },
-                          { city: "Nairobi", country: "Kenya", count: 4, percentage: 6 },
-                        ]
-                    ).map((geo, i) => (
-                      <div key={i} className="p-3.5 rounded-2xl bg-background border border-border space-y-2">
-                        <div className="flex items-center justify-between text-xs font-bold">
-                          <span className="flex items-center gap-2 text-foreground">
-                            <MapPin className="w-3.5 h-3.5 text-primary" />
-                            {geo.city}, {geo.country}
-                          </span>
-                          <span className="font-mono text-muted-foreground">
-                            {geo.count} events ({geo.percentage}%)
-                          </span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                          <div
-                            className="bg-primary h-2 rounded-full transition-all duration-500"
-                            style={{ width: `${Math.max(5, geo.percentage)}%` }}
-                          />
-                        </div>
+                  <div className="p-6 rounded-3xl bg-card border border-border shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
+                          <Compass className="w-4 h-4 text-primary" /> Geographic Visitor &amp; Listing Distribution
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Breakdown of searches and interactions by city and region.
+                        </p>
                       </div>
-                    ))}
+                    </div>
+
+                    <div className="space-y-3">
+                      {(analyticsStats?.geoDistribution && analyticsStats.geoDistribution.length > 0
+                        ? analyticsStats.geoDistribution
+                        : [
+                            { city: "Addis Ababa", country: "Ethiopia", count: 48, percentage: 65 },
+                            { city: "Hawassa", country: "Ethiopia", count: 10, percentage: 14 },
+                            { city: "Dire Dawa", country: "Ethiopia", count: 6, percentage: 8 },
+                            { city: "Bahir Dar", country: "Ethiopia", count: 5, percentage: 7 },
+                            { city: "Nairobi", country: "Kenya", count: 4, percentage: 6 },
+                          ]
+                      ).map((geo, i) => (
+                        <div key={i} className="p-3.5 rounded-2xl bg-background border border-border space-y-2">
+                          <div className="flex items-center justify-between text-xs font-bold">
+                            <span className="flex items-center gap-2 text-foreground">
+                              <MapPin className="w-3.5 h-3.5 text-primary" />
+                              {geo.city}, {geo.country}
+                            </span>
+                            <span className="font-mono text-muted-foreground">
+                              {geo.count} events ({geo.percentage}%)
+                            </span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                            <div
+                              className="bg-primary h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${Math.max(5, geo.percentage)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -6623,10 +7455,10 @@ export default function AdminControlPanel() {
               ])}
 
               {/* Filtering Toolbar */}
-              <div className="p-3.5 rounded-2xl bg-card border border-border/80 flex flex-wrap items-center justify-between gap-3 shadow-xs">
-                <div className="flex items-center gap-2 flex-1 min-w-[240px]">
-                  <div className="relative flex-1">
-                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <div className="p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-card border border-border/80 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 shadow-xs">
+                <div className="flex items-center gap-2 flex-1 min-w-[220px]">
+                  <div className="relative flex-1 group">
+                    <Search className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 absolute left-2.5 xs:left-3 top-1/2 -translate-y-1/2 text-muted-foreground/80 group-focus-within:text-primary transition-colors pointer-events-none" />
                     <Input
                       value={reportSearch}
                       onChange={(e) => {
@@ -6634,22 +7466,22 @@ export default function AdminControlPanel() {
                         setReportPage(1);
                       }}
                       placeholder="Search reports by title, reason, reporter, or ID..."
-                      className="pl-8 text-xs h-9 rounded-xl"
+                      className="pl-7.5 xs:pl-8 sm:pl-9 pr-7 sm:pr-8 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs h-7.5 xs:h-8 sm:h-8.5 md:h-9 rounded-lg xs:rounded-xl sm:rounded-2xl bg-background/80 hover:bg-background border-border/70 hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 shadow-2xs hover:shadow-xs transition-all placeholder:text-muted-foreground/60 placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs truncate"
                     />
+                    {reportSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReportSearch("");
+                          setReportPage(1);
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                        title="Clear search"
+                      >
+                        <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      </button>
+                    )}
                   </div>
-                  {reportSearch && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setReportSearch("");
-                        setReportPage(1);
-                      }}
-                      className="text-xs h-9 text-muted-foreground hover:text-foreground px-2"
-                    >
-                      Clear
-                    </Button>
-                  )}
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
@@ -7107,16 +7939,29 @@ export default function AdminControlPanel() {
 
               {/* Search + Filter Toolbar */}
               {(activeSubnav === "all" || activeSubnav === "global" || activeSubnav === "business") && (
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-card border border-border/80 shadow-xs">
+                  <div className="relative flex-1 group">
+                    <Search className="absolute left-2.5 xs:left-3 top-1/2 -translate-y-1/2 w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 text-muted-foreground/80 group-focus-within:text-primary transition-colors pointer-events-none" />
                     <Input
                       placeholder="Search by title, message, or sender..."
                       value={notifSearch}
                       onChange={(e) => { setNotifSearch(e.target.value); }}
                       onKeyDown={(e) => { if (e.key === "Enter") { setNotifPage(1); fetchNotifications(1); } }}
-                      className="pl-9 text-xs h-9"
+                      className="pl-7.5 xs:pl-8 sm:pl-9 pr-7 sm:pr-8 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs h-7.5 xs:h-8 sm:h-8.5 md:h-9 rounded-lg xs:rounded-xl sm:rounded-2xl bg-background/80 hover:bg-background border-border/70 hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 shadow-2xs hover:shadow-xs transition-all placeholder:text-muted-foreground/60 placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs truncate"
                     />
+                    {notifSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNotifSearch("");
+                          setNotifPage(1);
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                        title="Clear search"
+                      >
+                        <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      </button>
+                    )}
                   </div>
                   <select
                     value={notifTypeFilter}
@@ -7550,10 +8395,10 @@ export default function AdminControlPanel() {
               ])}
 
               {/* Filtering Toolbar */}
-              <div className="p-3.5 rounded-2xl bg-card border border-border/80 flex flex-wrap items-center justify-between gap-3 shadow-xs">
-                <div className="flex items-center gap-2 flex-1 min-w-[240px]">
-                  <div className="relative flex-1">
-                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <div className="p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-card border border-border/80 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 shadow-xs">
+                <div className="flex items-center gap-2 flex-1 min-w-[220px]">
+                  <div className="relative flex-1 group">
+                    <Search className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 absolute left-2.5 xs:left-3 top-1/2 -translate-y-1/2 text-muted-foreground/80 group-focus-within:text-primary transition-colors pointer-events-none" />
                     <Input
                       value={ticketSearch}
                       onChange={(e) => {
@@ -7561,22 +8406,22 @@ export default function AdminControlPanel() {
                         setTicketPage(1);
                       }}
                       placeholder="Search tickets by subject, user, email, business, or #ID..."
-                      className="pl-8 text-xs h-9 rounded-xl"
+                      className="pl-7.5 xs:pl-8 sm:pl-9 pr-7 sm:pr-8 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs h-7.5 xs:h-8 sm:h-8.5 md:h-9 rounded-lg xs:rounded-xl sm:rounded-2xl bg-background/80 hover:bg-background border-border/70 hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 shadow-2xs hover:shadow-xs transition-all placeholder:text-muted-foreground/60 placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs truncate"
                     />
+                    {ticketSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTicketSearch("");
+                          setTicketPage(1);
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                        title="Clear search"
+                      >
+                        <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      </button>
+                    )}
                   </div>
-                  {ticketSearch && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setTicketSearch("");
-                        setTicketPage(1);
-                      }}
-                      className="h-8 px-2 text-xs"
-                    >
-                      Clear
-                    </Button>
-                  )}
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
@@ -7923,9 +8768,19 @@ export default function AdminControlPanel() {
               fetchTickets(1);
             }}
             defaultUserId="admin_manual"
-            defaultUserName={isSuperAdmin ? "Alex Rivera (Super Admin)" : "Marcus Vance (Admin)"}
+            defaultUserName={
+              isSuperAdmin
+                ? "Alex Rivera (Super Admin)"
+                : isCountryAdmin
+                ? `${geoSelectedCountry !== "all" ? geoSelectedCountry : currentUser?.assignedCountry || "Country"} Admin Lead`
+                : isCityAdmin
+                ? `${geoSelectedCity !== "all" ? geoSelectedCity : currentUser?.assignedCity || "City"} Admin Lead`
+                : "Marcus Vance (Admin)"
+            }
             defaultUserEmail="admin@bizfinder.et"
             defaultUserRole={isSuperAdmin ? "super_admin" : "admin"}
+            city={geoSelectedCity !== "all" ? geoSelectedCity : currentUser?.assignedCity || undefined}
+            country={geoSelectedCountry !== "all" ? geoSelectedCountry : currentUser?.assignedCountry || undefined}
           />
 
           {/* ════════════════════════════════════════════════════════════════════
@@ -7935,9 +8790,18 @@ export default function AdminControlPanel() {
             <AdminSettingsView
               isSuperAdmin={isSuperAdmin}
               currentRole={currentRole}
-              assignedCountry={geoSelectedCountry}
-              assignedCity={geoSelectedCity}
+              assignedCountry={geoSelectedCountry !== "all" ? geoSelectedCountry : currentUser?.assignedCountry}
+              assignedCity={geoSelectedCity !== "all" ? geoSelectedCity : currentUser?.assignedCity}
               initialSubnav={activeSubnav}
+              scope={
+                geoSelectedCity !== "all"
+                  ? "city"
+                  : (geoSelectedCountry !== "all" || isCountryAdmin)
+                  ? "country"
+                  : "global"
+              }
+              country={geoSelectedCountry !== "all" ? geoSelectedCountry : currentUser?.assignedCountry}
+              city={geoSelectedCity !== "all" ? geoSelectedCity : currentUser?.assignedCity}
             />
           )}
 
@@ -7946,10 +8810,19 @@ export default function AdminControlPanel() {
              ════════════════════════════════════════════════════════════════════ */}
           {activeNav === "security" && (
             <SecurityWorkstation
-              portalType="super_admin"
-              currentUserName={isSuperAdmin ? "Alex Rivera (Super Admin)" : "Marcus Vance (Admin)"}
+              portalType={isSuperAdmin ? "super_admin" : "admin"}
+              currentUserName={
+                isSuperAdmin
+                  ? "Alex Rivera (Super Admin)"
+                  : geoScopeRole === "country_admin"
+                  ? `${currentUser?.name || "Marcus Holloway"} (Country Lead)`
+                  : "Marcus Vance (Admin)"
+              }
               currentUserRole={geoScopeRole}
               initialSubnav={activeSubnav === "security" ? "audit" : activeSubnav}
+              city={geoSelectedCity !== "all" ? geoSelectedCity : (geoScopeRole === "city_admin" ? currentUser?.assignedCity : undefined)}
+              country={geoSelectedCountry !== "all" ? geoSelectedCountry : (geoScopeRole === "country_admin" || geoScopeRole === "city_admin" ? (currentUser?.assignedCountry || "Ethiopia") : undefined)}
+              businessesList={businesses}
             />
           )}
 
@@ -8069,7 +8942,7 @@ export default function AdminControlPanel() {
         />
       )}
 
-      {/* Super Admin Geo-Admin & Clerk Assignment Modal */}
+      {/* Super Admin / Country Admin Geo-Admin & Clerk Assignment Modal */}
       {isAssignGeoModalOpen && (
         <AssignGeoAdminModal
           isOpen={isAssignGeoModalOpen}
@@ -8086,8 +8959,14 @@ export default function AdminControlPanel() {
               })
               .catch(() => {});
           }}
-          currentAdminRole={geoScopeRole}
-          initialCountry={geoSelectedCountry === "all" ? "Ethiopia" : geoSelectedCountry}
+          currentAdminRole={isCountryAdmin ? "country_admin" : isSuperAdmin ? "super_admin" : geoScopeRole}
+          currentAdminCountry={
+            isCountryAdmin
+              ? (geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || "Ethiopia"))
+              : undefined
+          }
+          initialRole={isCountryAdmin ? "city_admin" : "country_admin"}
+          initialCountry={geoSelectedCountry === "all" ? (currentUser?.assignedCountry || "Ethiopia") : geoSelectedCountry}
           initialCity={geoSelectedCity === "all" ? "" : geoSelectedCity}
         />
       )}
@@ -8263,6 +9142,8 @@ export default function AdminControlPanel() {
         onClose={() => setIsRegisterAnalyticsModalOpen(false)}
         businessesList={businesses}
         currentAdminName={isSuperAdmin ? "Alex Rivera (Super Admin)" : "Marcus Vance (Admin)"}
+        defaultCity={geoSelectedCity !== "all" ? geoSelectedCity : undefined}
+        defaultCountry={geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || "Ethiopia")}
         onAnalyticsRegistered={() => {
           fetchAnalytics(1);
           setAnalyticsPage(1);
@@ -8275,6 +9156,8 @@ export default function AdminControlPanel() {
         onClose={() => setIsRegisterReportModalOpen(false)}
         businessesList={businesses}
         currentAdminName={isSuperAdmin ? "Alex Rivera (Super Admin)" : "Marcus Vance (Admin)"}
+        defaultCountry={geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || "")}
+        defaultCity={geoSelectedCity !== "all" ? geoSelectedCity : (currentUser?.assignedCity || "")}
         onReportRegistered={(newReport) => {
           fetchReports(1);
           setReportPage(1);

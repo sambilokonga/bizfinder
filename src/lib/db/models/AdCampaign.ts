@@ -16,6 +16,10 @@ export interface IAdCampaignDoc extends Document {
   name: string;
   placement: AdPlacement;
   targetLocation: string;
+  /** Geo-scope: city the campaign belongs to (for city-admin scoped queries) */
+  cityName?: string;
+  /** Geo-scope: country the campaign belongs to (for country-admin scoped queries) */
+  countryName?: string;
   dailyBudgetETB: number;
   totalSpentETB: number;
   durationDays: number;
@@ -41,6 +45,8 @@ const AdCampaignSchema = new Schema<IAdCampaignDoc>(
       required: true,
     },
     targetLocation: { type: String, required: true },
+    cityName: { type: String, index: true },
+    countryName: { type: String, index: true },
     dailyBudgetETB: { type: Number, required: true },
     totalSpentETB: { type: Number, default: 0 },
     durationDays: { type: Number, required: true },
@@ -59,6 +65,8 @@ const AdCampaignSchema = new Schema<IAdCampaignDoc>(
 );
 
 AdCampaignSchema.index({ ownerId: 1, status: 1 });
+AdCampaignSchema.index({ cityName: 1, status: 1 });
+AdCampaignSchema.index({ countryName: 1, status: 1 });
 
 export const AdCampaignModel =
   mongoose.models.AdCampaign ||

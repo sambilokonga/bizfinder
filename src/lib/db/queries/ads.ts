@@ -14,6 +14,8 @@ function docToCampaign(doc: any) {
     name: obj.name,
     placement: obj.placement,
     targetLocation: obj.targetLocation,
+    cityName: obj.cityName || "",
+    countryName: obj.countryName || "",
     dailyBudgetETB: obj.dailyBudgetETB,
     totalSpentETB: obj.totalSpentETB,
     durationDays: obj.durationDays,
@@ -57,6 +59,8 @@ export async function createAdCampaign(data: {
   dailyBudgetETB: number;
   durationDays: number;
   startDate: string;
+  cityName?: string;
+  countryName?: string;
 }) {
   await connectToDatabase();
   const doc = await AdCampaignModel.create({
@@ -142,16 +146,34 @@ export async function getAllAdCampaigns({
   page = 1,
   limit = 20,
   status,
+  city,
+  country,
 }: {
   page?: number;
   limit?: number;
   status?: string;
+  city?: string;
+  country?: string;
 }) {
   await connectToDatabase();
-  const query: Record<string, any> = {};
+  const geoQuery: Record<string, any> = {};
+  if (city) {
+    geoQuery.$or = [
+      { cityName: new RegExp(`^${city}$`, "i") },
+      { targetLocation: new RegExp(city, "i") },
+    ];
+  } else if (country) {
+    geoQuery.$or = [
+      { countryName: new RegExp(`^${country}$`, "i") },
+      { targetLocation: new RegExp(country, "i") },
+    ];
+  }
+
+  const query: Record<string, any> = { ...geoQuery };
   if (status && status !== "all") {
     query.status = status;
   }
+
   const skip = (page - 1) * limit;
   const [docs, total] = await Promise.all([
     AdCampaignModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
@@ -163,11 +185,11 @@ export async function getAllAdCampaigns({
     page,
     totalPages: Math.max(1, Math.ceil(total / limit)),
     counts: {
-      all: await AdCampaignModel.countDocuments({}),
-      active: await AdCampaignModel.countDocuments({ status: "active" }),
-      paused: await AdCampaignModel.countDocuments({ status: "paused" }),
-      scheduled: await AdCampaignModel.countDocuments({ status: "scheduled" }),
-      completed: await AdCampaignModel.countDocuments({ status: "completed" }),
+      all: await AdCampaignModel.countDocuments(geoQuery),
+      active: await AdCampaignModel.countDocuments({ ...geoQuery, status: "active" }),
+      paused: await AdCampaignModel.countDocuments({ ...geoQuery, status: "paused" }),
+      scheduled: await AdCampaignModel.countDocuments({ ...geoQuery, status: "scheduled" }),
+      completed: await AdCampaignModel.countDocuments({ ...geoQuery, status: "completed" }),
     },
   };
 }

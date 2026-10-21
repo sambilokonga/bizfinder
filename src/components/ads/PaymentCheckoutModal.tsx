@@ -30,6 +30,8 @@ interface PaymentCheckoutModalProps {
   onSuccess: (txId: string) => void;
   businessName?: string;
   businessId?: string;
+  cityName?: string;
+  countryName?: string;
 }
 
 export function PaymentCheckoutModal({
@@ -42,6 +44,8 @@ export function PaymentCheckoutModal({
   onSuccess,
   businessName = "Kategna Ethiopian Restaurant",
   businessId = "biz-1",
+  cityName,
+  countryName,
 }: PaymentCheckoutModalProps) {
   const [provider, setProvider] = useState<PaymentProvider>("telebirr");
   const [phoneNumber, setPhoneNumber] = useState("+251 91 123 4567");
@@ -75,6 +79,8 @@ export function PaymentCheckoutModal({
           id: generatedTxId,
           businessId,
           businessName,
+          cityName: cityName || undefined,
+          countryName: countryName || undefined,
           payerName: "Business Owner",
           payerPhone: phoneNumber,
           amount: amountETB,

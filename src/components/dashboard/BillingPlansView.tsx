@@ -95,6 +95,7 @@ export function BillingPlansView({
   const [newBusinessForm, setNewBusinessForm] = useState({
     name: "",
     categoryName: "Restaurant & Cafe",
+    countryName: "Ethiopia",
     cityName: "Addis Ababa",
     subcityName: "Bole",
     addressLine: "Cameroon St, Near Edna Mall",
@@ -194,10 +195,18 @@ export function BillingPlansView({
         ? selectedPlanForCheckout.priceMonthlyUSD
         : selectedPlanForCheckout.priceYearlyUSD;
 
+    const chosenBusiness =
+      targetBusinessMode === "new"
+        ? null
+        : businesses.find((b) => b.id === targetBusinessId) || selectedBusiness || null;
+
     const chosenBusinessName =
       targetBusinessMode === "new"
         ? newBusinessForm.name || "Newly Registered Business"
-        : businesses.find((b) => b.id === targetBusinessId)?.name || selectedBusiness?.name || "My Business";
+        : chosenBusiness?.name || "My Business";
+
+    const chosenBizCity = targetBusinessMode === "new" ? newBusinessForm.cityName : (chosenBusiness?.cityName || "");
+    const chosenBizCountry = targetBusinessMode === "new" ? (newBusinessForm.countryName || "Ethiopia") : (chosenBusiness?.countryName || "Ethiopia");
 
     try {
       // 1. If Manual Bank / Telebirr Receipt Attachment
@@ -208,6 +217,8 @@ export function BillingPlansView({
         }
         formData.append("businessId", targetBusinessMode === "existing" ? targetBusinessId : "");
         formData.append("businessName", chosenBusinessName);
+        if (chosenBizCity) formData.append("cityName", chosenBizCity);
+        if (chosenBizCountry) formData.append("countryName", chosenBizCountry);
         formData.append("planId", selectedPlanForCheckout.id);
         formData.append("tier", selectedPlanForCheckout.tier);
         formData.append("billingCycle", billingCycle);
@@ -251,13 +262,15 @@ export function BillingPlansView({
         const payload = {
           businessId: targetBusinessMode === "existing" ? targetBusinessId : undefined,
           businessName: chosenBusinessName,
+          cityName: chosenBizCity || undefined,
+          countryName: chosenBizCountry || "Ethiopia",
           newBusiness:
             targetBusinessMode === "new"
               ? {
                   name: newBusinessForm.name,
                   categoryId: "cat-general",
                   categoryName: newBusinessForm.categoryName,
-                  countryName: "Ethiopia",
+                  countryName: newBusinessForm.countryName || "Ethiopia",
                   cityName: newBusinessForm.cityName,
                   subcityName: newBusinessForm.subcityName,
                   addressLine: newBusinessForm.addressLine,

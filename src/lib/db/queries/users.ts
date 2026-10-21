@@ -14,6 +14,8 @@ function docToUser(doc: any) {
     avatarUrl: obj.avatarUrl,
     assignedCountry: obj.assignedCountry,
     assignedCity: obj.assignedCity,
+    country: obj.country ?? obj.assignedCountry,
+    city: obj.city ?? obj.assignedCity,
     claimedBusinessIds: obj.claimedBusinessIds ?? [],
     savedBusinessIds: obj.savedBusinessIds ?? [],
     preferences: obj.preferences ?? {
@@ -45,8 +47,13 @@ export async function upsertUser(data: {
   phone?: string;
   assignedCountry?: string;
   assignedCity?: string;
+  country?: string;
+  city?: string;
 }) {
   await connectToDatabase();
+  const resolvedCountry = data.country || data.assignedCountry;
+  const resolvedCity = data.city || data.assignedCity;
+
   const doc = await UserModel.findOneAndUpdate(
     { clerkId: data.clerkId },
     {
@@ -58,8 +65,14 @@ export async function upsertUser(data: {
         ...(data.role && { role: data.role }),
         ...(data.avatarUrl && { avatarUrl: data.avatarUrl }),
         ...(data.phone && { phone: data.phone }),
-        ...(data.assignedCountry !== undefined && { assignedCountry: data.assignedCountry }),
-        ...(data.assignedCity !== undefined && { assignedCity: data.assignedCity }),
+        ...(resolvedCountry !== undefined && {
+          assignedCountry: resolvedCountry,
+          country: resolvedCountry,
+        }),
+        ...(resolvedCity !== undefined && {
+          assignedCity: resolvedCity,
+          city: resolvedCity,
+        }),
       },
     },
     { upsert: true, new: true }
@@ -67,9 +80,12 @@ export async function upsertUser(data: {
   return docToUser(doc);
 }
 
-export async function getUserByClerkId(clerkId: string) {
+export async function getUserByClerkId(clerkId: string, email?: string) {
   await connectToDatabase();
-  const doc = await UserModel.findOne({ clerkId }).lean();
+  const query = email
+    ? { $or: [{ clerkId }, { id: clerkId }, { email: email.toLowerCase() }] }
+    : { $or: [{ clerkId }, { id: clerkId }] };
+  const doc = await UserModel.findOne(query).lean();
   if (!doc) return null;
   return docToUser(doc);
 }
@@ -198,15 +214,18 @@ export async function updateNotificationSettings(
 
 export async function toggleSavedBusiness(clerkId: string, businessId: string) {
   await connectToDatabase();
-  const user = await UserModel.findOne({ clerkId }).lean() as any;
-  const saved: string[] = user?.savedBusinessIds ?? [];
-  const alreadySaved = saved.includes(businessId);
+  const user = (await UserModel.findOne({
+    $or: [{ clerkId }, { id: clerkId }],
+  }).lean()) as any;
+  const saved: string[] = (user?.savedBusinessIds ?? []).map((id: any) => String(id).trim());
+  const cleanId = String(businessId).trim();
+  const alreadySaved = saved.includes(cleanId);
 
   const doc = await UserModel.findOneAndUpdate(
-    { clerkId },
+    { $or: [{ clerkId }, { id: clerkId }] },
     alreadySaved
-      ? { $pull: { savedBusinessIds: businessId } }
-      : { $addToSet: { savedBusinessIds: businessId } },
+      ? { $pull: { savedBusinessIds: cleanId } }
+      : { $addToSet: { savedBusinessIds: cleanId } },
     { new: true }
   ).lean();
   if (!doc) return null;

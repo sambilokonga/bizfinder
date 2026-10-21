@@ -177,6 +177,10 @@ export async function POST(req: Request) {
           await client.users.updateUserMetadata(existing.id, {
             publicMetadata: {
               role: cleanRole,
+              assignedCountry: cleanCountry,
+              assignedCity: cleanCity,
+              country: cleanCountry,
+              city: cleanCity,
               permissions: cleanPermissions,
               departments: cleanDepartments,
             },
@@ -193,6 +197,10 @@ export async function POST(req: Request) {
               skipPasswordRequirement: !password?.trim(),
               publicMetadata: {
                 role: cleanRole,
+                assignedCountry: cleanCountry,
+                assignedCity: cleanCity,
+                country: cleanCountry,
+                city: cleanCity,
                 permissions: cleanPermissions,
                 departments: cleanDepartments,
               },
@@ -206,6 +214,10 @@ export async function POST(req: Request) {
                 emailAddress: cleanEmail,
                 publicMetadata: {
                   role: cleanRole,
+                  assignedCountry: cleanCountry,
+                  assignedCity: cleanCity,
+                  country: cleanCountry,
+                  city: cleanCity,
                   permissions: cleanPermissions,
                   departments: cleanDepartments,
                 },
@@ -232,6 +244,8 @@ export async function POST(req: Request) {
         email: cleanEmail,
         name: cleanName,
         role: cleanRole,
+        assignedCountry: cleanCountry,
+        assignedCity: cleanCity,
       });
     } catch (dbErr: any) {
       console.warn("[MongoDB Admin Upsert Notice]", dbErr?.message);
@@ -243,6 +257,8 @@ export async function POST(req: Request) {
       name: cleanName,
       email: cleanEmail,
       role: cleanRole,
+      assignedCountry: cleanCountry,
+      assignedCity: cleanCity,
       status: "active",
       departments: cleanDepartments,
       permissions: cleanPermissions,

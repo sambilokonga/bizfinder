@@ -6,9 +6,14 @@ import {
   resetSystemSettings,
 } from "@/lib/db/queries/settings";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const settings = await getSystemSettings();
+    const { searchParams } = new URL(req.url);
+    const scope = (searchParams.get("scope") as "global" | "country" | "city") || undefined;
+    const country = searchParams.get("country") || undefined;
+    const city = searchParams.get("city") || undefined;
+
+    const settings = await getSystemSettings({ scope, country, city });
     return NextResponse.json({ success: true, settings });
   } catch (error: any) {
     console.error("[API /admin/settings GET]", error);
@@ -29,8 +34,23 @@ export async function PATCH(req: Request) {
       }
     }
 
+    const { searchParams } = new URL(req.url);
+    const queryScope = (searchParams.get("scope") as "global" | "country" | "city") || undefined;
+    const queryCountry = searchParams.get("country") || undefined;
+    const queryCity = searchParams.get("city") || undefined;
+
     const body = await req.json();
-    const updated = await updateSystemSettings(body, updatedBy);
+    const { scope: bodyScope, country: bodyCountry, city: bodyCity, ...settingsData } = body;
+
+    const scope = queryScope || bodyScope;
+    const country = queryCountry || bodyCountry;
+    const city = queryCity || bodyCity;
+
+    const updated = await updateSystemSettings(settingsData, updatedBy, {
+      scope,
+      country,
+      city,
+    });
 
     return NextResponse.json({
       success: true,
@@ -46,11 +66,21 @@ export async function PATCH(req: Request) {
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
+    const { searchParams } = new URL(req.url);
+    const queryScope = (searchParams.get("scope") as "global" | "country" | "city") || undefined;
+    const queryCountry = searchParams.get("country") || undefined;
+    const queryCity = searchParams.get("city") || undefined;
+
     const body = await req.json();
-    const { action, payload } = body;
+    const { action, payload, scope: bodyScope, country: bodyCountry, city: bodyCity } = body;
+
+    const scope = queryScope || bodyScope;
+    const country = queryCountry || bodyCountry;
+    const city = queryCity || bodyCity;
+    const geoOptions = { scope, country, city };
 
     if (action === "reset_defaults") {
-      const reset = await resetSystemSettings(userId || "super_admin");
+      const reset = await resetSystemSettings(userId || "super_admin", geoOptions);
       return NextResponse.json({
         success: true,
         message: "Settings reset to default factory baseline",
@@ -79,7 +109,7 @@ export async function POST(req: Request) {
     }
 
     if (action === "export_config") {
-      const settings = await getSystemSettings();
+      const settings = await getSystemSettings(geoOptions);
       return NextResponse.json({
         success: true,
         data: settings,

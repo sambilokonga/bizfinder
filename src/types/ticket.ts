@@ -28,6 +28,7 @@ export interface ITicketMessage {
 
 export interface ISupportTicket {
   id: string;
+  ticketNumber?: string;
   subject: string;
   category: TicketCategory;
   priority: TicketPriority;

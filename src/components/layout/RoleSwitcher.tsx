@@ -14,6 +14,10 @@ interface RoleContextType {
   setRole: (role: UserRole) => void;
   can: (permission: Permission) => boolean;
   permissions: Permission[];
+  assignedCountry?: string;
+  assignedCity?: string;
+  setAssignedCountry?: (country: string) => void;
+  setAssignedCity?: (city: string) => void;
 }
 
 const RoleContext = createContext<RoleContextType>({
@@ -27,6 +31,8 @@ const RoleContext = createContext<RoleContextType>({
 export function RoleProvider({ children }: { children: React.ReactNode }) {
   const { isSignedIn, isLoaded, user } = useUser();
   const [currentRole, setCurrentRole] = useState<UserRole>("user");
+  const [assignedCountry, setAssignedCountry] = useState<string | undefined>();
+  const [assignedCity, setAssignedCity] = useState<string | undefined>();
   const [synced, setSynced] = useState(false);
 
   const resolveRole = useCallback(async () => {
@@ -34,31 +40,21 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
     if (!isSignedIn || !user) {
       setCurrentRole("user");
+      setAssignedCountry(undefined);
+      setAssignedCity(undefined);
       setSynced(true);
       return;
     }
 
-    /**
-     * Step 1: Force-reload the Clerk user object to ensure we have
-     * the very latest publicMetadata (important right after sign-in
-     * before the JWT has propagated).
-     */
     try {
       await user.reload();
     } catch {
       // Non-fatal — proceed with cached data
     }
 
-    /**
-     * Step 2: Read role from all known Clerk metadata locations.
-     *
-     * Priority order:
-     *   a) publicMetadata.role  — set by admins in Clerk dashboard (most authoritative)
-     *   b) publicMetadata.roles — array variant
-     *   c) publicMetadata.business_role / userRole
-     *   d) unsafeMetadata.role  — set client-side as fallback
-     *   e) Organization membership role (org:admin → admin, org:member → user)
-     */
+    const emailLower = user.emailAddresses?.[0]?.emailAddress?.toLowerCase();
+
+    // Read metadata
     const rawFromMeta =
       (user.publicMetadata as any)?.role ||
       (user.publicMetadata as any)?.roles ||
@@ -67,47 +63,68 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       (user.unsafeMetadata as any)?.role ||
       (user.unsafeMetadata as any)?.roles;
 
+    const metaCountry =
+      (user.publicMetadata as any)?.assignedCountry ||
+      (user.publicMetadata as any)?.country ||
+      (user.unsafeMetadata as any)?.assignedCountry ||
+      (user.unsafeMetadata as any)?.country;
+
+    const metaCity =
+      (user.publicMetadata as any)?.assignedCity ||
+      (user.publicMetadata as any)?.city ||
+      (user.unsafeMetadata as any)?.assignedCity ||
+      (user.unsafeMetadata as any)?.city;
+
+    if (metaCountry) setAssignedCountry(metaCountry);
+    if (metaCity) setAssignedCity(metaCity);
+
     if (rawFromMeta) {
       const normalized = normalizeRole(rawFromMeta);
       setCurrentRole(normalized);
       if (typeof document !== "undefined") {
         document.cookie = `bizfinder_role=${normalized}; path=/; max-age=604800; SameSite=Lax`;
+        if (metaCountry) {
+          document.cookie = `bizfinder_country=${metaCountry}; path=/; max-age=604800; SameSite=Lax`;
+        }
       }
-      setSynced(true);
-      return;
     }
 
-    /**
-     * Step 3: Check org membership role as fallback.
-     */
+    // Check org membership role as fallback
     const orgRole = (user as any)?.organizationMemberships?.[0]?.role as string | undefined;
-    if (orgRole) {
+    if (!rawFromMeta && orgRole) {
       const normalized = normalizeRole(orgRole);
       if (normalized !== "user") {
         setCurrentRole(normalized);
         if (typeof document !== "undefined") {
           document.cookie = `bizfinder_role=${normalized}; path=/; max-age=604800; SameSite=Lax`;
         }
-        setSynced(true);
-        return;
       }
     }
 
-    /**
-     * Step 4: Fall back to DB role returned by our API (syncs Clerk → Mongo).
-     */
+    // Always fetch /api/users/me to sync territory jurisdiction and role with database
     try {
       const res = await fetch("/api/users/me");
       if (res.ok) {
         const data = await res.json();
         const dbRole = normalizeRole(data.role || data.user?.role);
-        setCurrentRole(dbRole);
-        if (typeof document !== "undefined") {
-          document.cookie = `bizfinder_role=${dbRole}; path=/; max-age=604800; SameSite=Lax`;
+        if (!rawFromMeta) {
+          setCurrentRole(dbRole);
+          if (typeof document !== "undefined") {
+            document.cookie = `bizfinder_role=${dbRole}; path=/; max-age=604800; SameSite=Lax`;
+          }
         }
+        const c = data.assignedCountry || data.user?.assignedCountry || data.user?.country;
+        const ci = data.assignedCity || data.user?.assignedCity || data.user?.city;
+        if (c) {
+          setAssignedCountry(c);
+          if (typeof document !== "undefined") {
+            document.cookie = `bizfinder_country=${c}; path=/; max-age=604800; SameSite=Lax`;
+          }
+        }
+        if (ci) setAssignedCity(ci);
       }
     } catch {
-      // Silent fallback – leave as "user"
+      // Silent fallback
     } finally {
       setSynced(true);
     }
@@ -117,6 +134,22 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     resolveRole();
   }, [resolveRole]);
 
+  const effectiveCountry =
+    assignedCountry ||
+    (user?.publicMetadata as any)?.assignedCountry ||
+    (user?.publicMetadata as any)?.country ||
+    (user?.unsafeMetadata as any)?.assignedCountry ||
+    (user?.unsafeMetadata as any)?.country ||
+    DEMO_USERS[currentRole]?.assignedCountry;
+
+  const effectiveCity =
+    assignedCity ||
+    (user?.publicMetadata as any)?.assignedCity ||
+    (user?.publicMetadata as any)?.city ||
+    (user?.unsafeMetadata as any)?.assignedCity ||
+    (user?.unsafeMetadata as any)?.city ||
+    DEMO_USERS[currentRole]?.assignedCity;
+
   // Merge real user info with DemoUser shape for backwards compat
   const clerkUser: DemoUser = isSignedIn && user
     ? {
@@ -125,15 +158,25 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         email: user.emailAddresses?.[0]?.emailAddress || "",
         role: currentRole,
         avatarUrl: user.imageUrl || DEMO_USERS[currentRole].avatarUrl,
+        assignedCountry: effectiveCountry,
+        assignedCity: effectiveCity,
         claimedBusinessIds: [],
       }
-    : DEMO_USERS[currentRole];
+    : {
+        ...DEMO_USERS[currentRole],
+        ...(assignedCountry ? { assignedCountry } : {}),
+        ...(assignedCity ? { assignedCity } : {}),
+      };
 
   return (
     <RoleContext.Provider
       value={{
         currentRole,
         currentUser: clerkUser,
+        assignedCountry: effectiveCountry,
+        assignedCity: effectiveCity,
+        setAssignedCountry,
+        setAssignedCity,
         setRole: (r) => {
           setCurrentRole(r);
           if (typeof document !== "undefined") {

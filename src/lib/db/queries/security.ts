@@ -65,6 +65,10 @@ function calculateSecurityStats(items: ISecurityEvent[]): SecurityStats {
   };
 }
 
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /**
  * Fetches paginated security events with exact 20 per page default
  */
@@ -89,7 +93,7 @@ export async function getSecurityEvents(
 
   if (options.search && options.search.trim()) {
     const q = options.search.trim();
-    const regex = new RegExp(q, "i");
+    const regex = new RegExp(escapeRegex(q), "i");
     query.$or = [
       { title: regex },
       { description: regex },
@@ -99,6 +103,7 @@ export async function getSecurityEvents(
       { targetResource: regex },
       { city: regex },
       { country: regex },
+      { businessName: regex },
     ];
   }
 
@@ -118,12 +123,33 @@ export async function getSecurityEvents(
     query.actorRole = options.actorRole;
   }
 
-  if (options.city && options.city !== "all") {
-    query.city = new RegExp(options.city, "i");
-  }
+  // Business and Geo-Jurisdiction Filtering
+  if (options.businessId && options.businessId !== "all") {
+    const escapedBizId = escapeRegex(options.businessId);
+    if (options.city && options.city !== "all") {
+      const cityRegex = new RegExp(escapeRegex(options.city), "i");
+      const countryRegex = options.country && options.country !== "all" ? new RegExp(escapeRegex(options.country), "i") : null;
+      query.$or = [
+        { businessId: options.businessId },
+        { targetResource: new RegExp(escapedBizId, "i") },
+        countryRegex
+          ? { city: cityRegex, country: countryRegex }
+          : { city: cityRegex },
+      ];
+    } else {
+      query.$or = [
+        { businessId: options.businessId },
+        { targetResource: new RegExp(escapedBizId, "i") },
+      ];
+    }
+  } else {
+    if (options.city && options.city !== "all") {
+      query.city = new RegExp(escapeRegex(options.city), "i");
+    }
 
-  if (options.country && options.country !== "all") {
-    query.country = new RegExp(options.country, "i");
+    if (options.country && options.country !== "all") {
+      query.country = new RegExp(escapeRegex(options.country), "i");
+    }
   }
 
   const sortDirection = options.sort === "asc" ? 1 : -1;
@@ -136,7 +162,7 @@ export async function getSecurityEvents(
       .skip(skip)
       .limit(limit)
       .lean(),
-    SecurityEventModel.find({}).select("severity status actionTaken eventType isFlagged").lean(),
+    SecurityEventModel.find(query).select("severity status actionTaken eventType isFlagged").lean(),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -156,6 +182,8 @@ export async function getSecurityEvents(
     ipAddress: d.ipAddress,
     city: d.city,
     country: d.country,
+    businessId: d.businessId,
+    businessName: d.businessName,
     device: d.device,
     browser: d.browser,
     os: d.os,
@@ -199,6 +227,8 @@ export interface CreateSecurityEventInput {
   ipAddress: string;
   city?: string;
   country?: string;
+  businessId?: string;
+  businessName?: string;
   device?: "Desktop" | "Mobile" | "Tablet" | "Server" | "Bot";
   browser?: string;
   os?: string;
@@ -232,6 +262,8 @@ export async function createSecurityEvent(
     ipAddress: input.ipAddress || "127.0.0.1",
     city: input.city || "Addis Ababa",
     country: input.country || "Ethiopia",
+    businessId: input.businessId || undefined,
+    businessName: input.businessName || undefined,
     device: input.device || "Desktop",
     browser: input.browser || "Chrome 128",
     os: input.os || "Windows 11",
@@ -255,6 +287,8 @@ export async function createSecurityEvent(
     ipAddress: newDoc.ipAddress,
     city: newDoc.city,
     country: newDoc.country,
+    businessId: newDoc.businessId,
+    businessName: newDoc.businessName,
     device: newDoc.device,
     browser: newDoc.browser,
     os: newDoc.os,

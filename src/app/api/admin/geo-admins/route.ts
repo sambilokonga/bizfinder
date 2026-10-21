@@ -13,7 +13,16 @@ export interface GeoAdminRecord {
   assignedCountry?: string;
   assignedCity?: string;
   countryFlag?: string;
-  status: "active" | "suspended" | "pending";
+  status: "active" | "suspended" | "pending" | "rejected";
+  approvalStatus?: "approved" | "pending" | "rejected";
+  nominatedBy?: {
+    name?: string;
+    email?: string;
+    role?: string;
+    country?: string;
+    date?: string;
+  };
+  rejectionReason?: string;
   permissions: string[];
   createdAt: string;
   lastActive: string;
@@ -32,6 +41,19 @@ let GEO_ADMINS_ROSTER: GeoAdminRecord[] = [
     createdAt: "2024-01-01",
     lastActive: "Just now",
     managedListingsCount: 1540,
+  },
+  {
+    id: "geo-adm-country-af-milion",
+    name: "Milion Tesfahun (Afghanistan Country Lead)",
+    email: "tesfahunmilion8@gmail.com",
+    role: "country_admin",
+    assignedCountry: "Afghanistan",
+    countryFlag: "🇦🇫",
+    status: "active",
+    permissions: ["all.country", "city_admin.manage", "business.approve", "business.verify", "country.analytics.read"],
+    createdAt: "2024-03-01",
+    lastActive: "Just now",
+    managedListingsCount: 0,
   },
   {
     id: "geo-adm-country-et-mastwal",
@@ -199,19 +221,60 @@ async function resolveCallerJurisdiction(req: Request) {
   let callerRole: string = searchParams.get("callerRole") || "super_admin";
   let callerCountry: string | undefined = searchParams.get("callerCountry") || undefined;
   let callerCity: string | undefined = searchParams.get("callerCity") || undefined;
+  let callerName: string | undefined = searchParams.get("callerName") || undefined;
+  let callerEmail: string | undefined = searchParams.get("callerEmail") || undefined;
 
   try {
     const authResult = await auth();
     const userId = authResult?.userId;
     if (userId) {
+      let clerkEmail: string | undefined;
+      try {
+        if (process.env.CLERK_SECRET_KEY && !process.env.CLERK_SECRET_KEY.includes("placeholder")) {
+          const client = await clerkClient();
+          const clerkUser = await client.users.getUser(userId);
+          clerkEmail = clerkUser.emailAddresses?.[0]?.emailAddress?.toLowerCase();
+          if (!callerName && (clerkUser.firstName || clerkUser.lastName)) {
+            callerName = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim();
+          }
+          if (!callerEmail && clerkEmail) callerEmail = clerkEmail;
+          const meta = (clerkUser.publicMetadata || {}) as any;
+          if (meta.role) callerRole = meta.role;
+          if (meta.assignedCountry) callerCountry = meta.assignedCountry;
+          if (meta.assignedCity) callerCity = meta.assignedCity;
+        }
+      } catch (e) {
+        // Clerk user lookup error non-fatal
+      }
+
       await connectToDatabase();
       const dbUser = (await UserModel.findOne({
-        $or: [{ id: userId }, { clerkId: userId }],
+        $or: [
+          { id: userId },
+          { clerkId: userId },
+          ...(clerkEmail ? [{ email: clerkEmail }] : []),
+        ],
       }).lean()) as any;
+
       if (dbUser) {
         if (dbUser.role) callerRole = dbUser.role;
         if (dbUser.assignedCountry) callerCountry = dbUser.assignedCountry;
         if (dbUser.assignedCity) callerCity = dbUser.assignedCity;
+        if (!callerName && dbUser.name) callerName = dbUser.name;
+        if (!callerEmail && dbUser.email) callerEmail = dbUser.email;
+      }
+
+      // Check roster by email if still unresolved
+      if (!callerCountry && clerkEmail) {
+        const rosterMatch = GEO_ADMINS_ROSTER.find(
+          (a) => a.email.toLowerCase() === clerkEmail
+        );
+        if (rosterMatch) {
+          callerRole = rosterMatch.role;
+          callerCountry = rosterMatch.assignedCountry;
+          callerCity = rosterMatch.assignedCity;
+          if (!callerName) callerName = rosterMatch.name;
+        }
       }
     }
   } catch (e) {
@@ -226,7 +289,7 @@ async function resolveCallerJurisdiction(req: Request) {
   const simCity = searchParams.get("simCity") || searchParams.get("callerCity");
   if (simCity && simCity !== "all") callerCity = simCity;
 
-  return { callerRole, callerCountry, callerCity };
+  return { callerRole, callerCountry, callerCity, callerName, callerEmail };
 }
 
 export async function GET(req: Request) {
@@ -236,61 +299,85 @@ export async function GET(req: Request) {
     const filterCountry = searchParams.get("country");
     const filterCity = searchParams.get("city");
 
-    const { callerRole, callerCountry } = await resolveCallerJurisdiction(req);
-
-    // City Admins do not manage geo-admins
-    if (callerRole === "city_admin") {
-      return NextResponse.json({
-        success: true,
-        admins: [],
-        message: "City Admins do not have access to administrative governance.",
-        stats: { totalCountryAdmins: 0, totalCityAdmins: 0, totalSuperAdmins: 0, coveredCountriesCount: 0, totalGlobalCountries: 195, countryCoveragePercentage: "0.0" },
-        countries: [],
-      });
-    }
+    const { callerRole, callerCountry, callerCity } = await resolveCallerJurisdiction(req);
 
     await connectToDatabase();
     const dbUsers = await UserModel.find({
       role: { $in: ["super_admin", "country_admin", "city_admin", "admin"] },
-    }).lean();
+    })
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .lean();
 
-    const existingEmails = new Set(GEO_ADMINS_ROSTER.map((a) => a.email.toLowerCase()));
+    const dbUsersMap = new Map<string, any>();
+    dbUsers.forEach((doc) => {
+      if (doc.email) dbUsersMap.set(doc.email.toLowerCase(), doc);
+    });
 
-    const fromDb: GeoAdminRecord[] = dbUsers
-      .filter((doc) => !existingEmails.has((doc.email || "").toLowerCase()))
-      .map((doc) => ({
-        id: doc.clerkId || doc.id || `adm-${doc._id}`,
-        name: doc.name || "Administrator",
-        email: doc.email || "",
-        role: doc.role as any,
-        assignedCountry: doc.assignedCountry,
-        assignedCity: doc.assignedCity,
-        countryFlag: getCountryFlag(doc.assignedCountry),
-        status: doc.isActive !== false ? "active" : "suspended",
-        permissions:
-          doc.role === "super_admin"
-            ? ["all"]
-            : doc.role === "country_admin"
-            ? ["city_admin.manage", "business.approve", "business.verify"]
-            : ["business.approve", "business.verify", "review.moderate"],
-        createdAt: doc.createdAt
-          ? new Date(doc.createdAt).toISOString().split("T")[0]
-          : new Date().toISOString().split("T")[0],
-        lastActive: "Recently",
-        managedListingsCount: 0,
-      }));
+    const fromDb: GeoAdminRecord[] = dbUsers.map((doc: any) => ({
+      id: doc.clerkId || doc.id || `adm-${doc._id}`,
+      name: doc.name || "Administrator",
+      email: doc.email || "",
+      role: doc.role as any,
+      assignedCountry: doc.assignedCountry,
+      assignedCity: doc.assignedCity,
+      countryFlag: getCountryFlag(doc.assignedCountry),
+      status: doc.approvalStatus === "pending"
+        ? "pending"
+        : doc.approvalStatus === "rejected"
+        ? "rejected"
+        : doc.isActive !== false ? "active" : "suspended",
+      approvalStatus: doc.approvalStatus || (doc.isActive !== false ? "approved" : "pending"),
+      nominatedBy: doc.nominatedBy,
+      permissions:
+        doc.role === "super_admin"
+          ? ["all"]
+          : doc.role === "country_admin"
+          ? ["city_admin.manage", "business.approve", "business.verify"]
+          : ["business.approve", "business.verify", "review.moderate"],
+      createdAt: doc.createdAt
+        ? new Date(doc.createdAt).toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0],
+      lastActive: "Recently",
+      managedListingsCount: 0,
+    }));
 
-    let allAdmins = [...GEO_ADMINS_ROSTER, ...fromDb];
+    // Keep roster items that are not already present in DB
+    const remainingRoster: GeoAdminRecord[] = GEO_ADMINS_ROSTER.filter(
+      (r) => !dbUsersMap.has(r.email.toLowerCase())
+    ).map((r) => ({
+      ...r,
+      approvalStatus: r.approvalStatus || "approved",
+    }));
 
-    // JURISDICTION ENFORCEMENT:
-    // Country Admin can ONLY view City Admins under their country!
-    if (callerRole === "country_admin") {
-      const countryScope = callerCountry || "Ethiopia";
-      allAdmins = allAdmins.filter(
+    let allAdmins = [...fromDb, ...remainingRoster];
+
+    // ── 1. CITY ADMIN SCOPE ──────────────────────────────────────────────────
+    // City Admin needs their assigned City Admin profile and their Country Lead liaison
+    if (callerRole === "city_admin") {
+      const cityScope = filterCity || callerCity || "Addis Ababa";
+      const countryScope = filterCountry || callerCountry || "Ethiopia";
+
+      const countryLead = allAdmins.find(
         (a) =>
-          a.role === "city_admin" &&
+          a.role === "country_admin" &&
           a.assignedCountry?.toLowerCase() === countryScope.toLowerCase()
       );
+
+      const cityAdmins = allAdmins.filter(
+        (a) =>
+          a.role === "city_admin" &&
+          a.assignedCountry?.toLowerCase() === countryScope.toLowerCase() &&
+          a.assignedCity?.toLowerCase() === cityScope.toLowerCase()
+      );
+
+      const matchingAdmins = [
+        ...(countryLead ? [countryLead] : []),
+        ...cityAdmins,
+      ];
+
+      const activeCityAdmin = cityAdmins.find(
+        (a) => a.approvalStatus !== "pending" && a.status === "active"
+      ) || cityAdmins[0];
 
       const targetCountryObj = COUNTRIES_WITH_CITIES.find(
         (c) => c.name.toLowerCase() === countryScope.toLowerCase()
@@ -298,10 +385,14 @@ export async function GET(req: Request) {
 
       return NextResponse.json({
         success: true,
-        admins: allAdmins,
+        scope: "city_admin",
+        assignedCityAdmin: activeCityAdmin,
+        assignedCountryAdmin: countryLead,
+        admins: matchingAdmins,
+        pendingNominations: cityAdmins.filter((a) => a.approvalStatus === "pending"),
         stats: {
-          totalCountryAdmins: 1,
-          totalCityAdmins: allAdmins.length,
+          totalCountryAdmins: countryLead ? 1 : 0,
+          totalCityAdmins: cityAdmins.filter((a) => a.status === "active").length,
           totalSuperAdmins: 0,
           coveredCountriesCount: 1,
           totalGlobalCountries: 1,
@@ -314,14 +405,129 @@ export async function GET(req: Request) {
                 flag: targetCountryObj.flag,
                 citiesCount: targetCountryObj.cities.length,
                 cities: targetCountryObj.cities,
-                assignedLeadAdmin: undefined,
+                assignedLeadAdmin: countryLead,
               },
             ]
           : [],
       });
     }
 
-    // Super Admin / General Admin filters
+    // ── 2. COUNTRY ADMIN SCOPE ───────────────────────────────────────────────
+    // Country Admin views their own Country Lead record AND all City Admins in their borders
+    if (callerRole === "country_admin") {
+      const countryScope = callerCountry || filterCountry || "Ethiopia";
+
+      const countryLead = allAdmins.find(
+        (a) =>
+          a.role === "country_admin" &&
+          a.assignedCountry?.toLowerCase() === countryScope.toLowerCase()
+      );
+
+      const scopedAdmins = allAdmins.filter(
+        (a) =>
+          (a.role === "city_admin" || a.role === "country_admin") &&
+          a.assignedCountry?.toLowerCase() === countryScope.toLowerCase()
+      );
+
+      const targetCountryObj = COUNTRIES_WITH_CITIES.find(
+        (c) => c.name.toLowerCase() === countryScope.toLowerCase()
+      );
+
+      const activeCityAdmins = scopedAdmins.filter(
+        (a) => a.role === "city_admin" && a.approvalStatus !== "pending" && a.status === "active"
+      );
+      const pendingNominations = scopedAdmins.filter(
+        (a) => a.role === "city_admin" && a.approvalStatus === "pending"
+      );
+
+      return NextResponse.json({
+        success: true,
+        scope: "country_admin",
+        assignedCountryAdmin: countryLead,
+        admins: scopedAdmins,
+        pendingNominations,
+        stats: {
+          totalCountryAdmins: countryLead ? 1 : 0,
+          totalCityAdmins: activeCityAdmins.length,
+          totalSuperAdmins: 0,
+          coveredCountriesCount: 1,
+          totalGlobalCountries: 1,
+          countryCoveragePercentage: "100.0",
+        },
+        countries: targetCountryObj
+          ? [
+              {
+                name: targetCountryObj.name,
+                flag: targetCountryObj.flag,
+                citiesCount: targetCountryObj.cities.length,
+                cities: targetCountryObj.cities,
+                assignedLeadAdmin: countryLead,
+              },
+            ]
+          : [],
+      });
+    }
+
+    // ── 3. BUSINESS OWNER / STOREFRONT LOCATION QUERY ────────────────────────
+    // When queried by a merchant or with explicit city & country parameters
+    if (
+      callerRole === "owner" ||
+      callerRole === "merchant" ||
+      (filterCountry && filterCity && filterRole === "location_lookup")
+    ) {
+      const targetCountry = filterCountry || callerCountry || "Ethiopia";
+      const targetCity = filterCity || callerCity || "Addis Ababa";
+
+      const countryLead = allAdmins.find(
+        (a) =>
+          a.role === "country_admin" &&
+          a.assignedCountry?.toLowerCase() === targetCountry.toLowerCase()
+      );
+
+      const cityAdmin = allAdmins.find(
+        (a) =>
+          a.role === "city_admin" &&
+          a.assignedCountry?.toLowerCase() === targetCountry.toLowerCase() &&
+          a.assignedCity?.toLowerCase() === targetCity.toLowerCase() &&
+          a.approvalStatus !== "pending" &&
+          a.status === "active"
+      ) || allAdmins.find(
+        (a) =>
+          a.role === "city_admin" &&
+          a.assignedCountry?.toLowerCase() === targetCountry.toLowerCase() &&
+          a.assignedCity?.toLowerCase() === targetCity.toLowerCase()
+      );
+
+      const allCityAdmins = allAdmins.filter(
+        (a) =>
+          a.role === "city_admin" &&
+          a.assignedCountry?.toLowerCase() === targetCountry.toLowerCase() &&
+          a.assignedCity?.toLowerCase() === targetCity.toLowerCase()
+      );
+
+      return NextResponse.json({
+        success: true,
+        scope: "storefront_lookup",
+        country: targetCountry,
+        city: targetCity,
+        assignedCountryAdmin: countryLead || null,
+        assignedCityAdmin: cityAdmin || null,
+        cityAdmins: allCityAdmins,
+        admins: [
+          ...(countryLead ? [countryLead] : []),
+          ...allCityAdmins,
+        ],
+        jurisdiction: {
+          country: targetCountry,
+          city: targetCity,
+          hasCountryLead: Boolean(countryLead),
+          hasCityAdmin: Boolean(cityAdmin),
+          status: cityAdmin ? "Active & Assigned" : "Municipal Bureau Monitored",
+        },
+      });
+    }
+
+    // ── 4. SUPER ADMIN / GLOBAL GOVERNANCE ───────────────────────────────────
     if (filterRole && filterRole !== "all") {
       allAdmins = allAdmins.filter((a) => a.role === filterRole);
     }
@@ -345,6 +551,13 @@ export async function GET(req: Request) {
     const cityAdmins = allAdmins.filter((a) => a.role === "city_admin");
     const superAdmins = allAdmins.filter((a) => a.role === "super_admin");
 
+    const activeCityAdmins = cityAdmins.filter(
+      (a) => a.approvalStatus !== "pending" && a.status === "active"
+    );
+    const pendingNominations = allAdmins.filter(
+      (a) => a.approvalStatus === "pending"
+    );
+
     const assignedCountries = Array.from(
       new Set(countryMainAdmins.map((a) => a.assignedCountry).filter(Boolean))
     );
@@ -352,9 +565,10 @@ export async function GET(req: Request) {
     return NextResponse.json({
       success: true,
       admins: allAdmins,
+      pendingNominations,
       stats: {
         totalCountryAdmins: countryMainAdmins.length,
-        totalCityAdmins: cityAdmins.length,
+        totalCityAdmins: activeCityAdmins.length,
         totalSuperAdmins: superAdmins.length,
         coveredCountriesCount: assignedCountries.length,
         totalGlobalCountries: COUNTRIES_WITH_CITIES.length, // 195
@@ -375,21 +589,13 @@ export async function GET(req: Request) {
     });
   } catch (error: any) {
     console.error("[Geo Admins API GET Error]", error);
-    return NextResponse.json({ admins: GEO_ADMINS_ROSTER, error: error.message });
+    return NextResponse.json({ admins: GEO_ADMINS_ROSTER, pendingNominations: [], error: error.message });
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const { callerRole, callerCountry } = await resolveCallerJurisdiction(req);
-
-    // City Admin forbidden
-    if (callerRole === "city_admin") {
-      return NextResponse.json(
-        { error: "City Admins do not have permission to appoint administrators." },
-        { status: 403 }
-      );
-    }
+    const { callerRole, callerCountry, callerCity, callerName, callerEmail } = await resolveCallerJurisdiction(req);
 
     const body = await req.json();
     const { name, email, role, assignedCountry, assignedCity, password } = body;
@@ -401,18 +607,41 @@ export async function POST(req: Request) {
       );
     }
 
-    // JURISDICTION ENFORCEMENT FOR COUNTRY ADMIN:
+    // STRICT JURISDICTION ENFORCEMENT:
+    // City admin can ONLY nominate city_admin within their own city & country.
+    if (callerRole === "city_admin") {
+      if (role !== "city_admin") {
+        return NextResponse.json(
+          { error: "City Admins may only nominate administrators within their municipal jurisdiction." },
+          { status: 403 }
+        );
+      }
+      const myCity = callerCity || "Addis Ababa";
+      const myCountry = callerCountry || "Ethiopia";
+      if (
+        assignedCity?.toLowerCase() !== myCity.toLowerCase() ||
+        assignedCountry?.toLowerCase() !== myCountry.toLowerCase()
+      ) {
+        return NextResponse.json(
+          { error: `City Admins can only nominate administrators for their assigned city (${myCity}, ${myCountry}).` },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Country admin CANNOT appoint country_admin or super_admin!
+    // Country admin can ONLY nominate city_admin within their own country.
     if (callerRole === "country_admin") {
       if (role !== "city_admin") {
         return NextResponse.json(
-          { error: "Country Admins can only appoint City Admins under their country." },
+          { error: "Country Admins are not permitted to appoint Country Leads or Super Admins. You may only nominate City Admins within your country." },
           { status: 403 }
         );
       }
       const myCountry = callerCountry || "Ethiopia";
       if (assignedCountry?.toLowerCase() !== myCountry.toLowerCase()) {
         return NextResponse.json(
-          { error: `Country Admins can only assign City Admins within their assigned country (${myCountry}).` },
+          { error: `Country Admins can only nominate City Admins within their assigned country (${myCountry}).` },
           { status: 403 }
         );
       }
@@ -438,13 +667,31 @@ export async function POST(req: Request) {
     const cleanCity = assignedCity ? assignedCity.trim() : undefined;
     const flag = getCountryFlag(cleanCountry);
 
+    // If appointed by country_admin or city_admin, it is a NOMINATION pending Super Admin approval!
+    // If appointed by super_admin, it is APPROVED immediately and posted live!
+    const isNomination = callerRole === "country_admin" || callerRole === "city_admin";
+    const approvalStatus: "approved" | "pending" = isNomination ? "pending" : "approved";
+    const status: "active" | "pending" = isNomination ? "pending" : "active";
+    const isActive = !isNomination;
+    const nominatedBy = isNomination
+      ? {
+          name: callerName || (callerRole === "city_admin" ? `${cleanCity} Municipal Bureau` : `${cleanCountry || "Country"} Lead Admin`),
+          email: callerEmail || "",
+          role: callerRole,
+          country: cleanCountry,
+          city: cleanCity,
+          date: new Date().toISOString(),
+        }
+      : undefined;
+
     let permissions: string[] = [];
     if (role === "super_admin") {
       permissions = ["all", "country_admin.manage", "city_admin.manage", "platform.manage"];
     } else if (role === "country_admin") {
       permissions = ["city_admin.manage", "business.approve", "business.verify", "country.analytics.read"];
     } else {
-      permissions = ["business.approve", "business.verify", "review.moderate"];
+      // For city admin: only grant active permissions immediately if Super Admin approved!
+      permissions = isNomination ? [] : ["business.approve", "business.verify", "review.moderate"];
     }
 
     // 1. Sync with Clerk
@@ -461,9 +708,13 @@ export async function POST(req: Request) {
           clerkUserId = existing.id;
           await client.users.updateUserMetadata(existing.id, {
             publicMetadata: {
-              role,
+              role: isNomination ? "pending_city_admin" : role,
               assignedCountry: cleanCountry,
               assignedCity: cleanCity,
+              country: cleanCountry,
+              city: cleanCity,
+              approvalStatus,
+              nominatedBy,
               permissions,
             },
           });
@@ -476,9 +727,13 @@ export async function POST(req: Request) {
             password: password?.trim() || undefined,
             skipPasswordRequirement: !password?.trim(),
             publicMetadata: {
-              role,
+              role: isNomination ? "pending_city_admin" : role,
               assignedCountry: cleanCountry,
               assignedCity: cleanCity,
+              country: cleanCountry,
+              city: cleanCity,
+              approvalStatus,
+              nominatedBy,
               permissions,
             },
           });
@@ -504,7 +759,11 @@ export async function POST(req: Request) {
             role,
             assignedCountry: cleanCountry,
             assignedCity: cleanCity,
-            isActive: true,
+            country: cleanCountry,
+            city: cleanCity,
+            isActive,
+            approvalStatus,
+            nominatedBy,
           },
         },
         { upsert: true, new: true }
@@ -522,7 +781,9 @@ export async function POST(req: Request) {
       assignedCountry: cleanCountry,
       assignedCity: cleanCity,
       countryFlag: flag,
-      status: "active",
+      status,
+      approvalStatus,
+      nominatedBy,
       permissions,
       createdAt: new Date().toISOString().split("T")[0],
       lastActive: "Just now",
@@ -536,13 +797,158 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
+      pendingApproval: isNomination,
       admin: newRecord,
-      message: `${role === "country_admin" ? "Country Main Admin" : role === "city_admin" ? "City Admin" : "Administrator"} assigned successfully!`,
+      message: isNomination
+        ? `City Admin nomination for ${cleanCity} (${cleanCountry}) submitted successfully! Awaiting Super Admin approval before being posted live.`
+        : `${role === "country_admin" ? `${cleanCountry} Country Lead` : role === "city_admin" ? `City Admin for ${cleanCity}` : "Administrator"} assigned and posted live successfully!`,
     });
   } catch (error: any) {
     console.error("[Geo Admins API POST Error]", error);
     return NextResponse.json(
       { error: error.message || "Failed to assign geo-admin." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const { callerRole } = await resolveCallerJurisdiction(req);
+
+    // Only Super Admins have permission to approve or reject City Admin nominations
+    if (callerRole !== "super_admin") {
+      return NextResponse.json(
+        { error: "Only Super Admins have permission to approve or reject City Admin nominations." },
+        { status: 403 }
+      );
+    }
+
+    const body = await req.json();
+    const { id, action, rejectionReason } = body;
+
+    if (!id || !action) {
+      return NextResponse.json(
+        { error: "Admin ID and action ('approve' | 'reject') are required." },
+        { status: 400 }
+      );
+    }
+
+    await connectToDatabase();
+    let dbUser = await UserModel.findOne({ $or: [{ id }, { clerkId: id }] });
+    const rosterIdx = GEO_ADMINS_ROSTER.findIndex((a) => a.id === id);
+    let target = rosterIdx !== -1 ? GEO_ADMINS_ROSTER[rosterIdx] : null;
+
+    if (!target && !dbUser) {
+      return NextResponse.json({ error: "Nomination record not found." }, { status: 404 });
+    }
+
+    const targetEmail = (target?.email || dbUser?.email || "").toLowerCase();
+    const targetCountry = target?.assignedCountry || dbUser?.assignedCountry || "Ethiopia";
+    const targetCity = target?.assignedCity || dbUser?.assignedCity || "";
+    const targetName = target?.name || dbUser?.name || "City Admin";
+
+    if (action === "approve") {
+      // 1. Sync full active permissions to Clerk
+      try {
+        if (process.env.CLERK_SECRET_KEY && !process.env.CLERK_SECRET_KEY.includes("placeholder")) {
+          const client = await clerkClient();
+          const existingUsers = await client.users.getUserList({ emailAddress: [targetEmail] });
+          if (existingUsers.data && existingUsers.data.length > 0) {
+            await client.users.updateUserMetadata(existingUsers.data[0].id, {
+              publicMetadata: {
+                role: "city_admin",
+                assignedCountry: targetCountry,
+                assignedCity: targetCity,
+                country: targetCountry,
+                city: targetCity,
+                approvalStatus: "approved",
+                permissions: ["business.approve", "business.verify", "review.moderate"],
+              },
+            });
+          }
+        }
+      } catch (err: any) {
+        console.warn("[Clerk Geo-Admin Approval Sync Notice]", err?.message);
+      }
+
+      // 2. Update MongoDB
+      if (dbUser) {
+        dbUser.role = "city_admin";
+        dbUser.approvalStatus = "approved";
+        dbUser.isActive = true;
+        await dbUser.save();
+      } else {
+        await UserModel.findOneAndUpdate(
+          { email: targetEmail },
+          {
+            $set: {
+              role: "city_admin",
+              approvalStatus: "approved",
+              isActive: true,
+              assignedCountry: targetCountry,
+              assignedCity: targetCity,
+            },
+          },
+          { upsert: true }
+        );
+      }
+
+      // 3. Update memory roster
+      if (target) {
+        target.role = "city_admin";
+        target.status = "active";
+        target.approvalStatus = "approved";
+        target.lastActive = "Just now";
+        target.permissions = ["business.approve", "business.verify", "review.moderate"];
+      } else {
+        target = {
+          id: dbUser?.clerkId || dbUser?.id || id,
+          name: targetName,
+          email: targetEmail,
+          role: "city_admin",
+          assignedCountry: targetCountry,
+          assignedCity: targetCity,
+          countryFlag: getCountryFlag(targetCountry),
+          status: "active",
+          approvalStatus: "approved",
+          permissions: ["business.approve", "business.verify", "review.moderate"],
+          createdAt: new Date().toISOString().split("T")[0],
+          lastActive: "Just now",
+          managedListingsCount: 0,
+        };
+        GEO_ADMINS_ROSTER = [target, ...GEO_ADMINS_ROSTER.filter((a) => a.id !== id)];
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: "approved",
+        admin: target,
+        message: `Successfully approved ${targetName} as City Admin for ${targetCity}, ${targetCountry}! Posted live to the platform.`,
+      });
+    } else if (action === "reject") {
+      // 1. Update MongoDB
+      if (dbUser) {
+        dbUser.approvalStatus = "rejected";
+        dbUser.isActive = false;
+        await dbUser.save();
+      }
+
+      // 2. Remove from roster
+      GEO_ADMINS_ROSTER = GEO_ADMINS_ROSTER.filter((a) => a.id !== id);
+
+      return NextResponse.json({
+        success: true,
+        action: "rejected",
+        message: `Nomination for ${targetName} (${targetCity}) has been rejected.`,
+      });
+    } else {
+      return NextResponse.json({ error: "Invalid action. Use 'approve' or 'reject'." }, { status: 400 });
+    }
+  } catch (error: any) {
+    console.error("[Geo Admins API PATCH Error]", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to process nomination." },
       { status: 500 }
     );
   }

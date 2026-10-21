@@ -22,6 +22,7 @@ import { BusinessConfirmationModal } from "@/components/business/BusinessConfirm
 import { useCurrentRole } from "@/components/layout/RoleSwitcher";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils/cn";
+import { globalCityRegistry } from "@/lib/data/city-business-registry";
 
 type AdminRole = "super_admin" | "admin" | "country_admin" | "city_admin";
 
@@ -100,19 +101,48 @@ export function PendingConfirmationsQueue({
 
         const res = await fetch(`/api/businesses?${params.toString()}`);
         const data = await res.json();
-        if (data?.businesses) {
-          const filtered = (data.businesses as Business[]).filter((b) =>
+        let filtered: Business[] = [];
+        if (data?.businesses && Array.isArray(data.businesses)) {
+          filtered = (data.businesses as Business[]).filter((b) =>
             ["pending_city", "pending_country", "pending_super_admin", "revision_requested"].includes(
               b.approvalStatus || "pending_city"
             )
           );
-          setPendingList(filtered);
-          setTotalCount(data.total ?? filtered.length);
-          setTotalPages(data.totalPages ?? 1);
-          setPage(data.page ?? pg);
         }
+
+        if (!data?.businesses || !Array.isArray(data.businesses)) {
+          const fallbackBiz = (filterCity && filterCity !== "all")
+            ? globalCityRegistry.getBusinessesForCity(filterCity, filterCountry || "Ethiopia")
+            : (filterCountry && filterCountry !== "all")
+            ? globalCityRegistry.getBusinessesForCountry(filterCountry, filterCity)
+            : globalCityRegistry.getAllBusinessesGlobal(filterCountry, filterCity);
+          filtered = fallbackBiz.filter((b) =>
+            ["pending_city", "pending_country", "pending_super_admin", "revision_requested"].includes(
+              b.approvalStatus || "pending_city"
+            )
+          );
+        }
+
+        setPendingList(filtered);
+        setTotalCount(filtered.length);
+        setTotalPages(Math.max(1, Math.ceil(filtered.length / 12)));
+        setPage(pg);
       } catch (err) {
-        console.error("[PendingConfirmationsQueue] Fetch failed:", err);
+        console.error("[PendingConfirmationsQueue] Fetch failed, falling back to registry:", err);
+        const fallbackBiz = (filterCity && filterCity !== "all")
+          ? globalCityRegistry.getBusinessesForCity(filterCity, filterCountry || "Ethiopia")
+          : (filterCountry && filterCountry !== "all")
+          ? globalCityRegistry.getBusinessesForCountry(filterCountry, filterCity)
+          : globalCityRegistry.getAllBusinessesGlobal(filterCountry, filterCity);
+        const filtered = fallbackBiz.filter((b) =>
+          ["pending_city", "pending_country", "pending_super_admin", "revision_requested"].includes(
+            b.approvalStatus || "pending_city"
+          )
+        );
+        setPendingList(filtered);
+        setTotalCount(filtered.length);
+        setTotalPages(Math.max(1, Math.ceil(filtered.length / 12)));
+        setPage(pg);
       } finally {
         setIsLoading(false);
       }
@@ -197,12 +227,12 @@ export function PendingConfirmationsQueue({
       {/* Filters */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <div className="relative flex-1 max-w-xs">
-          <Building2 className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Building2 className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 absolute left-2.5 xs:left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input
             placeholder="Search by business name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 text-xs h-9 bg-background/60"
+            className="pl-7.5 xs:pl-8 sm:pl-9 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs h-7.5 xs:h-8 sm:h-8.5 bg-background/60 truncate"
           />
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">

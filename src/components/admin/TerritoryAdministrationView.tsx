@@ -28,12 +28,14 @@ import {
   X,
   FileSpreadsheet,
   Zap,
+  ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { COUNTRIES_WITH_CITIES, getCitiesForCountry } from "@/lib/data/countries-cities";
+import { SUBCITIES_DATABASE } from "@/lib/data/subcities-database";
 import { AssignGeoAdminModal } from "@/components/admin/AssignGeoAdminModal";
 import { GeoAdminRecord } from "@/app/api/admin/geo-admins/route";
 import { TerritoryMap, TerritoryMapPin } from "@/components/admin/TerritoryMap";
@@ -49,6 +51,8 @@ export interface TerritoryNodeRecord {
   longitude: number;
   countryCode?: string;
   businessCount?: number;
+  commercialFocus?: string;
+  densityIndex?: string;
   updatedAt?: string;
 }
 
@@ -59,6 +63,8 @@ interface TerritoryAdministrationViewProps {
   onRoleChange?: (role: "super_admin" | "country_admin" | "city_admin" | "admin") => void;
   onCountryChange?: (country: string) => void;
   onCityChange?: (city: string) => void;
+  activeSubnav?: string;
+  onSubnavChange?: (subnav: string) => void;
 }
 
 export function TerritoryAdministrationView({
@@ -68,6 +74,8 @@ export function TerritoryAdministrationView({
   onRoleChange,
   onCountryChange,
   onCityChange,
+  activeSubnav,
+  onSubnavChange,
 }: TerritoryAdministrationViewProps) {
   // Main view tabs: 1. Map Radar | 2. Hierarchy Tree | 3. Country Leads (195) | 4. City Admins (30/country) | 5. Operations & Sync
   const [activeTab, setActiveTab] = useState<
@@ -112,12 +120,15 @@ export function TerritoryAdministrationView({
   const isCityAdmin = currentRole === "city_admin";
 
   // ─── Fetch Data ─────────────────────────────────────────────────────────────
+  const [isProcessingApproval, setIsProcessingApproval] = useState<string | null>(null);
+
   const fetchAllData = async () => {
     setIsLoading(true);
     try {
+      const geoUrl = `/api/admin/geo-admins?callerRole=${currentRole}&callerCountry=${encodeURIComponent(currentCountry)}`;
       const [terrRes, admRes] = await Promise.all([
         fetch("/api/admin/territories"),
-        fetch("/api/admin/geo-admins"),
+        fetch(geoUrl),
       ]);
 
       const terrData = await terrRes.json();
@@ -139,23 +150,43 @@ export function TerritoryAdministrationView({
 
   useEffect(() => {
     fetchAllData();
+  }, [currentRole, currentCountry, currentCity]);
+
+  useEffect(() => {
+    const handleAdminRegistered = () => {
+      fetchAllData();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("bizfinder_territory_admin_registered", handleAdminRegistered);
+      return () => {
+        window.removeEventListener("bizfinder_territory_admin_registered", handleAdminRegistered);
+      };
+    }
   }, []);
 
   // ─── Mapping Dictionaries ──────────────────────────────────────────────────
   const countryAdminMap = useMemo(() => {
     const map = new Map<string, GeoAdminRecord>();
     adminsList
-      .filter((a) => a.role === "country_admin" && a.assignedCountry)
+      .filter((a) => a.role === "country_admin" && a.assignedCountry && a.status === "active")
       .forEach((a) => {
         map.set(a.assignedCountry!.toLowerCase(), a);
       });
     return map;
   }, [adminsList]);
 
+  // Active, posted live City Admins only
   const cityAdminMap = useMemo(() => {
     const map = new Map<string, GeoAdminRecord>();
     adminsList
-      .filter((a) => a.role === "city_admin" && a.assignedCountry && a.assignedCity)
+      .filter(
+        (a) =>
+          a.role === "city_admin" &&
+          a.assignedCountry &&
+          a.assignedCity &&
+          a.approvalStatus !== "pending" &&
+          a.status === "active"
+      )
       .forEach((a) => {
         const key = `${a.assignedCountry!.toLowerCase()}::${a.assignedCity!.toLowerCase()}`;
         map.set(key, a);
@@ -163,14 +194,213 @@ export function TerritoryAdministrationView({
     return map;
   }, [adminsList]);
 
+  // Pending City Admin nominations awaiting Super Admin approval
+  const pendingCityAdminMap = useMemo(() => {
+    const map = new Map<string, GeoAdminRecord>();
+    adminsList
+      .filter(
+        (a) =>
+          a.role === "city_admin" &&
+          a.assignedCountry &&
+          a.assignedCity &&
+          a.approvalStatus === "pending"
+      )
+      .forEach((a) => {
+        const key = `${a.assignedCountry!.toLowerCase()}::${a.assignedCity!.toLowerCase()}`;
+        map.set(key, a);
+      });
+    return map;
+  }, [adminsList]);
+
+  const pendingNominationsList = useMemo(() => {
+    return adminsList.filter(
+      (a) => a.role === "city_admin" && a.approvalStatus === "pending"
+    );
+  }, [adminsList]);
+
+  // ─── Super Admin Approval / Rejection Actions ──────────────────────────────
+  const handleApproveNomination = async (nominee: GeoAdminRecord) => {
+    setIsProcessingApproval(nominee.id);
+    try {
+      const res = await fetch("/api/admin/geo-admins", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: nominee.id,
+          action: "approve",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(
+          data.message || `Approved ${nominee.name} as City Admin for ${nominee.assignedCity}! Posted live to platform.`,
+          { duration: 6000 }
+        );
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("bizfinder_territory_admin_registered", {
+              detail: { ...nominee, approvalStatus: "approved", status: "active" },
+            })
+          );
+        }
+        fetchAllData();
+      } else {
+        toast.error(data.error || "Failed to approve nomination.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Network error while approving nomination.");
+    } finally {
+      setIsProcessingApproval(null);
+    }
+  };
+
+  const handleRejectNomination = async (nominee: GeoAdminRecord) => {
+    if (!confirm(`Are you sure you want to reject the nomination of ${nominee.name} for ${nominee.assignedCity}?`)) return;
+    setIsProcessingApproval(nominee.id);
+    try {
+      const res = await fetch("/api/admin/geo-admins", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: nominee.id,
+          action: "reject",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(data.message || `Nomination for ${nominee.name} rejected.`);
+        fetchAllData();
+      } else {
+        toast.error(data.error || "Failed to reject nomination.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Network error while rejecting nomination.");
+    } finally {
+      setIsProcessingApproval(null);
+    }
+  };
+
+  // City Node (if city_admin or specific city selected)
+  const currentCityNode = useMemo(() => {
+    return (
+      territoriesList.find(
+        (t) =>
+          t.type === "city" &&
+          t.name.toLowerCase() === (currentCity || "").toLowerCase()
+      ) || null
+    );
+  }, [territoriesList, currentCity]);
+
+  // Country Node (if country_admin, city_admin or specific country selected)
+  const currentCountryNode = useMemo(() => {
+    return (
+      territoriesList.find(
+        (t) =>
+          t.type === "country" &&
+          t.name.toLowerCase() === (currentCountry || "").toLowerCase()
+      ) || null
+    );
+  }, [territoriesList, currentCountry]);
+
+  // Scoped Territories based on active jurisdiction role
+  const scopedTerritoriesList = useMemo(() => {
+    if (isSuperAdmin && (!currentCountry || currentCountry === "all")) {
+      return territoriesList;
+    }
+
+    if (isCityAdmin) {
+      const cityId = currentCityNode?.id || currentCityNode?._id;
+      const cityNameLower = (currentCity || "").toLowerCase();
+      const directMatches = territoriesList.filter((t) => {
+        if (t.type === "city" && t.name.toLowerCase() === cityNameLower) return true;
+        if (cityId && (t.parentId === cityId || String(t.parentId) === String(currentCityNode?._id))) return true;
+        const knownSubs = SUBCITIES_DATABASE[currentCountry]?.[currentCity] || [];
+        if (knownSubs.some((s) => s.toLowerCase() === t.name.toLowerCase())) return true;
+        return false;
+      });
+
+      // Include all subcities from SUBCITIES_DATABASE if not already in LocationModel
+      const knownSubList = SUBCITIES_DATABASE[currentCountry]?.[currentCity] || [];
+      const presentNames = new Set(directMatches.map((d) => d.name.toLowerCase()));
+      const synthesized: TerritoryNodeRecord[] = [];
+      const baseLat = currentCityNode?.latitude || 9.010793;
+      const baseLng = currentCityNode?.longitude || 38.761252;
+
+      knownSubList.forEach((subName, i) => {
+        if (!presentNames.has(subName.toLowerCase())) {
+          synthesized.push({
+            id: `sub-${subName.toLowerCase().replace(/\s+/g, "-")}`,
+            name: subName,
+            type: "subcity",
+            parentId: cityId || null,
+            latitude: Number((baseLat + ((i % 5) - 2) * 0.015).toFixed(6)),
+            longitude: Number((baseLng + (Math.floor(i / 5) - 1) * 0.015).toFixed(6)),
+            countryCode: currentCountryNode?.countryCode || "ET",
+            businessCount: 0,
+            commercialFocus: "Municipal Commercial District",
+          });
+        }
+      });
+
+      return [...directMatches, ...synthesized];
+    }
+
+    if (isCountryAdmin || (currentCountry && currentCountry !== "all")) {
+      const countryId = currentCountryNode?.id || currentCountryNode?._id;
+      const countryCode = currentCountryNode?.countryCode;
+      const countryNameLower = (currentCountry || "").toLowerCase();
+
+      const countryCities = territoriesList.filter((t) => {
+        if (t.type === "country" && t.name.toLowerCase() === countryNameLower) return true;
+        if (countryId && t.parentId === countryId) return true;
+        if (countryCode && t.countryCode === countryCode) return true;
+        return false;
+      });
+      const cityIds = new Set(countryCities.map((c) => c.id || c._id));
+
+      return territoriesList.filter((t) => {
+        if (t.type === "country" && t.name.toLowerCase() === countryNameLower) return true;
+        if (countryCities.some((c) => c.id === t.id)) return true;
+        if (t.parentId && cityIds.has(t.parentId)) return true;
+        if (countryCode && t.countryCode === countryCode) return true;
+        return false;
+      });
+    }
+
+    return territoriesList;
+  }, [territoriesList, isSuperAdmin, isCityAdmin, isCountryAdmin, currentCountry, currentCity, currentCityNode, currentCountryNode]);
+
+  // Center & Zoom for the Map Radar
+  const mapCenter = useMemo<[number, number]>(() => {
+    if (isCityAdmin) {
+      if (currentCityNode?.latitude && currentCityNode?.longitude) {
+        return [currentCityNode.latitude, currentCityNode.longitude];
+      }
+      return [9.010793, 38.761252];
+    }
+    if (isCountryAdmin) {
+      if (currentCountryNode?.latitude && currentCountryNode?.longitude) {
+        return [currentCountryNode.latitude, currentCountryNode.longitude];
+      }
+      return [9.010793, 38.761252];
+    }
+    return [9.010793, 38.761252];
+  }, [isCityAdmin, isCountryAdmin, currentCityNode, currentCountryNode]);
+
+  const mapZoom = useMemo<number>(() => {
+    if (isCityAdmin) return 12;
+    if (isCountryAdmin) return 6;
+    return 5;
+  }, [isCityAdmin, isCountryAdmin]);
+
   // ─── Map Pins Assembly ─────────────────────────────────────────────────────
   const mapPins: TerritoryMapPin[] = useMemo(() => {
-    return territoriesList.map((t) => {
+    return scopedTerritoriesList.map((t) => {
       let assignedAdmin: any = undefined;
       if (t.type === "country") {
         assignedAdmin = countryAdminMap.get(t.name.toLowerCase());
       } else if (t.type === "city") {
-        const parentCountry = territoriesList.find((p) => p.id === t.parentId)?.name || "Ethiopia";
+        const parentCountry = territoriesList.find((p) => p.id === t.parentId)?.name || currentCountry || "Ethiopia";
         const key = `${parentCountry.toLowerCase()}::${t.name.toLowerCase()}`;
         assignedAdmin = cityAdminMap.get(key);
       }
@@ -193,27 +423,47 @@ export function TerritoryAdministrationView({
         businessCount: t.businessCount ?? 0,
       };
     });
-  }, [territoriesList, countryAdminMap, cityAdminMap]);
+  }, [scopedTerritoriesList, territoriesList, countryAdminMap, cityAdminMap, currentCountry]);
 
   // ─── Telemetry Calculations ────────────────────────────────────────────────
   const totalAssignedCountries = countryAdminMap.size;
   const totalCountries = COUNTRIES_WITH_CITIES.length; // 195
   const countryCoveragePercent = ((totalAssignedCountries / totalCountries) * 100).toFixed(1);
-  const totalAssignedCityAdmins = adminsList.filter((a) => a.role === "city_admin").length;
-  const totalBusinessesMapped = territoriesList.reduce((acc, t) => acc + (t.businessCount || 0), 0);
+  const totalAssignedCityAdmins = adminsList.filter(
+    (a) => a.role === "city_admin" && a.approvalStatus !== "pending" && a.status === "active"
+  ).length;
+  const totalBusinessesMapped = scopedTerritoriesList.reduce((acc, t) => acc + (t.businessCount || 0), 0);
 
   // ─── Node CRUD Handlers ────────────────────────────────────────────────────
-  const handleOpenCreateNode = (defaultParent?: string, defaultType: string = "subcity") => {
+  const handleOpenCreateNode = (defaultParent?: string, defaultType?: string) => {
     setNodeModalMode("create");
     setEditingNodeId(null);
     setNodeFormName("");
-    setNodeFormType(defaultType);
-    setNodeFormParentId(defaultParent || "");
-    setNodeFormLatitude(9.010793);
-    setNodeFormLongitude(38.761252);
-    setNodeFormCountryCode(isCountryAdmin ? "ET" : "ET");
+    const type = defaultType || (isCityAdmin ? "subcity" : isCountryAdmin ? "city" : "subcity");
+    setNodeFormType(type);
+    const parent = defaultParent || (isCityAdmin ? (currentCityNode?.id || currentCityNode?._id || "") : isCountryAdmin ? (currentCountryNode?.id || currentCountryNode?._id || "") : "");
+    setNodeFormParentId(parent);
+    setNodeFormLatitude(isCityAdmin && currentCityNode ? currentCityNode.latitude : isCountryAdmin && currentCountryNode ? currentCountryNode.latitude : 9.010793);
+    setNodeFormLongitude(isCityAdmin && currentCityNode ? currentCityNode.longitude : isCountryAdmin && currentCountryNode ? currentCountryNode.longitude : 38.761252);
+    setNodeFormCountryCode(currentCountryNode?.countryCode || (currentCountry === "Ethiopia" ? "ET" : "GLOBAL"));
     setIsNodeModalOpen(true);
   };
+
+  // React to external activeSubnav if passed from dashboard sidebar
+  useEffect(() => {
+    if (!activeSubnav) return;
+    if (activeSubnav === "map_radar") {
+      setActiveTab("map_radar");
+    } else if (activeSubnav === "subcities") {
+      setActiveTab("hierarchy_tree");
+      setFilterType("subcity");
+    } else if (activeSubnav === "districts") {
+      setActiveTab("hierarchy_tree");
+      setFilterType("district");
+    } else if (activeSubnav === "register") {
+      handleOpenCreateNode();
+    }
+  }, [activeSubnav]);
 
   const handleOpenEditNode = (node: TerritoryNodeRecord) => {
     setNodeModalMode("edit");
@@ -323,8 +573,8 @@ export function TerritoryAdministrationView({
     countryName: string,
     cityName?: string
   ) => {
-    setModalRole(role);
-    setModalCountry(countryName);
+    setModalRole(isCountryAdmin ? "city_admin" : role);
+    setModalCountry(isCountryAdmin ? currentCountry : countryName);
     setModalCity(cityName || "");
     setIsAssignModalOpen(true);
   };
@@ -332,6 +582,9 @@ export function TerritoryAdministrationView({
   // ─── Filtered Country Roster (195 Nations) ──────────────────────────────────
   const filteredCountries = useMemo(() => {
     return COUNTRIES_WITH_CITIES.filter((c) => {
+      if (isCountryAdmin && c.name.toLowerCase() !== currentCountry.toLowerCase()) {
+        return false;
+      }
       const isAssigned = countryAdminMap.has(c.name.toLowerCase());
       const matchesSearch =
         c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -343,7 +596,7 @@ export function TerritoryAdministrationView({
       if (filterStatus === "unassigned") return !isAssigned;
       return true;
     });
-  }, [searchQuery, filterStatus, countryAdminMap]);
+  }, [searchQuery, filterStatus, countryAdminMap, isCountryAdmin, currentCountry]);
 
   // ─── Filtered City Roster (30 Cities) ──────────────────────────────────────
   const selectedCountryCities = useMemo(() => {
@@ -368,7 +621,7 @@ export function TerritoryAdministrationView({
 
   // ─── Filtered Hierarchy Tree ───────────────────────────────────────────────
   const filteredHierarchyNodes = useMemo(() => {
-    return territoriesList.filter((node) => {
+    return scopedTerritoriesList.filter((node) => {
       if (filterType !== "all" && node.type !== filterType) return false;
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
@@ -380,13 +633,13 @@ export function TerritoryAdministrationView({
       }
       return true;
     });
-  }, [territoriesList, filterType, searchQuery]);
+  }, [scopedTerritoriesList, filterType, searchQuery]);
 
   // ─── Export Roster to CSV ──────────────────────────────────────────────────
   const handleExportCSV = () => {
     const rows = [
       ["Territory ID", "Name", "Type", "Parent ID", "Latitude", "Longitude", "Country Code", "Business Count"],
-      ...territoriesList.map((t) => [
+      ...scopedTerritoriesList.map((t) => [
         t.id,
         `"${t.name}"`,
         t.type,
@@ -506,51 +759,71 @@ export function TerritoryAdministrationView({
         {/* Metric 1: Geographic Hierarchy Nodes */}
         <div className="p-5 rounded-3xl border border-border bg-card shadow-sm flex flex-col justify-between gap-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-muted-foreground">Territory Nodes</span>
+            <span className="text-xs font-bold text-muted-foreground">
+              {isCityAdmin ? "Municipal Nodes" : isCountryAdmin ? "National Nodes" : "Territory Nodes"}
+            </span>
             <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
               <Layers className="w-4 h-4" />
             </div>
           </div>
           <div>
-            <div className="text-2xl font-black text-foreground">{territoriesList.length}</div>
+            <div className="text-2xl font-black text-foreground">{scopedTerritoriesList.length}</div>
             <div className="text-[11px] text-muted-foreground font-medium mt-0.5">
-              Live in MongoDB Database
+              {isCityAdmin ? `In ${currentCity}` : isCountryAdmin ? `In ${currentCountry}` : "Live in MongoDB Database"}
             </div>
           </div>
         </div>
 
-        {/* Metric 2: Country Leadership Coverage */}
+        {/* Metric 2: Country Leadership Coverage / Subcities */}
         <div className="p-5 rounded-3xl border border-border bg-card shadow-sm flex flex-col justify-between gap-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-muted-foreground">Country Leads</span>
+            <span className="text-xs font-bold text-muted-foreground">
+              {isCityAdmin ? "Sub-Cities & Woredas" : "Country Leads"}
+            </span>
             <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-              <Crown className="w-4 h-4" />
+              {isCityAdmin ? <Building2 className="w-4 h-4" /> : <Crown className="w-4 h-4" />}
             </div>
           </div>
           <div>
             <div className="text-2xl font-black text-foreground">
-              {totalAssignedCountries}{" "}
-              <span className="text-xs text-muted-foreground font-normal">/ {totalCountries} Nations</span>
+              {isCityAdmin
+                ? scopedTerritoriesList.filter((t) => t.type === "subcity" || t.type === "district").length
+                : totalAssignedCountries}
+              {!isCityAdmin && (
+                <span className="text-xs text-muted-foreground font-normal"> / {totalCountries} Nations</span>
+              )}
             </div>
             <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
-              <TrendingUp className="w-3 h-3" />
-              <span>{countryCoveragePercent}% Global Coverage</span>
+              {isCityAdmin ? (
+                <span>Registered Jurisdictions</span>
+              ) : (
+                <>
+                  <TrendingUp className="w-3 h-3" />
+                  <span>{countryCoveragePercent}% Global Coverage</span>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Metric 3: City Admins Appointed */}
+        {/* Metric 3: City Admins Appointed / Districts */}
         <div className="p-5 rounded-3xl border border-border bg-card shadow-sm flex flex-col justify-between gap-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-muted-foreground">City Admins</span>
+            <span className="text-xs font-bold text-muted-foreground">
+              {isCityAdmin ? "Commercial Districts" : "City Admins"}
+            </span>
             <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
               <Building2 className="w-4 h-4" />
             </div>
           </div>
           <div>
-            <div className="text-2xl font-black text-foreground">{totalAssignedCityAdmins}</div>
+            <div className="text-2xl font-black text-foreground">
+              {isCityAdmin
+                ? scopedTerritoriesList.filter((t) => t.type === "district").length
+                : totalAssignedCityAdmins}
+            </div>
             <div className="text-[11px] text-muted-foreground font-medium mt-0.5">
-              30 Municipalities per Nation
+              {isCityAdmin ? "Zoned Business Hubs" : "30 Municipalities per Nation"}
             </div>
           </div>
         </div>
@@ -566,7 +839,7 @@ export function TerritoryAdministrationView({
           <div>
             <div className="text-2xl font-black text-foreground">{totalBusinessesMapped}</div>
             <div className="text-[11px] text-muted-foreground font-medium mt-0.5">
-              Listings Assigned to Nodes
+              {isCityAdmin ? `Listings in ${currentCity}` : "Listings Assigned to Nodes"}
             </div>
           </div>
         </div>
@@ -576,10 +849,10 @@ export function TerritoryAdministrationView({
           <div>
             <div className="font-black text-xs text-foreground flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Add Territory Node</span>
+              <span>{isCityAdmin ? "Register Subcity/District" : "Add Territory Node"}</span>
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Create subcity, zone, city or nation node.
+              {isCityAdmin ? `Add subcity or district to ${currentCity}` : "Create subcity, zone, city or nation node."}
             </p>
           </div>
           <Button
@@ -589,7 +862,7 @@ export function TerritoryAdministrationView({
             className="text-xs font-bold gap-1.5 w-full h-8"
           >
             <Plus className="w-3.5 h-3.5" />
-            New Geographic Node
+            + Register Location
           </Button>
         </div>
       </div>
@@ -628,14 +901,14 @@ export function TerritoryAdministrationView({
               }`}
             >
               <Layers className="w-4 h-4" />
-              <span>2. Hierarchy Nodes (CRUD)</span>
+              <span>{isCityAdmin ? "2. Sub-Cities & Woredas (CRUD)" : "2. Hierarchy Nodes (CRUD)"}</span>
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
-                {territoriesList.length}
+                {scopedTerritoriesList.length}
               </Badge>
             </button>
 
-            {/* Tab 3: Country Leads (195) */}
-            {!isCountryAdmin && (
+            {/* Tab 3: Country Leads */}
+            {!isCityAdmin && (
               <button
                 type="button"
                 onClick={() => setActiveTab("country_leads")}
@@ -646,42 +919,56 @@ export function TerritoryAdministrationView({
                 }`}
               >
                 <Crown className="w-4 h-4" />
-                <span>3. Country Leads (195 Nations)</span>
+                <span>{isCountryAdmin ? `3. National Lead (${currentCountry})` : "3. Country Leads (195 Nations)"}</span>
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
-                  {totalAssignedCountries} / 195
+                  {isCountryAdmin ? "Country Scope" : `${totalAssignedCountries} / 195`}
                 </Badge>
               </button>
             )}
 
-            {/* Tab 4: City Admins (30/country) */}
-            <button
-              type="button"
-              onClick={() => setActiveTab("city_admins")}
-              className={`px-4 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all ${
-                activeTab === "city_admins"
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                  : "bg-slate-100 dark:bg-slate-900 text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Building2 className="w-4 h-4" />
-              <span>4. City Admins (30 per Nation)</span>
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
-                {totalAssignedCityAdmins}
-              </Badge>
-            </button>
+            {/* Tab 4: City Admins */}
+            {!isCityAdmin && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("city_admins")}
+                className={`px-4 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all ${
+                  activeTab === "city_admins"
+                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                    : "bg-slate-100 dark:bg-slate-900 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Building2 className="w-4 h-4" />
+                <span>{isCountryAdmin ? `4. City Admins (${currentCountry})` : "4. City Admins (30 per Nation)"}</span>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                  {totalAssignedCityAdmins}
+                </Badge>
+              </button>
+            )}
 
             {/* Tab 5: Operations & Clerk Sync */}
+            {!isCityAdmin && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("operations_sync")}
+                className={`px-4 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all ${
+                  activeTab === "operations_sync"
+                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                    : "bg-slate-100 dark:bg-slate-900 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Zap className="w-4 h-4" />
+                <span>5. Operations & Clerk Sync</span>
+              </button>
+            )}
+
+            {/* Quick Register Button */}
             <button
               type="button"
-              onClick={() => setActiveTab("operations_sync")}
-              className={`px-4 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all ${
-                activeTab === "operations_sync"
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                  : "bg-slate-100 dark:bg-slate-900 text-muted-foreground hover:text-foreground"
-              }`}
+              onClick={() => handleOpenCreateNode()}
+              className="px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20"
             >
-              <Zap className="w-4 h-4" />
-              <span>5. Operations & Clerk Sync</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Register Location</span>
             </button>
           </div>
 
@@ -719,6 +1006,8 @@ export function TerritoryAdministrationView({
                   territories={mapPins}
                   selectedTerritoryId={selectedTerritoryId}
                   onSelectTerritory={(id) => setSelectedTerritoryId(id)}
+                  center={mapCenter}
+                  zoom={mapZoom}
                   className="h-[560px] w-full"
                 />
               </div>
@@ -728,7 +1017,7 @@ export function TerritoryAdministrationView({
                 <div className="flex items-center justify-between border-b border-border pb-2">
                   <div className="font-bold text-xs text-foreground flex items-center gap-1.5">
                     <MapPin className="w-4 h-4 text-primary" />
-                    <span>Territory Directory ({territoriesList.length})</span>
+                    <span>Territory Directory ({scopedTerritoriesList.length})</span>
                   </div>
                   <Button
                     size="sm"
@@ -741,7 +1030,7 @@ export function TerritoryAdministrationView({
                 </div>
 
                 <div className="max-h-[480px] overflow-y-auto space-y-2 pr-1">
-                  {territoriesList.slice(0, 40).map((t) => {
+                  {scopedTerritoriesList.slice(0, 40).map((t) => {
                     const isSelected = t.id === selectedTerritoryId;
                     return (
                       <div
@@ -782,12 +1071,12 @@ export function TerritoryAdministrationView({
             {/* Search & Filter Bar */}
             <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-muted/30 border border-border">
               <div className="flex items-center gap-2 flex-1 max-w-md">
-                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0" />
                 <Input
                   placeholder="Search hierarchy nodes..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 text-xs rounded-xl bg-background"
+                  className="h-7.5 xs:h-8 sm:h-8.5 md:h-9 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs rounded-lg xs:rounded-xl bg-background truncate"
                 />
               </div>
 
@@ -931,16 +1220,16 @@ export function TerritoryAdministrationView({
         {/* ═════════════════════════════════════════════════════════════════════
             TAB 3: 👑 COUNTRY MAIN ADMINS (195 SOVEREIGN NATIONS)
            ═════════════════════════════════════════════════════════════════════ */}
-        {activeTab === "country_leads" && !isCountryAdmin && (
+        {activeTab === "country_leads" && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-muted/30 border border-border">
               <div className="flex items-center gap-2 flex-1 max-w-md">
-                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0" />
                 <Input
                   placeholder="Search 195 nations or assigned leads..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 text-xs rounded-xl bg-background"
+                  className="h-7.5 xs:h-8 sm:h-8.5 md:h-9 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs rounded-lg xs:rounded-xl bg-background truncate"
                 />
               </div>
 
@@ -1070,7 +1359,109 @@ export function TerritoryAdministrationView({
             TAB 4: 🏙️ CITY ADMINISTRATORS (30 PER NATION)
            ═════════════════════════════════════════════════════════════════════ */}
         {activeTab === "city_admins" && (
-          <div className="space-y-4">
+          <div className="space-y-5">
+            {/* 1. Super Admin Pending Approvals Queue (High Priority Banner) */}
+            {isSuperAdmin && pendingNominationsList.length > 0 && (
+              <div className="p-5 sm:p-6 rounded-3xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-card to-amber-500/5 shadow-xl space-y-4 animate-in fade-in-50">
+                <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-amber-500/20">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold shadow-inner">
+                      <ShieldAlert className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm sm:text-base font-black text-foreground flex items-center gap-2">
+                        <span>Pending City Admin Approvals</span>
+                        <Badge className="bg-amber-500 text-slate-950 font-black text-xs px-2.5 py-0.5">
+                          {pendingNominationsList.length} Pending
+                        </Badge>
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        Country Leads have submitted these City Admin nominations. Approving them immediately registers their live administrative privileges and posts them live to the public platform.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                  {pendingNominationsList.map((nominee) => (
+                    <div
+                      key={nominee.id}
+                      className="p-4 rounded-2xl bg-card border border-amber-500/30 shadow-xs flex flex-col justify-between gap-3 transition-all hover:border-amber-500/60"
+                    >
+                      <div className="flex items-start justify-between gap-2.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-black flex items-center justify-center text-sm">
+                            {nominee.countryFlag || "🏙️"}
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs sm:text-sm text-foreground flex items-center gap-1.5">
+                              <span>{nominee.name}</span>
+                              <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/30">
+                                Nominee
+                              </Badge>
+                            </div>
+                            <div className="text-[11px] text-muted-foreground font-mono truncate max-w-[180px]">{nominee.email}</div>
+                            <div className="text-[11px] font-bold text-primary mt-0.5">
+                              🏙️ {nominee.assignedCity}, {nominee.assignedCountry}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-border flex items-center justify-between flex-wrap gap-2 text-[11px]">
+                        <span className="text-muted-foreground text-[10px]">
+                          By: <strong className="text-foreground">{nominee.nominatedBy?.name || `${nominee.assignedCountry} Lead`}</strong>
+                        </span>
+                        <div className="flex items-center gap-1.5 ml-auto">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={isProcessingApproval === nominee.id}
+                            onClick={() => handleRejectNomination(nominee)}
+                            className="h-7 text-xs font-bold text-destructive hover:bg-destructive/10 border-destructive/30 px-2.5"
+                          >
+                            Reject
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={isProcessingApproval === nominee.id}
+                            onClick={() => handleApproveNomination(nominee)}
+                            className="h-7 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1 shadow-sm px-3"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            {isProcessingApproval === nominee.id ? "Posting..." : "Approve & Post Live"}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 2. Country Admin Pending Review Status Banner */}
+            {isCountryAdmin && pendingNominationsList.length > 0 && (
+              <div className="p-4 sm:p-5 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between flex-wrap gap-3 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-2xl bg-amber-500/20 text-amber-600 flex items-center justify-center font-bold">
+                    <AlertCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-xs sm:text-sm font-bold text-foreground block">
+                      {pendingNominationsList.length} City Admin Nomination{pendingNominationsList.length > 1 ? "s" : ""} Awaiting Super Admin Approval
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Your nominations for <strong>{pendingNominationsList.map((n) => n.assignedCity).join(", ")}</strong> have been submitted. They will be posted live once approved by the Global Super Admin.
+                    </span>
+                  </div>
+                </div>
+                <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/40 text-[10px] font-bold">
+                  In Verification Queue
+                </Badge>
+              </div>
+            )}
+
+            {/* Search and Filters Bar */}
             <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-muted/30 border border-border">
               {!isCountryAdmin && (
                 <div className="flex items-center gap-2">
@@ -1090,12 +1481,12 @@ export function TerritoryAdministrationView({
               )}
 
               <div className="flex items-center gap-2 flex-1 max-w-sm">
-                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0" />
                 <Input
                   placeholder="Search city or admin name..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 text-xs rounded-xl bg-background"
+                  className="h-7.5 xs:h-8 sm:h-8.5 md:h-9 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs rounded-lg xs:rounded-xl bg-background truncate"
                 />
               </div>
 
@@ -1124,16 +1515,21 @@ export function TerritoryAdministrationView({
               </div>
             </div>
 
+            {/* City Admin Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredCities.map((cityName) => {
                 const key = `${selectedCountryForCities.toLowerCase()}::${cityName.toLowerCase()}`;
                 const assignedAdmin = cityAdminMap.get(key);
+                const pendingAdmin = pendingCityAdminMap.get(key);
+
                 return (
                   <div
                     key={cityName}
                     className={`p-5 rounded-3xl border transition-all ${
                       assignedAdmin
                         ? "border-purple-500/30 bg-purple-500/5 shadow-sm"
+                        : pendingAdmin
+                        ? "border-amber-500/30 bg-amber-500/5 shadow-sm"
                         : "border-border bg-card"
                     }`}
                   >
@@ -1150,10 +1546,15 @@ export function TerritoryAdministrationView({
 
                       {assignedAdmin ? (
                         <Badge className="bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30 text-[10px] font-bold">
-                          ✓ Assigned
+                          ✓ Assigned &amp; Live
+                        </Badge>
+                      ) : pendingAdmin ? (
+                        <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px] font-bold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          Pending Approval
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/30">
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground border-border">
                           Vacant
                         </Badge>
                       )}
@@ -1161,6 +1562,7 @@ export function TerritoryAdministrationView({
 
                     <div className="mt-4 pt-3 border-t border-border/60">
                       {assignedAdmin ? (
+                        /* Case 1: Approved & Live City Admin */
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-foreground">
@@ -1191,19 +1593,66 @@ export function TerritoryAdministrationView({
                             </Button>
                           </div>
                         </div>
+                      ) : pendingAdmin ? (
+                        /* Case 2: Nominated & Awaiting Super Admin Approval */
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-amber-500" />
+                              {pendingAdmin.name}
+                            </span>
+                            <Badge variant="outline" className="text-[9px] text-amber-600 border-amber-500/30 font-semibold">
+                              Nomination
+                            </Badge>
+                          </div>
+                          <div className="text-[11px] text-muted-foreground truncate font-mono">{pendingAdmin.email}</div>
+
+                          {isSuperAdmin ? (
+                            <div className="space-y-2 pt-1">
+                              <p className="text-[10px] text-muted-foreground">
+                                Nominated by {pendingAdmin.nominatedBy?.name || `${selectedCountryForCities} Lead`}. Click below to approve and post live immediately.
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={isProcessingApproval === pendingAdmin.id}
+                                  onClick={() => handleRejectNomination(pendingAdmin)}
+                                  className="h-8 text-xs font-bold text-destructive hover:bg-destructive/10 border-destructive/30 px-3"
+                                >
+                                  Reject
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  disabled={isProcessingApproval === pendingAdmin.id}
+                                  onClick={() => handleApproveNomination(pendingAdmin)}
+                                  className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex-1 gap-1 shadow-sm"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  Approve &amp; Post Live
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-300">
+                              Nomination submitted to Super Admin. Will post live automatically once verified and approved.
+                            </div>
+                          )}
+                        </div>
                       ) : (
+                        /* Case 3: Vacant City */
                         <div className="space-y-3">
                           <p className="text-xs text-muted-foreground">
-                            No municipal administrator assigned.
+                            No municipal administrator assigned yet.
                           </p>
                           <Button
                             size="sm"
                             variant="gradient"
                             onClick={() => openAssignModal("city_admin", selectedCountryForCities, cityName)}
-                            className="w-full text-xs font-bold gap-1.5 h-8"
+                            className="w-full text-xs font-bold gap-1.5 h-8 shadow-sm"
                           >
                             <UserPlus className="w-3.5 h-3.5" />
-                            Appoint City Admin
+                            {isCountryAdmin ? "Nominate City Admin" : "Appoint City Admin (Direct Post)"}
                           </Button>
                         </div>
                       )}

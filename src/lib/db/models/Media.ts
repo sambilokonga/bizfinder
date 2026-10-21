@@ -7,6 +7,8 @@ export interface IMedia extends Document {
   id: string;
   businessId?: string;
   businessName?: string;
+  cityName?: string;
+  countryName?: string;
   title: string;
   type: MediaType;
   url: string;
@@ -29,6 +31,8 @@ const MediaSchema = new Schema<IMedia>(
     id: { type: String, required: true, unique: true, index: true },
     businessId: { type: String, index: true },
     businessName: { type: String, default: "General Platform" },
+    cityName: { type: String, index: true },
+    countryName: { type: String, index: true },
     title: { type: String, required: true, trim: true },
     type: {
       type: String,

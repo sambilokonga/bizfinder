@@ -196,6 +196,16 @@ export function SecurityEventDetailModal({
               </span>
             </div>
 
+            {event.businessName && (
+              <div className="p-3 rounded-xl bg-background border border-border">
+                <span className="text-[10px] text-muted-foreground block font-semibold">Associated Storefront</span>
+                <span className="font-bold text-foreground text-xs mt-1 block truncate">
+                  🏪 {event.businessName}
+                </span>
+                {event.businessId && <span className="text-[10px] font-mono text-muted-foreground block">{event.businessId}</span>}
+              </div>
+            )}
+
             <div className="p-3 rounded-xl bg-background border border-border">
               <span className="text-[10px] text-muted-foreground block font-semibold">Actor / Entity</span>
               <span className="font-bold text-foreground text-xs mt-1 block truncate">

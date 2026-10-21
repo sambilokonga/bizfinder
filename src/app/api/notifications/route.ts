@@ -17,15 +17,22 @@ export async function GET(req: Request) {
     const cookieHeader = req.headers.get("cookie") || "";
     const cookieRole = cookieHeader.match(/bizfinder_role=([^;]+)/)?.[1];
 
+    const queryRole = searchParams.get("role");
     let userId: string | null = searchParams.get("userId") || null;
-    let role = searchParams.get("role") || cookieRole || "owner";
+    let role = queryRole || cookieRole || "owner";
 
     try {
       const authObj = await auth();
       if (authObj?.userId) {
         userId = authObj.userId;
         const dbUser = await getUserByClerkId(userId);
-        if (dbUser?.role) role = dbUser.role;
+        if (dbUser?.role) {
+          // If queryRole was explicitly provided (e.g. owner dashboard passing 'owner',
+          // city-admin passing 'city_admin', country-admin passing 'country_admin'), respect it
+          if (!queryRole) {
+            role = dbUser.role;
+          }
+        }
       }
     } catch {
       // no auth session
@@ -41,6 +48,7 @@ export async function GET(req: Request) {
     const country = searchParams.get("country") || undefined;
     const city = searchParams.get("city") || undefined;
     const actionType = searchParams.get("actionType") || undefined;
+    const businessId = searchParams.get("businessId") || undefined;
 
     const result = await getNotifications({
       page,
@@ -52,6 +60,7 @@ export async function GET(req: Request) {
       status: searchParams.get("status") || undefined,
       readStatus,
       userId: userId || undefined,
+      businessId,
       role,
       country,
       city,

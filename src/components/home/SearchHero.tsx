@@ -54,11 +54,23 @@ export function SearchHero() {
   const [results, setResults] = useState<SearchAutocompleteResult[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [isCompactScreen, setIsCompactScreen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    const checkScreen = () => setIsCompactScreen(window.innerWidth < 1024);
+    checkScreen();
+    window.addEventListener("resize", checkScreen);
+    return () => window.removeEventListener("resize", checkScreen);
+  }, []);
+
   const currentOption =
     SEARCH_OPTIONS.find((o) => o.key === selectedScope) || SEARCH_OPTIONS[0];
+
+  const activePlaceholder = isCompactScreen
+    ? (currentOption.shortPlaceholder ?? currentOption.placeholder)
+    : currentOption.placeholder;
 
   // Live autocomplete filtering on every spelling keystroke
   useEffect(() => {
@@ -285,38 +297,38 @@ export function SearchHero() {
   };
 
   return (
-    <div className="relative py-8 xs:py-10 sm:py-14 md:py-20 flex flex-col items-center text-center px-2 xs:px-3 sm:px-4">
+    <div className="relative py-5 xs:py-7 sm:py-12 md:py-16 lg:py-20 flex flex-col items-center text-center px-2 xs:px-3 sm:px-4">
       {/* Background Ambient Glow */}
       <div className="absolute inset-0 -z-10 flex items-center justify-center pointer-events-none overflow-hidden">
-        <div className="w-[300px] xs:w-[450px] sm:w-[600px] h-[220px] xs:h-[280px] sm:h-[350px] bg-gradient-to-tr from-indigo-500/20 via-purple-500/20 to-pink-500/10 blur-[80px] sm:blur-[100px] rounded-full" />
+        <div className="w-[280px] xs:w-[400px] sm:w-[550px] md:w-[650px] h-[180px] xs:h-[240px] sm:h-[320px] bg-gradient-to-tr from-indigo-500/20 via-purple-500/20 to-pink-500/10 blur-[60px] sm:blur-[90px] rounded-full" />
       </div>
 
       {/* Main Tagline Pill */}
-      <div className="inline-flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1 xs:py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300 text-[11px] xs:text-xs font-bold mb-4 sm:mb-6 shadow-sm max-w-full">
-        <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+      <div className="inline-flex items-center gap-1.5 xs:gap-2 px-2.5 xs:px-3 sm:px-4 py-0.5 xs:py-1 sm:py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300 text-[10px] xs:text-[11px] sm:text-xs font-bold mb-3 xs:mb-4 sm:mb-6 shadow-xs max-w-full">
+        <Sparkles className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-amber-500 shrink-0" />
         <span className="truncate">Discover 10,000+ Verified Businesses, Branches & Products</span>
       </div>
 
-      <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-foreground max-w-4xl leading-[1.15] sm:leading-[1.15]">
+      <h1 className="text-xl xs:text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-foreground max-w-4xl leading-tight sm:leading-[1.15]">
         Find What You Need,{" "}
         <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
           Right Where You Are.
         </span>
       </h1>
 
-      <p className="mt-2.5 sm:mt-4 text-xs xs:text-sm sm:text-base text-muted-foreground max-w-2xl leading-relaxed px-1">
+      <p className="mt-1.5 xs:mt-2.5 sm:mt-4 text-[11px] xs:text-xs sm:text-sm md:text-base text-muted-foreground max-w-2xl leading-relaxed px-1">
         Search by business name, branches, products, building name, map, country, city, or business type with live spelling results.
       </p>
 
       {/* Unified Search Bar with Dropdown Container */}
-      <div className="w-full max-w-3xl mt-4 sm:mt-6 relative z-50" ref={dropdownRef}>
+      <div className="w-full max-w-3xl mt-3 xs:mt-4 sm:mt-6 relative z-50" ref={dropdownRef}>
         <form
           onSubmit={handleSearch}
-          className="glass-panel p-1 xs:p-1.5 sm:p-2 rounded-2xl sm:rounded-3xl shadow-xl shadow-indigo-500/10 flex flex-col sm:flex-row items-stretch sm:items-center gap-1 sm:gap-2 transition-all border border-indigo-100 dark:border-indigo-900/40"
+          className="glass-panel p-1 xs:p-1.5 sm:p-2 rounded-xl xs:rounded-2xl sm:rounded-3xl shadow-lg shadow-indigo-500/10 flex flex-col sm:flex-row items-stretch sm:items-center gap-1 sm:gap-2 transition-all border border-indigo-100 dark:border-indigo-900/40"
         >
           {/* Query Input with dynamic icon & placeholder */}
-          <div className="relative flex-1 w-full flex items-center h-10 xs:h-11 sm:h-12 border-b border-border/40 sm:border-b-0 px-1 sm:px-0">
-            <currentOption.icon className="w-4 h-4 xs:w-4.5 xs:h-4.5 text-indigo-500 ml-2 sm:ml-3 shrink-0" />
+          <div className="relative flex-1 w-full flex items-center h-8.5 xs:h-9.5 sm:h-11 md:h-12 border-b border-border/40 sm:border-b-0 px-1 sm:px-0">
+            <currentOption.icon className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-indigo-500 ml-1.5 sm:ml-3 shrink-0" />
             <input
               ref={inputRef}
               type="text"
@@ -328,8 +340,8 @@ export function SearchHero() {
                   setShowDropdown(true);
                 }
               }}
-              placeholder={currentOption.placeholder}
-              className="w-full bg-transparent border-0 px-2 sm:px-3 text-xs xs:text-sm sm:text-base font-medium placeholder:text-muted-foreground/60 focus:outline-none text-foreground"
+              placeholder={activePlaceholder}
+              className="w-full bg-transparent border-0 px-1 xs:px-1.5 sm:px-3 text-[10px] xs:text-xs sm:text-sm md:text-base font-medium placeholder:text-muted-foreground/60 placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-xs focus:outline-none text-foreground truncate"
             />
             {query && (
               <button
@@ -342,37 +354,37 @@ export function SearchHero() {
                 }}
                 className="p-1 text-muted-foreground hover:text-foreground mr-1 rounded-full hover:bg-accent shrink-0"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
               </button>
             )}
           </div>
 
           {/* Vertical Divider on sm+ (Medium, Large, XL) */}
-          <div className="hidden sm:block w-px h-7 bg-border/70 shrink-0" />
+          <div className="hidden sm:block w-px h-6 sm:h-7 bg-border/70 shrink-0" />
 
           {/* Location & Search Button Row (Inline side-by-side on Mobile / Integrated on sm+) */}
-          <div className="flex items-center gap-1 sm:gap-1.5 w-full sm:w-auto h-10 xs:h-11 sm:h-12 px-1 sm:px-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 w-full sm:w-auto h-8.5 xs:h-9.5 sm:h-11 md:h-12 px-1 sm:px-0">
             {/* Location Input with GPS detector */}
-            <div className="relative flex-1 sm:w-48 md:w-56 flex items-center h-full">
-              <MapPin className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-indigo-600 dark:text-indigo-400 ml-1.5 sm:ml-2 shrink-0" />
+            <div className="relative flex-1 sm:w-44 md:w-56 flex items-center h-full">
+              <MapPin className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-indigo-600 dark:text-indigo-400 ml-1 sm:ml-2 shrink-0" />
               <input
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="City, area, district..."
-                className="w-full bg-transparent border-0 px-1.5 sm:px-2 text-xs xs:text-sm font-medium placeholder:text-muted-foreground/60 focus:outline-none text-foreground"
+                className="w-full bg-transparent border-0 px-1 xs:px-1.5 sm:px-2 text-[10px] xs:text-xs sm:text-sm font-medium placeholder:text-muted-foreground/60 placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-xs focus:outline-none text-foreground truncate"
               />
               <button
                 type="button"
                 onClick={handleDetectLocation}
                 disabled={isDetectingLocation}
                 title="Use GPS current location"
-                className="p-1.5 mr-0.5 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 shrink-0"
+                className="p-1 xs:p-1.5 mr-0.5 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 shrink-0"
               >
                 {isDetectingLocation ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                  <Loader2 className="w-3 h-3 xs:w-3.5 xs:h-3.5 animate-spin text-primary" />
                 ) : (
-                  <Crosshair className="w-3.5 h-3.5" />
+                  <Crosshair className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
                 )}
               </button>
             </div>
@@ -382,10 +394,10 @@ export function SearchHero() {
               type="submit"
               size="default"
               variant="gradient"
-              className="h-8 xs:h-9 sm:h-10 md:h-11 px-3.5 xs:px-4 sm:px-5 md:px-6 rounded-xl sm:rounded-2xl gap-1.5 font-bold shrink-0 shadow-md shadow-indigo-500/20 text-xs sm:text-sm"
+              className="h-7 xs:h-7.5 sm:h-9.5 md:h-11 px-2.5 xs:px-3 sm:px-5 md:px-6 rounded-lg xs:rounded-xl sm:rounded-2xl gap-1 xs:gap-1.5 font-bold shrink-0 shadow-md shadow-indigo-500/20 text-[10px] xs:text-xs sm:text-sm"
             >
               <span>Search</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-2.5 h-2.5 xs:w-3 xs:h-3 sm:w-3.5 sm:h-3.5" />
             </Button>
           </div>
         </form>

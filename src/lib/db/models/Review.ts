@@ -11,6 +11,8 @@ export interface IReviewDoc extends Document {
   id: string;
   businessId: string;
   businessName?: string;
+  cityName?: string;
+  countryName?: string;
   userId: string;
   userName: string;
   userAvatar?: string;
@@ -20,6 +22,8 @@ export interface IReviewDoc extends Document {
   likesCount: number;
   reply?: IReviewReply;
   status: "published" | "pending" | "reported" | "removed";
+  timeframeType?: "historical" | "recent" | "future_scheduled";
+  isVerifiedCitizen?: boolean;
   isFlagged: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -30,6 +34,8 @@ const ReviewSchema = new Schema<IReviewDoc>(
     id: { type: String, required: true, unique: true, index: true },
     businessId: { type: String, required: true, index: true },
     businessName: { type: String },
+    cityName: { type: String, index: true },
+    countryName: { type: String, index: true },
     userId: { type: String, required: true, index: true },
     userName: { type: String, required: true },
     userAvatar: { type: String },
@@ -49,12 +55,21 @@ const ReviewSchema = new Schema<IReviewDoc>(
       default: "published",
       index: true,
     },
+    timeframeType: {
+      type: String,
+      enum: ["historical", "recent", "future_scheduled"],
+      default: "recent",
+      index: true,
+    },
+    isVerifiedCitizen: { type: Boolean, default: true },
     isFlagged: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
 ReviewSchema.index({ businessId: 1, createdAt: -1 });
+ReviewSchema.index({ cityName: 1, createdAt: -1 });
+ReviewSchema.index({ countryName: 1, createdAt: -1 });
 ReviewSchema.index({ status: 1, createdAt: -1 });
 ReviewSchema.index({ isFlagged: 1, createdAt: -1 });
 

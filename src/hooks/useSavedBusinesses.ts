@@ -30,44 +30,49 @@ const DEFAULT_COLLECTIONS: SavedCollection[] = [
   },
 ];
 
+function getStoredCollections(key: string): SavedCollection[] {
+  if (typeof window === "undefined") return DEFAULT_COLLECTIONS;
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return DEFAULT_COLLECTIONS;
+}
+
 export function useSavedBusinesses() {
   const { user, isSignedIn, isLoaded } = useUser();
   const currentUserId = isLoaded && isSignedIn && user?.id ? user.id : "guest";
   const userStorageKey = `${BASE_STORAGE_KEY}_${currentUserId}`;
 
-  const [collections, setCollections] = useState<SavedCollection[]>(DEFAULT_COLLECTIONS);
+  const [collections, setCollections] = useState<SavedCollection[]>(() => {
+    return getStoredCollections(userStorageKey);
+  });
 
   // Load user-isolated collections from LocalStorage and sync with MongoDB
   useEffect(() => {
     // 1. Initial read from user-scoped storage
-    try {
-      const raw = localStorage.getItem(userStorageKey);
-      if (raw) {
-        setCollections(JSON.parse(raw));
-      } else {
-        setCollections(DEFAULT_COLLECTIONS);
-      }
-    } catch {
-      setCollections(DEFAULT_COLLECTIONS);
-    }
+    const localCols = getStoredCollections(userStorageKey);
+    setCollections(localCols);
 
     // 2. For authenticated users, sync authoritative favorites from MongoDB
     if (isSignedIn && user?.id) {
       fetch("/api/favorites")
-        .then((res) => res.json())
+        .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data?.success && Array.isArray(data.savedBusinessIds)) {
+            const cleanServerIds = data.savedBusinessIds.map((id: any) => String(id).trim());
             setCollections((prev) => {
-              // Ensure we start with the current user's existing collections or default
-              let baseCols = prev;
-              try {
-                const raw = localStorage.getItem(userStorageKey);
-                if (raw) baseCols = JSON.parse(raw);
-              } catch {}
+              const currentLocal = getStoredCollections(userStorageKey);
+              const baseCols = currentLocal.length > 0 ? currentLocal : prev;
 
               const updated = baseCols.map((c) =>
                 c.id === "col-favorites"
-                  ? { ...c, businessIds: data.savedBusinessIds }
+                  ? { ...c, businessIds: cleanServerIds }
                   : c
               );
 
@@ -77,7 +82,7 @@ export function useSavedBusinesses() {
                   id: "col-favorites",
                   name: "Favorites",
                   emoji: "❤️",
-                  businessIds: data.savedBusinessIds,
+                  businessIds: cleanServerIds,
                   createdAt: new Date().toISOString(),
                 });
               }
@@ -93,13 +98,11 @@ export function useSavedBusinesses() {
     }
   }, [userStorageKey, isSignedIn, user?.id]);
 
-  // Listen for custom event for cross-component sync
+  // Listen for custom event and storage event for cross-component sync
   useEffect(() => {
     const handleFavoritesUpdate = () => {
-      try {
-        const raw = localStorage.getItem(userStorageKey);
-        if (raw) setCollections(JSON.parse(raw));
-      } catch {}
+      const localCols = getStoredCollections(userStorageKey);
+      setCollections(localCols);
     };
 
     window.addEventListener(EVENT_KEY, handleFavoritesUpdate);
@@ -111,73 +114,148 @@ export function useSavedBusinesses() {
   }, [userStorageKey]);
 
   const isSaved = useCallback(
-    (businessId: string) =>
-      collections.some((c) => c.businessIds.includes(businessId)),
+    (businessId: string) => {
+      if (!businessId) return false;
+      const cleanId = String(businessId).trim();
+      return collections.some((c) =>
+        c.businessIds.some((id) => String(id).trim() === cleanId)
+      );
+    },
     [collections]
   );
 
   const toggleSave = useCallback(
     (businessId: string, businessName?: string, collectionId = "col-favorites") => {
-      // Capture wasAlreadySaved BEFORE the update inside the updater fn (gets actual prev state)
-      let wasAlreadySaved = false;
+      if (!businessId) return;
+      const cleanId = String(businessId).trim();
 
-      setCollections((prev) => {
-        const target = prev.find((c) => c.id === collectionId);
-        wasAlreadySaved = target?.businessIds.includes(businessId) ?? false;
+      // Read current authoritative collections from storage (fallback to state)
+      const currentStored = getStoredCollections(userStorageKey);
+      const activeCols = currentStored.length > 0 ? currentStored : collections;
 
-        const updated = prev.map((c) => {
-          if (c.id !== collectionId) return c;
-          return {
-            ...c,
-            businessIds: wasAlreadySaved
-              ? c.businessIds.filter((id) => id !== businessId)
-              : [...c.businessIds, businessId],
-          };
-        });
+      // Check whether business is currently saved in target collection or ANY collection
+      const inTarget = activeCols.some(
+        (c) => c.id === collectionId && c.businessIds.some((id) => String(id).trim() === cleanId)
+      );
+      const inAny = activeCols.some((c) =>
+        c.businessIds.some((id) => String(id).trim() === cleanId)
+      );
 
-        try {
-          localStorage.setItem(userStorageKey, JSON.stringify(updated));
-        } catch {}
-
-        return updated;
-      });
-
-      // isNowSaved is the inverse of what we captured above
+      // If toggling general favorites and it is saved anywhere, or in target: unsave it!
+      const wasAlreadySaved = collectionId === "col-favorites" ? (inAny || inTarget) : inTarget;
       const isNowSaved = !wasAlreadySaved;
 
-      // Dispatch after the state update to avoid triggering setState in other
-      // components (e.g. Navbar) while React is still rendering this one.
-      queueMicrotask(() => {
-        window.dispatchEvent(new CustomEvent(EVENT_KEY));
-      });
+      let nextCols: SavedCollection[];
 
-      // Show immediate Feedback Toast
+      if (wasAlreadySaved) {
+        // UNSAVE: Remove cleanId from collection(s)
+        if (collectionId === "col-favorites") {
+          // General unsave from heart icon removes from all collections
+          nextCols = activeCols.map((c) => ({
+            ...c,
+            businessIds: c.businessIds.filter((id) => String(id).trim() !== cleanId),
+          }));
+        } else {
+          // Specific collection unsave
+          nextCols = activeCols.map((c) =>
+            c.id === collectionId
+              ? {
+                  ...c,
+                  businessIds: c.businessIds.filter((id) => String(id).trim() !== cleanId),
+                }
+              : c
+          );
+        }
+      } else {
+        // SAVE: Add cleanId to the target collection
+        let found = false;
+        nextCols = activeCols.map((c) => {
+          if (c.id === collectionId) {
+            found = true;
+            const alreadyIn = c.businessIds.some((id) => String(id).trim() === cleanId);
+            return {
+              ...c,
+              businessIds: alreadyIn ? c.businessIds : [...c.businessIds, cleanId],
+            };
+          }
+          return c;
+        });
+
+        if (!found) {
+          nextCols.unshift({
+            id: collectionId,
+            name: collectionId === "col-favorites" ? "Favorites" : "Custom Collection",
+            emoji: "❤️",
+            businessIds: [cleanId],
+            createdAt: new Date().toISOString(),
+          });
+        }
+      }
+
+      // Synchronously write to localStorage
+      try {
+        localStorage.setItem(userStorageKey, JSON.stringify(nextCols));
+      } catch {}
+
+      // Update local state immediately
+      setCollections(nextCols);
+
+      // Broadcast immediately across all components on page
+      window.dispatchEvent(
+        new CustomEvent(EVENT_KEY, {
+          detail: { businessId: cleanId, isSaved: isNowSaved },
+        })
+      );
+
+      // Toast feedback
       const targetName = businessName ? `"${businessName}"` : "Business";
       if (isNowSaved) {
         toast.success(`❤️ ${targetName} added to your Favorites!`, {
           description: "Saved to your places and synced to your profile.",
-          duration: 3500,
+          duration: 3000,
         });
       } else {
         toast.info(`Removed ${targetName} from Favorites.`, {
+          description: "Removed from your saved places.",
           duration: 2500,
         });
       }
 
-      // Sync with MongoDB in the background
+      // Sync with MongoDB backend
       fetch("/api/favorites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          businessId,
+          businessId: cleanId,
           collectionId,
           action: isNowSaved ? "add" : "remove",
         }),
-      }).catch((err) => {
-        console.error("Failed to sync favorite to MongoDB:", err);
-      });
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.success && Array.isArray(data.savedBusinessIds)) {
+            const cleanServerIds = data.savedBusinessIds.map((id: any) => String(id).trim());
+            setCollections((prev) => {
+              const current = getStoredCollections(userStorageKey);
+              const base = current.length > 0 ? current : prev;
+              const synced = base.map((c) =>
+                c.id === "col-favorites"
+                  ? { ...c, businessIds: cleanServerIds }
+                  : c
+              );
+              try {
+                localStorage.setItem(userStorageKey, JSON.stringify(synced));
+              } catch {}
+              return synced;
+            });
+            window.dispatchEvent(new CustomEvent(EVENT_KEY));
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to sync favorite to MongoDB:", err);
+        });
     },
-    [userStorageKey]
+    [userStorageKey, collections]
   );
 
   const addCollection = useCallback((name: string, emoji: string) => {

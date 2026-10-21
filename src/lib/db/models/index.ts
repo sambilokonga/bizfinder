@@ -14,3 +14,4 @@ export { ReportModel } from "./Report";
 export { TicketModel } from "./Ticket";
 export { SystemSettingModel } from "./SystemSetting";
 export { SecurityEventModel } from "./SecurityEvent";
+export { GlobalVisitorModel } from "./GlobalVisitor";

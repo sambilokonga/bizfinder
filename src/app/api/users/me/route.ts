@@ -16,7 +16,8 @@ export async function GET() {
 
   try {
     const clerkUser = await currentUser();
-    const existingDbUser = await getUserByClerkId(userId);
+    const email = clerkUser?.emailAddresses?.[0]?.emailAddress?.toLowerCase() || "";
+    const existingDbUser = await getUserByClerkId(userId, email);
 
     const rawRole =
       (clerkUser?.publicMetadata as any)?.role ||
@@ -31,7 +32,40 @@ export async function GET() {
 
     const role = normalizeRole(rawRole);
 
-    const email = clerkUser?.emailAddresses?.[0]?.emailAddress || existingDbUser?.email || "";
+    let assignedCountry: string | undefined =
+      (clerkUser?.publicMetadata as any)?.assignedCountry ||
+      (clerkUser?.publicMetadata as any)?.country ||
+      (clerkUser?.unsafeMetadata as any)?.assignedCountry ||
+      (clerkUser?.unsafeMetadata as any)?.country ||
+      existingDbUser?.assignedCountry ||
+      (existingDbUser as any)?.country;
+
+    let assignedCity: string | undefined =
+      (clerkUser?.publicMetadata as any)?.assignedCity ||
+      (clerkUser?.publicMetadata as any)?.city ||
+      (clerkUser?.unsafeMetadata as any)?.assignedCity ||
+      (clerkUser?.unsafeMetadata as any)?.city ||
+      existingDbUser?.assignedCity ||
+      (existingDbUser as any)?.city;
+
+    // If country or city is still unset, check if user registered or owns any business in MongoDB
+    if (!assignedCountry || !assignedCity) {
+      try {
+        const { BusinessModel } = await import("@/lib/db/models/Business");
+        const userBiz = await BusinessModel.findOne({
+          $or: [{ ownerId: userId }, { ownerId: email }],
+        }).lean();
+        if (userBiz) {
+          if (!assignedCountry) assignedCountry = (userBiz as any).countryName;
+          if (!assignedCity) assignedCity = (userBiz as any).cityName;
+        }
+      } catch (bizErr) {
+        console.warn("[users/me] Business lookup note:", bizErr);
+      }
+    }
+
+    const resolvedRole = (role === "user" && (existingDbUser?.claimedBusinessIds?.length || assignedCountry)) ? "owner" : role;
+
     const name =
       `${clerkUser?.firstName || ""} ${clerkUser?.lastName || ""}`.trim() ||
       clerkUser?.username ||
@@ -46,14 +80,24 @@ export async function GET() {
       clerkId: userId,
       email,
       name,
-      role,
+      role: resolvedRole,
       avatarUrl,
       phone,
+      assignedCountry,
+      assignedCity,
+      country: assignedCountry,
+      city: assignedCity,
     });
 
     const res = NextResponse.json({
-      user,
+      user: {
+        ...user,
+        assignedCountry,
+        assignedCity,
+      },
       role,
+      assignedCountry,
+      assignedCity,
       permissions: getPermissions(role),
     });
 
@@ -63,6 +107,14 @@ export async function GET() {
       maxAge: 60 * 60 * 24 * 7, // 7 days
       sameSite: "lax",
     });
+
+    if (assignedCountry) {
+      res.cookies.set("bizfinder_country", assignedCountry, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: "lax",
+      });
+    }
 
     return res;
   } catch (error: any) {

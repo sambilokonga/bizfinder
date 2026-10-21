@@ -19,6 +19,7 @@ export interface GetReportsOptions {
   status?: string;
   priority?: string;
   targetId?: string;
+  businessId?: string;
   city?: string;
   country?: string;
   sort?: "desc" | "asc";
@@ -33,6 +34,8 @@ export interface CreateReportInput {
   targetId: string;
   targetName: string;
   targetType?: string;
+  businessId?: string;
+  businessName?: string;
   reporterName: string;
   reporterEmail?: string;
   reporterId?: string;
@@ -89,6 +92,10 @@ function calculateReportStats(items: IReport[]): ReportStats {
   };
 }
 
+function escapeRegex(text: string): string {
+  return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+}
+
 export async function getReports(
   options: GetReportsOptions = {}
 ): Promise<PaginatedReportsResponse> {
@@ -100,6 +107,7 @@ export async function getReports(
     status,
     priority,
     targetId,
+    businessId,
     city,
     country,
     sort = "desc",
@@ -123,26 +131,35 @@ export async function getReports(
       if (priority && priority !== "all") {
         query.priority = priority;
       }
-      if (targetId) {
-        query.targetId = targetId;
+      if (businessId) {
+        query.$or = [{ businessId: businessId }, { targetId: businessId }];
+      } else if (targetId) {
+        query.$or = [{ targetId: targetId }, { businessId: targetId }];
       }
       if (city && city !== "all") {
-        query.city = city;
+        query.city = { $regex: new RegExp(`^${escapeRegex(city)}$`, "i") };
       }
       if (country && country !== "all") {
-        query.country = country;
+        query.country = { $regex: new RegExp(`^${escapeRegex(country)}$`, "i") };
       }
 
       if (search && search.trim()) {
         const regex = new RegExp(search.trim(), "i");
-        query.$or = [
+        const searchConditions = [
           { title: regex },
           { reason: regex },
           { details: regex },
           { targetName: regex },
+          { businessName: regex },
           { reporterName: regex },
           { id: regex },
         ];
+        if (query.$or) {
+          query.$and = [{ $or: query.$or }, { $or: searchConditions }];
+          delete query.$or;
+        } else {
+          query.$or = searchConditions;
+        }
       }
 
       const totalMatching = await ReportModel.countDocuments(query);
@@ -168,9 +185,22 @@ export async function getReports(
         .limit(validLimit)
         .lean();
 
-      // Get stats across all records
-      const allDocs = await ReportModel.find({}).lean();
-      const mappedAll: IReport[] = allDocs.map((d: any) => ({
+      // Get stats scoped to location or business
+      const statsQuery: Record<string, any> = {};
+      if (businessId) {
+        statsQuery.$or = [{ businessId: businessId }, { targetId: businessId }];
+      } else if (targetId) {
+        statsQuery.$or = [{ targetId: targetId }, { businessId: targetId }];
+      }
+      if (city && city !== "all") {
+        statsQuery.city = { $regex: new RegExp(`^${escapeRegex(city)}$`, "i") };
+      }
+      if (country && country !== "all") {
+        statsQuery.country = { $regex: new RegExp(`^${escapeRegex(country)}$`, "i") };
+      }
+
+      const scopedDocs = await ReportModel.find(statsQuery).lean();
+      const mappedScoped: IReport[] = scopedDocs.map((d: any) => ({
         id: d.id,
         type: d.type,
         title: d.title,
@@ -179,6 +209,8 @@ export async function getReports(
         targetId: d.targetId,
         targetName: d.targetName,
         targetType: d.targetType,
+        businessId: d.businessId || (d.type === "business" ? d.targetId : undefined),
+        businessName: d.businessName || (d.type === "business" ? d.targetName : undefined),
         reporterName: d.reporterName,
         reporterEmail: d.reporterEmail,
         reporterId: d.reporterId,
@@ -196,7 +228,7 @@ export async function getReports(
         updatedAt: d.updatedAt ? new Date(d.updatedAt).toISOString() : new Date().toISOString(),
       }));
 
-      const stats = calculateReportStats(mappedAll);
+      const stats = calculateReportStats(mappedScoped);
 
       const items: IReport[] = docs.map((d: any) => ({
         id: d.id,
@@ -207,6 +239,8 @@ export async function getReports(
         targetId: d.targetId,
         targetName: d.targetName,
         targetType: d.targetType,
+        businessId: d.businessId || (d.type === "business" ? d.targetId : undefined),
+        businessName: d.businessName || (d.type === "business" ? d.targetName : undefined),
         reporterName: d.reporterName,
         reporterEmail: d.reporterEmail,
         reporterId: d.reporterId,
@@ -252,8 +286,10 @@ export async function getReports(
   if (priority && priority !== "all") {
     filtered = filtered.filter((r) => r.priority === priority);
   }
-  if (targetId) {
-    filtered = filtered.filter((r) => r.targetId === targetId);
+  if (businessId) {
+    filtered = filtered.filter((r) => r.businessId === businessId || r.targetId === businessId);
+  } else if (targetId) {
+    filtered = filtered.filter((r) => r.targetId === targetId || r.businessId === targetId);
   }
   if (city && city !== "all") {
     filtered = filtered.filter((r) => !r.city || r.city.toLowerCase() === city.toLowerCase());
@@ -270,6 +306,7 @@ export async function getReports(
         r.reason.toLowerCase().includes(q) ||
         (r.details && r.details.toLowerCase().includes(q)) ||
         r.targetName.toLowerCase().includes(q) ||
+        (r.businessName && r.businessName.toLowerCase().includes(q)) ||
         r.reporterName.toLowerCase().includes(q) ||
         r.id.toLowerCase().includes(q)
     );
@@ -285,7 +322,21 @@ export async function getReports(
   const totalPages = Math.ceil(total / validLimit) || 1;
   const startIndex = (validPage - 1) * validLimit;
   const data = filtered.slice(startIndex, startIndex + validLimit);
-  const stats = calculateReportStats(inMemoryReports);
+
+  // Compute stats scoped to location/business
+  let scopedForStats = [...inMemoryReports];
+  if (businessId) {
+    scopedForStats = scopedForStats.filter((r) => r.businessId === businessId || r.targetId === businessId);
+  } else if (targetId) {
+    scopedForStats = scopedForStats.filter((r) => r.targetId === targetId || r.businessId === targetId);
+  }
+  if (city && city !== "all") {
+    scopedForStats = scopedForStats.filter((r) => !r.city || r.city.toLowerCase() === city.toLowerCase());
+  }
+  if (country && country !== "all") {
+    scopedForStats = scopedForStats.filter((r) => !r.country || r.country.toLowerCase() === country.toLowerCase());
+  }
+  const stats = calculateReportStats(scopedForStats);
 
   return {
     data,
@@ -302,6 +353,28 @@ export async function createReport(input: CreateReportInput): Promise<IReport> {
     input.id ||
     `REP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
+  let resolvedCity = input.city?.trim();
+  let resolvedCountry = input.country?.trim();
+  let resolvedBusinessId = input.businessId?.trim();
+  let resolvedBusinessName = input.businessName?.trim();
+
+  // If businessId or targetId looks like a business or targetType is business, attempt lookup if city or country is missing
+  const possibleBizId = resolvedBusinessId || input.targetId;
+  if (possibleBizId && (!resolvedCity || !resolvedCountry || !resolvedBusinessId)) {
+    try {
+      const { getBusinessById } = await import("@/lib/db/queries/businesses");
+      const biz = await getBusinessById(possibleBizId);
+      if (biz) {
+        if (!resolvedBusinessId) resolvedBusinessId = biz.id;
+        if (!resolvedBusinessName) resolvedBusinessName = biz.name;
+        if (!resolvedCity && biz.cityName) resolvedCity = biz.cityName;
+        if (!resolvedCountry && biz.countryName) resolvedCountry = biz.countryName;
+      }
+    } catch (err) {
+      console.warn("Could not auto-resolve business location for report:", err);
+    }
+  }
+
   const now = new Date().toISOString();
   const newReport: IReport = {
     id: generatedId,
@@ -312,6 +385,8 @@ export async function createReport(input: CreateReportInput): Promise<IReport> {
     targetId: input.targetId,
     targetName: input.targetName,
     targetType: input.targetType || input.type,
+    businessId: resolvedBusinessId,
+    businessName: resolvedBusinessName,
     reporterName: input.reporterName,
     reporterEmail: input.reporterEmail,
     reporterId: input.reporterId,
@@ -320,8 +395,8 @@ export async function createReport(input: CreateReportInput): Promise<IReport> {
     priority: input.priority || "medium",
     actionTaken: "none",
     evidenceUrls: input.evidenceUrls || [],
-    city: input.city || "Addis Ababa",
-    country: input.country || "Ethiopia",
+    city: resolvedCity || "Addis Ababa",
+    country: resolvedCountry || "Ethiopia",
     createdAt: now,
     updatedAt: now,
   };

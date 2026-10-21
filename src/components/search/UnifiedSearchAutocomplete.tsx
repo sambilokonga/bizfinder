@@ -37,6 +37,7 @@ export interface SearchOptionItem {
   label: string;
   icon: React.ElementType;
   placeholder: string;
+  shortPlaceholder?: string;
   badge?: string;
 }
 
@@ -46,54 +47,63 @@ export const SEARCH_OPTIONS: SearchOptionItem[] = [
     label: "All Results",
     icon: Sparkles,
     placeholder: "Search business name, branches, products, buildings, cities, business types...",
+    shortPlaceholder: "Search businesses, products...",
   },
   {
     key: "business",
     label: "Business Name",
     icon: Store,
     placeholder: "Search by registered business or brand name (e.g. Kategna, Care Pharmacy)...",
+    shortPlaceholder: "Search by business name...",
   },
   {
     key: "branch",
     label: "Branches",
     icon: GitBranch,
     placeholder: "Search branch name, outlet, or branch code (e.g. Bole Medhanialem Branch, CBE-001)...",
+    shortPlaceholder: "Search branch name or code...",
   },
   {
     key: "product",
     label: "Products & Services",
     icon: ShoppingBag,
     placeholder: "Search products, dishes, pharmacy meds, auto repairs (e.g. Kitfo, Tibs)...",
+    shortPlaceholder: "Search products & services...",
   },
   {
     key: "building",
     label: "Building Name",
     icon: Building2,
     placeholder: "Search commercial building, tower, mall (e.g. Kategna Bldg, Edna Mall, Morning Star)...",
+    shortPlaceholder: "Search building or mall...",
   },
   {
     key: "location",
     label: "Location / Area",
     icon: MapPin,
     placeholder: "Search sub-city, district, neighborhood (e.g. Bole, Kazanchis, CMC, Sarbet)...",
+    shortPlaceholder: "Search area or district...",
   },
   {
     key: "city_country",
     label: "City & Country",
     icon: Globe2,
     placeholder: "Search cities and countries worldwide (e.g. Addis Ababa, Hawassa, Ethiopia, Kenya)...",
+    shortPlaceholder: "Search city or country...",
   },
   {
     key: "business_type",
     label: "Business Type",
     icon: Layers,
     placeholder: "Search 70+ business categories and industries (e.g. Restaurants, Hospitals, Banking)...",
+    shortPlaceholder: "Search categories...",
   },
   {
     key: "map",
     label: "Map / Near Me",
     icon: MapIcon,
     placeholder: "Search locations to view pins, radius boundaries, and coordinates on map...",
+    shortPlaceholder: "Search on map...",
   },
 ];
 
@@ -106,6 +116,7 @@ interface UnifiedSearchAutocompleteProps {
   variant?: "hero" | "compact" | "minimal";
   className?: string;
   placeholder?: string;
+  shortPlaceholder?: string;
   showOptionPills?: boolean;
   autoFocus?: boolean;
   customBusinesses?: Business[];
@@ -120,6 +131,7 @@ export function UnifiedSearchAutocomplete({
   variant = "hero",
   className = "",
   placeholder: customPlaceholder,
+  shortPlaceholder: customShortPlaceholder,
   showOptionPills = true,
   autoFocus = false,
   customBusinesses,
@@ -131,6 +143,16 @@ export function UnifiedSearchAutocomplete({
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCompactScreen, setIsCompactScreen] = useState(false);
+
+  useEffect(() => {
+    const checkScreen = () => {
+      setIsCompactScreen(window.innerWidth < 1024);
+    };
+    checkScreen();
+    window.addEventListener("resize", checkScreen);
+    return () => window.removeEventListener("resize", checkScreen);
+  }, []);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -143,7 +165,9 @@ export function UnifiedSearchAutocomplete({
   );
 
   const activePlaceholder =
-    customPlaceholder || currentOption.placeholder;
+    (isCompactScreen ? customShortPlaceholder || currentOption.shortPlaceholder : null) ||
+    customPlaceholder ||
+    currentOption.placeholder;
 
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -392,7 +416,7 @@ export function UnifiedSearchAutocomplete({
     <div className={`relative w-full ${className}`} ref={containerRef}>
       {/* Search Scope Option Pills */}
       {showOptionPills && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-2.5 mb-2 scrollbar-none no-scrollbar">
+        <div className="flex items-center gap-1 xs:gap-1.5 overflow-x-auto pb-2 xs:pb-2.5 mb-1.5 xs:mb-2 scrollbar-none no-scrollbar">
           {SEARCH_OPTIONS.map((opt) => {
             const Icon = opt.icon;
             const isSelected = activeScope === opt.key;
@@ -404,13 +428,13 @@ export function UnifiedSearchAutocomplete({
                   setActiveScope(opt.key);
                   inputRef.current?.focus();
                 }}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 select-none ${
+                className={`inline-flex items-center gap-1 xs:gap-1.5 px-2 xs:px-2.5 sm:px-3 py-1 xs:py-1.5 rounded-full text-[9.5px] xs:text-[10px] sm:text-xs font-bold transition-all shrink-0 select-none ${
                   isSelected
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/25 scale-[1.02]"
                     : "bg-background/80 hover:bg-accent text-muted-foreground hover:text-foreground border border-border/80 backdrop-blur-sm"
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isSelected ? "text-white" : "text-muted-foreground"}`} />
+                <Icon className={`w-3 h-3 xs:w-3.5 xs:h-3.5 ${isSelected ? "text-white" : "text-muted-foreground"}`} />
                 <span>{opt.label}</span>
               </button>
             );
@@ -423,18 +447,18 @@ export function UnifiedSearchAutocomplete({
         <div
           className={`flex items-center w-full transition-all border ${
             variant === "hero"
-              ? "h-12 px-4 rounded-2xl bg-background border-input shadow-md focus-within:ring-2 focus-within:ring-indigo-500/50 focus-within:border-indigo-400"
+              ? "h-9 xs:h-10 sm:h-11 md:h-12 px-3 sm:px-4 rounded-xl xs:rounded-2xl bg-background border-input shadow-md focus-within:ring-2 focus-within:ring-indigo-500/50 focus-within:border-indigo-400"
               : variant === "compact"
-              ? "h-9 pl-2 sm:pl-2.5 pr-1 sm:pr-1.5 rounded-xl bg-background border-input shadow-sm focus-within:ring-2 focus-within:ring-primary focus-within:border-primary"
-              : "h-9 pl-2 pr-1 rounded-lg bg-background border-input"
+              ? "h-7.5 xs:h-8 sm:h-8.5 md:h-9 pl-1.5 xs:pl-2 sm:pl-2.5 pr-1 sm:pr-1.5 rounded-lg xs:rounded-xl bg-background border-input shadow-sm focus-within:ring-2 focus-within:ring-primary focus-within:border-primary"
+              : "h-7.5 xs:h-8 sm:h-9 pl-1.5 xs:pl-2 pr-1 rounded-lg bg-background border-input"
           }`}
         >
           {/* Active Scope Icon Indicator */}
-          <div className="pl-1 sm:pl-1.5 pr-1 shrink-0 flex items-center">
+          <div className="pl-0.5 xs:pl-1 sm:pl-1.5 pr-0.5 xs:pr-1 shrink-0 flex items-center">
             {isLoading ? (
-              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500 animate-spin" />
+              <Loader2 className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 text-indigo-500 animate-spin" />
             ) : (
-              <currentOption.icon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500 dark:text-indigo-400" />
+              <currentOption.icon className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 text-indigo-500 dark:text-indigo-400" />
             )}
           </div>
 
@@ -452,7 +476,7 @@ export function UnifiedSearchAutocomplete({
             onKeyDown={handleKeyDown}
             placeholder={activePlaceholder}
             autoFocus={autoFocus}
-            className="flex-1 min-w-0 bg-transparent border-0 px-1.5 sm:px-2 py-1.5 text-xs sm:text-sm font-medium placeholder:text-muted-foreground/60 focus:outline-none text-foreground"
+            className="flex-1 min-w-0 bg-transparent border-0 px-1 xs:px-1.5 sm:px-2 py-1 xs:py-1.5 text-[10px] xs:text-[10.5px] sm:text-xs md:text-sm font-medium placeholder:text-muted-foreground/60 placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs focus:outline-none text-foreground truncate"
           />
 
           {/* Clear Button */}
@@ -466,10 +490,10 @@ export function UnifiedSearchAutocomplete({
                 setIsOpen(false);
                 inputRef.current?.focus();
               }}
-              className="p-1 text-muted-foreground hover:text-foreground transition-colors shrink-0 mr-1 rounded-full hover:bg-accent"
+              className="p-0.5 xs:p-1 text-muted-foreground hover:text-foreground transition-colors shrink-0 mr-0.5 xs:mr-1 rounded-full hover:bg-accent"
               title="Clear search"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
             </button>
           )}
 
@@ -478,13 +502,13 @@ export function UnifiedSearchAutocomplete({
             type="submit"
             className={`font-bold shrink-0 transition-all flex items-center justify-center gap-1 sm:gap-1.5 ${
               variant === "hero"
-                ? "px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-md shadow-indigo-500/20 hover:opacity-95 text-sm"
-                : "h-7 px-2 xs:px-2.5 sm:px-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-xs shadow-sm shadow-primary/20"
+                ? "h-7.5 xs:h-8 sm:h-9 px-3 xs:px-4 sm:px-5 rounded-lg xs:rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-md shadow-indigo-500/20 hover:opacity-95 text-[10px] xs:text-xs sm:text-sm"
+                : "h-6 xs:h-7 sm:h-7.5 px-1.5 xs:px-2 sm:px-2.5 rounded-md xs:rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-[10px] xs:text-xs shadow-sm shadow-primary/20"
             }`}
             title="Search"
             aria-label="Search"
           >
-            <Search className="w-3.5 h-3.5 shrink-0" />
+            <Search className="w-2.5 h-2.5 xs:w-3 xs:h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
             <span className="hidden xs:inline">Search</span>
           </button>
         </div>

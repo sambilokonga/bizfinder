@@ -27,11 +27,15 @@ export async function POST(req: Request) {
     await createNotification({
       title: `[Escalation from ${city}] ${subject.trim()}`,
       body: `${city} City Admin escalated: ${reason.trim()} (Ticket: ${ticketId})`,
-      target: "global",
+      target: "country_admin",
+      targetRole: "country_admin",
+      targetCountry: country,
+      targetCity: city,
+      actionType: "system",
       type: "system",
       priority: priority as any,
       sentBy: `${city} City Admin`,
-      link: "/admin",
+      link: `/admin?tab=listings&country=${encodeURIComponent(country)}`,
     });
 
     return NextResponse.json({

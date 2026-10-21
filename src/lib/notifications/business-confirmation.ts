@@ -162,14 +162,16 @@ export async function dispatchBusinessConfirmationNotifications(
   }
 
   // 4. 👤 USER / OWNER CONFIRMATION NOTICE
-  if (ownerId && ownerId !== "user_guest") {
     try {
       const userRes = await createNotification({
         title: `📋 [Listing Received] "${business.name}" Queued for Confirmation`,
         body: `Thank you! Your business registration has been received. Super Admin, Country Admin (${countryName}), and City Admin (${cityName}) have been alerted for confirmation review.`,
-        target: "user",
+        target: "business",
+        targetRole: "owner",
         targetUserId: ownerId,
         targetBusinessId: business.id,
+        targetCountry: countryName,
+        targetCity: cityName,
         actionType: "business_confirmation",
         type: "verification",
         priority: "medium",
@@ -180,13 +182,14 @@ export async function dispatchBusinessConfirmationNotifications(
           businessId: business.id,
           businessName: business.name,
           status: "pending_city",
+          cityName,
+          countryName,
         },
       });
       if (userRes?.notification) notificationsCreated.push(userRes.notification);
     } catch (err) {
       console.error("[Notifications] Failed to notify User:", err);
     }
-  }
 
   return {
     isNewUser,

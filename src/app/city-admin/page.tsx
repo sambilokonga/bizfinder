@@ -106,6 +106,10 @@ import { MediaLightboxModal, LightboxMediaItem } from "@/components/media/MediaL
 import { AddCampaignModal, AdminAdCampaign } from "@/components/admin/AddCampaignModal";
 import { RegisterPaymentModal } from "@/components/admin/RegisterPaymentModal";
 import { PaymentReceiptModal } from "@/components/admin/PaymentReceiptModal";
+import { AdminSettingsView } from "@/components/admin/AdminSettingsView";
+import { SecurityWorkstation } from "@/components/security/SecurityWorkstation";
+import { AssignGeoAdminModal } from "@/components/admin/AssignGeoAdminModal";
+import { GeoAdminRecord } from "@/app/api/admin/geo-admins/route";
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 
@@ -740,11 +744,54 @@ export default function CityAdminDashboard() {
   // Inspect Claim Modal
   const [inspectClaim, setInspectClaim] = useState<ClaimItem | null>(null);
 
+  // ── Live Territory Governance State ───────────────────────────────────────
+  const [liveAssignedCityAdmin, setLiveAssignedCityAdmin] = useState<GeoAdminRecord | null>(null);
+  const [liveAssignedCountryAdmin, setLiveAssignedCountryAdmin] = useState<GeoAdminRecord | null>(null);
+  const [isTerritoryLoading, setIsTerritoryLoading] = useState(false);
+  const [isAssignCityAdminModalOpen, setIsAssignCityAdminModalOpen] = useState(false);
+
   // Available countries & cities
   const countryEntry = COUNTRIES_WITH_CITIES.find(
     (c) => c.name.toLowerCase() === selectedCountry.toLowerCase()
   );
   const availableCities = countryEntry?.cities || ["Addis Ababa", "Dire Dawa", "Hawassa", "Bahir Dar", "Mekelle"];
+
+  // ── Fetch Live Territory Admins ───────────────────────────────────────────
+  const fetchTerritoryAdmins = useCallback(async () => {
+    setIsTerritoryLoading(true);
+    try {
+      const res = await fetch(
+        `/api/admin/geo-admins?callerRole=city_admin&callerCountry=${encodeURIComponent(
+          selectedCountry
+        )}&callerCity=${encodeURIComponent(selectedCity)}`
+      );
+      const data = await res.json();
+      if (data.success) {
+        setLiveAssignedCityAdmin(data.assignedCityAdmin || null);
+        setLiveAssignedCountryAdmin(data.assignedCountryAdmin || null);
+      }
+    } catch (err) {
+      console.error("Failed to load territory admins for City Admin desk:", err);
+    } finally {
+      setIsTerritoryLoading(false);
+    }
+  }, [selectedCountry, selectedCity]);
+
+  useEffect(() => {
+    fetchTerritoryAdmins();
+  }, [fetchTerritoryAdmins]);
+
+  useEffect(() => {
+    const handleAdminRegistered = () => {
+      fetchTerritoryAdmins();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("bizfinder_territory_admin_registered", handleAdminRegistered);
+      return () => {
+        window.removeEventListener("bizfinder_territory_admin_registered", handleAdminRegistered);
+      };
+    }
+  }, [fetchTerritoryAdmins]);
 
   // ── Fetch City Stats ──────────────────────────────────────────────────────
   const fetchCityStats = async () => {
@@ -1682,9 +1729,15 @@ export default function CityAdminDashboard() {
               </div>
 
               {renderSidebarItem("settings", "Settings", <SlidersHorizontal className="w-4 h-4 text-slate-400" />, false, [
-                { key: "rules", label: "Verification Guidelines" },
-                { key: "office", label: "Bureau Office Profile" },
-                { key: "liaison", label: "Country Lead Liaison" },
+                { key: "general", label: "General" },
+                { key: "business", label: "Business & Verification" },
+                { key: "search", label: "Search & Map" },
+                { key: "seo", label: "SEO & Social" },
+                { key: "notifications", label: "Notifications" },
+                { key: "payments", label: "Payment Gateway" },
+                { key: "security", label: "Security Policy" },
+                { key: "liaison", label: "National Liaison" },
+                { key: "maintenance", label: "Maintenance" },
               ])}
 
               {renderSidebarItem("security", "Security", <Lock className="w-4 h-4 text-rose-500" />, false, [
@@ -3612,92 +3665,16 @@ export default function CityAdminDashboard() {
               15. ⚙️ SETTINGS & MUNICIPAL RULES
              ════════════════════════════════════════════════════════════════ */}
           {activeNav === "settings" && (
-            <div className="space-y-6 animate-in fade-in duration-200">
-              <div>
-                <h1 className="text-xl font-black text-foreground flex items-center gap-2">
-                  <SlidersHorizontal className="w-5 h-5 text-slate-400" />
-                  {selectedCity} — Municipal Authority Rules & Settings
-                </h1>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Verification criteria, operating guidelines, and administrative escalation channels to Country Lead.
-                </p>
-              </div>
-
-              {renderSubnavTabs([
-                { key: "rules", label: "Verification Guidelines" },
-                { key: "office", label: "Bureau Office Profile" },
-                { key: "liaison", label: "Country Lead Liaison" },
-              ])}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Municipal Policy Toggles */}
-                <div className="p-6 rounded-3xl bg-card border border-border space-y-4">
-                  <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-sky-500" />
-                    Storefront Verification Requirements
-                  </h2>
-
-                  <div className="space-y-3 text-xs">
-                    <div className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border border-border/60">
-                      <div>
-                        <div className="font-bold text-foreground">Require Physical Storefront Photos</div>
-                        <div className="text-muted-foreground text-[11px]">
-                          Listings must supply exterior entrance photo before verification.
-                        </div>
-                      </div>
-                      <input type="checkbox" defaultChecked className="toggle cursor-pointer" />
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border border-border/60">
-                      <div>
-                        <div className="font-bold text-foreground">Mandate Sub-City / District Designation</div>
-                        <div className="text-muted-foreground text-[11px]">
-                          Every business must be mapped to one of the {activeSubcitiesList.length} sub-cities.
-                        </div>
-                      </div>
-                      <input type="checkbox" defaultChecked className="toggle cursor-pointer" />
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border border-border/60">
-                      <div>
-                        <div className="font-bold text-foreground">Trade License Upload for Owner Claims</div>
-                        <div className="text-muted-foreground text-[11px]">
-                          Owner claims require official commercial registration certificate.
-                        </div>
-                      </div>
-                      <input type="checkbox" defaultChecked className="toggle cursor-pointer" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Country Admin Liaison Card */}
-                <div className="p-6 rounded-3xl bg-card border border-border space-y-4">
-                  <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-indigo-500" />
-                    {selectedCountry} Country Main Admin Liaison
-                  </h2>
-
-                  <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 space-y-2 text-xs">
-                    <div className="font-bold text-foreground text-sm">
-                      National Administration Desk: Mastwal (Country Lead)
-                    </div>
-                    <p className="text-muted-foreground leading-relaxed">
-                      Your municipal administration is linked to the {selectedCountry} National Lead. Submit formal escalations for country-wide tax policies, cross-jurisdiction disputes, or to petition new national business classifications.
-                    </p>
-                    <div className="pt-2">
-                      <Button
-                        size="sm"
-                        onClick={() => setIsEscalateModalOpen(true)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs gap-1.5 shadow-md shadow-indigo-600/20"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        Compose Escalation Request
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <AdminSettingsView
+              isSuperAdmin={false}
+              currentRole="city_admin"
+              assignedCountry={selectedCountry}
+              assignedCity={selectedCity}
+              initialSubnav={activeSubnav}
+              scope="city"
+              country={selectedCountry}
+              city={selectedCity}
+            />
           )}
 
           {/* ════════════════════════════════════════════════════════════════
@@ -3705,78 +3682,15 @@ export default function CityAdminDashboard() {
              ════════════════════════════════════════════════════════════════ */}
           {activeNav === "security" && (
             <div className="space-y-6 animate-in fade-in duration-200">
-              <div>
-                <h1 className="text-xl font-black text-foreground flex items-center gap-2">
-                  <Lock className="w-5 h-5 text-rose-500" />
-                  {selectedCity} — Governance Security & Audit Station
-                </h1>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Municipal audit trail of verification actions, administrator sessions, and credential security.
-                </p>
-              </div>
-
-              {renderSubnavTabs([
-                { key: "audit", label: "Municipal Audit Trail" },
-                { key: "sessions", label: "Admin Login Activity" },
-                { key: "credentials", label: "Role & Credentials" },
-              ])}
-
-              {/* Security Posture Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="p-4 rounded-2xl bg-card border border-border space-y-1">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase">🔐 2FA Status</div>
-                  <div className="text-base font-bold text-emerald-500">Enforced & Active</div>
-                  <div className="text-[11px] text-muted-foreground">Clerk Multi-Factor Authentication</div>
-                </div>
-                <div className="p-4 rounded-2xl bg-card border border-border space-y-1">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase">🏙️ Municipal Scope</div>
-                  <div className="text-base font-bold text-sky-500">{selectedCity}, {selectedCountry}</div>
-                  <div className="text-[11px] text-muted-foreground">Role: City Administrator</div>
-                </div>
-                <div className="p-4 rounded-2xl bg-card border border-border space-y-1">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase">🛡️ Session Encryption</div>
-                  <div className="text-base font-bold text-indigo-500">TLS 1.3 End-to-End</div>
-                  <div className="text-[11px] text-muted-foreground">60-minute automatic timeout</div>
-                </div>
-              </div>
-
-              {/* Audit Table */}
-              <div className="rounded-3xl bg-card border border-border overflow-hidden shadow-sm">
-                <div className="p-4 border-b border-border flex items-center justify-between">
-                  <span className="text-sm font-bold text-foreground">Municipal Audit Trail</span>
-                  <Badge variant="outline" className="text-[10px] font-mono">Live Immutable Log</Badge>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left">
-                    <thead>
-                      <tr className="border-b border-border text-muted-foreground uppercase text-[10px] font-bold">
-                        <th className="p-3.5 pl-6">Timestamp</th>
-                        <th className="p-3.5">Action</th>
-                        <th className="p-3.5">Target Resource</th>
-                        <th className="p-3.5">Admin Account</th>
-                        <th className="p-3.5">IP Address</th>
-                        <th className="p-3.5 pr-6 text-right">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/60 font-medium">
-                      {auditLogs.map((log) => (
-                        <tr key={log.id} className="hover:bg-muted/30 transition-colors">
-                          <td className="p-3.5 pl-6 font-mono text-muted-foreground text-[11px]">{log.timestamp}</td>
-                          <td className="p-3.5 font-bold text-foreground">{log.action}</td>
-                          <td className="p-3.5 text-sky-600 font-semibold">{log.targetName}</td>
-                          <td className="p-3.5 text-muted-foreground">{log.adminName}</td>
-                          <td className="p-3.5 font-mono text-muted-foreground text-[11px]">{log.ipAddress}</td>
-                          <td className="p-3.5 pr-6 text-right">
-                            <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[10px]">
-                              Success
-                            </Badge>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <SecurityWorkstation
+                portalType="admin"
+                currentUserName={`${selectedCity} City Admin`}
+                currentUserRole="city_admin"
+                city={selectedCity}
+                country={selectedCountry}
+                businessesList={businesses}
+                initialSubnav={activeSubnav === "security" ? "audit" : activeSubnav}
+              />
             </div>
           )}
 
@@ -3785,117 +3699,324 @@ export default function CityAdminDashboard() {
              ════════════════════════════════════════════════════════════════ */}
           {activeNav === "territory" && (
             <div className="space-y-6 animate-in fade-in duration-200">
-              <div>
-                <h1 className="text-xl font-black text-foreground flex items-center gap-2">
-                  <Landmark className="w-5 h-5 text-indigo-500" />
-                  {selectedCity} — Municipal Jurisdiction & Territory Command
-                </h1>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Official municipal boundaries, sub-city administrative allocation, and national hierarchy liaison.
-                </p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-xl sm:text-2xl font-black text-foreground flex items-center gap-2">
+                    <Landmark className="w-6 h-6 text-indigo-500" />
+                    <span>{selectedCity} — Municipal Jurisdiction & Territory Command</span>
+                  </h1>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Live territorial administration, certified City Admin bureau profile, sub-city zone allocation, and national liaison for {selectedCity}, {selectedCountry}.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => fetchTerritoryAdmins()}
+                    disabled={isTerritoryLoading}
+                    className="gap-1.5 text-xs font-semibold h-9 rounded-xl"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isTerritoryLoading ? "animate-spin" : ""}`} />
+                    Sync Roster
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setIsAssignCityAdminModalOpen(true)}
+                    className="gap-1.5 text-xs font-bold h-9 rounded-xl bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 text-white shadow-sm"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    + Appoint / Nominate City Admin
+                  </Button>
+                </div>
               </div>
 
               {renderSubnavTabs([
-                { key: "jurisdiction", label: "Municipal Boundaries" },
-                { key: "subcities", label: "Sub-City Allocation" },
-                { key: "escalation", label: "National Hierarchy" },
+                { key: "jurisdiction", label: "Municipal Boundaries & Bureau" },
+                { key: "subcities", label: "Sub-City Allocation & Corridors", count: activeSubcitiesList.length },
+                { key: "escalation", label: "National Country Hierarchy" },
               ])}
 
-              {/* Territory Profile Card */}
-              <div className="p-6 rounded-3xl bg-card border border-border space-y-4 shadow-sm">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1">
+              {/* ── Top Dual Governance Cards: Lead City Admin & Country Lead Liaison ── */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* 1. Municipal Lead City Admin Profile */}
+                <div className="p-5 sm:p-6 rounded-3xl bg-card border border-border shadow-sm space-y-4 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/10 rounded-full blur-2xl pointer-events-none" />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white text-base font-black shadow-md shadow-sky-500/20">
+                        {liveAssignedCityAdmin ? liveAssignedCityAdmin.name.slice(0, 2).toUpperCase() : "CA"}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h2 className="text-base font-bold text-foreground">
+                            {liveAssignedCityAdmin?.name || `${selectedCity} Municipal Lead`}
+                          </h2>
+                          <Badge className="bg-sky-500/10 text-sky-600 border border-sky-500/30 text-[10px] font-bold">
+                            Lead City Admin
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground font-mono mt-0.5">
+                          {liveAssignedCityAdmin?.email || "city.admin@bizfinder.et"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <Badge
+                      className={
+                        liveAssignedCityAdmin?.status === "active"
+                          ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[10px] font-bold"
+                          : "bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[10px] font-bold"
+                      }
+                    >
+                      {liveAssignedCityAdmin?.status === "active" ? "● Active & On Duty" : "● Nomination Pending"}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5 pt-2 text-xs">
+                    <div className="p-3 rounded-2xl bg-muted/40 border border-border/50">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">
+                        Assigned City
+                      </span>
+                      <span className="font-bold text-foreground">
+                        {liveAssignedCityAdmin?.assignedCity || selectedCity}
+                      </span>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-muted/40 border border-border/50">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">
+                        Territory Status
+                      </span>
+                      <span className="font-bold text-emerald-600">
+                        {liveAssignedCityAdmin ? "Directly Registered" : "Default Municipal Scope"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-between text-xs border-t border-border/60">
+                    <span className="text-[11px] text-muted-foreground">
+                      Authority: Storefront inspection, trade licensing, municipal boundaries
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsAssignCityAdminModalOpen(true)}
+                      className="text-xs font-bold text-sky-600 hover:bg-sky-500/10 h-7"
+                    >
+                      Update / Delegate →
+                    </Button>
+                  </div>
+                </div>
+
+                {/* 2. National Country Lead Admin Liaison */}
+                <div className="p-5 sm:p-6 rounded-3xl bg-card border border-border shadow-sm space-y-4 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white text-base font-black shadow-md shadow-indigo-500/20">
+                        <Crown className="w-6 h-6 text-amber-300" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h2 className="text-base font-bold text-foreground">
+                            {liveAssignedCountryAdmin?.name || `Mastwal (${selectedCountry} Lead)`}
+                          </h2>
+                          <Badge className="bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[10px] font-bold">
+                            Country Main Admin
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground font-mono mt-0.5">
+                          {liveAssignedCountryAdmin?.email || "country.lead@bizfinder.et"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-foreground bg-muted/60 px-2.5 py-1 rounded-xl">
+                      <span>{countryEntry?.flag || "🌍"}</span>
+                      <span>{selectedCountry}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5 pt-2 text-xs">
+                    <div className="p-3 rounded-2xl bg-muted/40 border border-border/50">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">
+                        Supervisory Level
+                      </span>
+                      <span className="font-bold text-foreground">
+                        National Sovereign Directorate
+                      </span>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-muted/40 border border-border/50">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">
+                        Escalation Channel
+                      </span>
+                      <span className="font-bold text-indigo-600">
+                        Direct Priority Dispatch
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-between text-xs border-t border-border/60">
+                    <span className="text-[11px] text-muted-foreground">
+                      Handles cross-district disputes, national categories & policy petitions
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsEscalateModalOpen(true)}
+                      className="text-xs font-bold text-indigo-600 dark:text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/10 h-7"
+                    >
+                      Escalate Issue →
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Subnav Section 1: Jurisdiction & Metrics ── */}
+              {(activeSubnav === "jurisdiction" || activeSubnav === "overview") && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-4 rounded-3xl bg-card border border-border space-y-1">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase">
+                        Municipal Status
+                      </span>
+                      <div className="font-black text-emerald-500 text-lg">Active & Verified</div>
+                      <div className="text-[10px] text-muted-foreground">Licensed Territory</div>
+                    </div>
+                    <div className="p-4 rounded-3xl bg-card border border-border space-y-1">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase">
+                        Sub-Cities Managed
+                      </span>
+                      <div className="font-black text-foreground text-lg">{activeSubcitiesList.length} Divisions</div>
+                      <div className="text-[10px] text-muted-foreground">Administrative Units</div>
+                    </div>
+                    <div className="p-4 rounded-3xl bg-card border border-border space-y-1">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase">
+                        Registered Listings
+                      </span>
+                      <div className="font-black text-foreground text-lg">{stats.totalBusinesses} Establishments</div>
+                      <div className="text-[10px] text-muted-foreground">Under Local Care</div>
+                    </div>
+                    <div className="p-4 rounded-3xl bg-card border border-border space-y-1">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase">
+                        Verification Ratio
+                      </span>
+                      <div className="font-black text-emerald-500 text-lg">
+                        {Math.round((stats.verifiedBusinesses / Math.max(1, stats.totalBusinesses)) * 100)}%
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">Consumer Safety Rating</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Subnav Section 2: Sub-City Allocation & Commercial Corridors ── */}
+              {(activeSubnav === "subcities" || activeSubnav === "jurisdiction") && (
+                <div className="rounded-3xl bg-card border border-border overflow-hidden shadow-sm">
+                  <div className="p-4 border-b border-border flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <span className="text-sm font-bold text-foreground">
+                        {selectedCity} Sub-City Administrative Allocation
+                      </span>
+                      <p className="text-xs text-muted-foreground">
+                        Zoned municipal commercial corridors and physical inspection divisions.
+                      </p>
+                    </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl">{countryEntry?.flag || "🌍"}</span>
-                      <h2 className="text-lg font-black text-foreground">
-                        {selectedCity} Municipal Administrative Territory
-                      </h2>
-                      <Badge className="bg-sky-500/10 text-sky-600 border-sky-500/30 text-[10px] font-bold">
-                        Lead City Admin
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground max-w-2xl">
-                      Official administrative authority covering {activeSubcitiesList.length} sub-cities in {selectedCountry}. Responsible for storefront certification and consumer safety within city limits.
-                    </p>
-                  </div>
-
-                  <div className="p-3 rounded-2xl bg-muted/40 border border-border/60 text-xs space-y-1">
-                    <div className="font-bold text-foreground">National Lead Admin:</div>
-                    <div className="text-indigo-600 font-semibold">Mastwal ({selectedCountry} Country Lead)</div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-border">
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-muted-foreground font-semibold">MUNICIPAL STATUS</span>
-                    <div className="font-bold text-emerald-500 text-sm">Active & Verified</div>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-muted-foreground font-semibold">SUB-CITIES MANAGED</span>
-                    <div className="font-bold text-foreground text-sm">{activeSubcitiesList.length} Divisions</div>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-muted-foreground font-semibold">REGISTERED LISTINGS</span>
-                    <div className="font-bold text-foreground text-sm">{stats.totalBusinesses} Establishments</div>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-muted-foreground font-semibold">VERIFICATION RATIO</span>
-                    <div className="font-bold text-emerald-500 text-sm">
-                      {Math.round((stats.verifiedBusinesses / Math.max(1, stats.totalBusinesses)) * 100)}% Verified
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIsAddDistrictModalOpen(true)}
+                        className="text-xs font-semibold gap-1.5 h-8 rounded-xl"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        + Add Sub-City / Corridor
+                      </Button>
+                      <Badge variant="outline" className="text-[10px]">{activeSubcitiesList.length} Units</Badge>
                     </div>
                   </div>
-                </div>
-              </div>
-
-              {/* Sub-City Allocation Table */}
-              <div className="rounded-3xl bg-card border border-border overflow-hidden shadow-sm">
-                <div className="p-4 border-b border-border flex items-center justify-between">
-                  <span className="text-sm font-bold text-foreground">Sub-City Governance Allocation</span>
-                  <Badge variant="outline" className="text-[10px]">{activeSubcitiesList.length} Units</Badge>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left">
-                    <thead>
-                      <tr className="border-b border-border text-muted-foreground uppercase text-[10px] font-bold">
-                        <th className="p-3.5 pl-6">Sub-City Unit</th>
-                        <th className="p-3.5">Commercial Focus</th>
-                        <th className="p-3.5">Supervisory Status</th>
-                        <th className="p-3.5 pr-6 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/60 font-medium">
-                      {activeSubcitiesList.map((sc) => (
-                        <tr key={sc.name} className="hover:bg-muted/30 transition-colors">
-                          <td className="p-3.5 pl-6 font-bold text-foreground flex items-center gap-2">
-                            <MapPin className="w-3.5 h-3.5 text-sky-500" />
-                            <span>{sc.name}</span>
-                          </td>
-                          <td className="p-3.5 text-muted-foreground">{sc.commercialFocus || "Urban Commercial"}</td>
-                          <td className="p-3.5">
-                            <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[10px]">
-                              Designated & Active
-                            </Badge>
-                          </td>
-                          <td className="p-3.5 pr-6 text-right">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setSelectedSubcityFilter(sc.name);
-                                setActiveNav("businesses");
-                                setActiveSubnav("all");
-                              }}
-                              className="h-7 text-xs font-bold text-sky-600 hover:bg-sky-500/10"
-                            >
-                              Manage Listings →
-                            </Button>
-                          </td>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="border-b border-border text-muted-foreground uppercase text-[10px] font-bold">
+                          <th className="p-3.5 pl-6">Sub-City Unit</th>
+                          <th className="p-3.5">Commercial Focus</th>
+                          <th className="p-3.5">Supervisory Status</th>
+                          <th className="p-3.5 pr-6 text-right">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-border/60 font-medium">
+                        {activeSubcitiesList.map((sc) => (
+                          <tr key={sc.name} className="hover:bg-muted/30 transition-colors">
+                            <td className="p-3.5 pl-6 font-bold text-foreground flex items-center gap-2">
+                              <MapPin className="w-3.5 h-3.5 text-sky-500" />
+                              <span>{sc.name}</span>
+                            </td>
+                            <td className="p-3.5 text-muted-foreground">{sc.commercialFocus || "Urban Commercial"}</td>
+                            <td className="p-3.5">
+                              <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[10px]">
+                                Designated & Active
+                              </Badge>
+                            </td>
+                            <td className="p-3.5 pr-6 text-right">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setSelectedSubcityFilter(sc.name);
+                                  setActiveNav("businesses");
+                                  setActiveSubnav("all");
+                                }}
+                                className="h-7 text-xs font-bold text-sky-600 hover:bg-sky-500/10"
+                              >
+                                Manage Listings →
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* ── Subnav Section 3: National Country Escalation Hierarchy ── */}
+              {activeSubnav === "escalation" && (
+                <div className="p-6 rounded-3xl bg-card border border-border shadow-sm space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center font-bold">
+                      <Globe className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-foreground">
+                        National Hierarchy & Escalation Bureau
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        Direct municipal liaison line to {liveAssignedCountryAdmin?.name || `${selectedCountry} Country Lead`}.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-muted/40 border border-border/60 text-xs space-y-2">
+                    <div className="font-bold text-foreground">Escalation Scope:</div>
+                    <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                      <li>Cross-municipal business trademark disputes between cities.</li>
+                      <li>Petitions for new business categories or industry tax codes.</li>
+                      <li>Formal appeals against city administration licensing rulings.</li>
+                    </ul>
+                  </div>
+
+                  <div className="pt-2">
+                    <Button
+                      onClick={() => setIsEscalateModalOpen(true)}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-2 text-xs rounded-xl"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      Open Formal Escalation Ticket
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </main>
@@ -4522,6 +4643,24 @@ export default function CityAdminDashboard() {
             </div>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* MODAL: ASSIGN / NOMINATE CITY ADMIN */}
+      {isAssignCityAdminModalOpen && (
+        <AssignGeoAdminModal
+          isOpen={isAssignCityAdminModalOpen}
+          onClose={() => setIsAssignCityAdminModalOpen(false)}
+          onAdminAssigned={() => {
+            fetchTerritoryAdmins();
+            setIsAssignCityAdminModalOpen(false);
+          }}
+          initialRole="city_admin"
+          initialCountry={selectedCountry}
+          initialCity={selectedCity}
+          currentAdminRole="city_admin"
+          currentAdminCountry={selectedCountry}
+          currentAdminCity={selectedCity}
+        />
       )}
     </div>
   );

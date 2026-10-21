@@ -15,6 +15,9 @@ export async function GET(req: Request) {
     const type = searchParams.get("type") || undefined;
     const priority = searchParams.get("priority") || undefined;
     const status = searchParams.get("status") || undefined;
+    const city = searchParams.get("city") || undefined;
+    const country = searchParams.get("country") || undefined;
+    const role = searchParams.get("role") || undefined;
 
     const result = await getNotifications({
       page,
@@ -24,6 +27,9 @@ export async function GET(req: Request) {
       type,
       priority,
       status,
+      city,
+      country,
+      role,
     });
 
     return NextResponse.json(result);
@@ -46,6 +52,11 @@ export async function POST(req: Request) {
       target = "global",
       targetUserId,
       targetBusinessId,
+      targetRole,
+      targetCountry,
+      targetCity,
+      actionType,
+      metadata,
       sentBy = "Super Admin",
       type = "system",
       priority = "medium",
@@ -67,6 +78,11 @@ export async function POST(req: Request) {
       target,
       targetUserId: targetUserId || undefined,
       targetBusinessId: targetBusinessId || undefined,
+      targetRole: targetRole || undefined,
+      targetCountry: targetCountry || undefined,
+      targetCity: targetCity || undefined,
+      actionType: actionType || undefined,
+      metadata: metadata || undefined,
       sentBy,
       type,
       priority,

@@ -15,11 +15,13 @@ export async function POST(request: Request) {
       userId = null;
     }
 
-    const body: CheckoutRequestPayload = await request.json();
+    const body: CheckoutRequestPayload & { cityName?: string; countryName?: string } = await request.json();
 
     const {
       businessId,
       businessName,
+      cityName,
+      countryName,
       newBusiness,
       planId,
       tier,
@@ -113,11 +115,30 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. Create Payment Record in Database
+    // 4. Resolve city and country for payment record
+    let resolvedCity = cityName?.trim() || newBusiness?.cityName?.trim();
+    let resolvedCountry = countryName?.trim() || newBusiness?.countryName?.trim();
+
+    if ((!resolvedCity || !resolvedCountry) && activeBusinessId) {
+      try {
+        const { BusinessModel } = await import("@/lib/db/models/Business");
+        const bDoc = await BusinessModel.findOne({ id: activeBusinessId }).lean();
+        if (bDoc) {
+          resolvedCity = resolvedCity || (bDoc as any).cityName;
+          resolvedCountry = resolvedCountry || (bDoc as any).countryName;
+        }
+      } catch (err) {
+        console.warn("[checkout] Business lookup error:", err);
+      }
+    }
+
+    // 5. Create Payment Record in Database
     const payment = await createPayment({
       id: txId,
       businessId: activeBusinessId,
       businessName: activeBusinessName,
+      cityName: resolvedCity || undefined,
+      countryName: resolvedCountry || undefined,
       payerName: payerName || "Business Owner",
       payerPhone: payerPhone || telebirrPhone || mpesaPhone,
       payerEmail: payerEmail,
@@ -141,6 +162,8 @@ export async function POST(request: Request) {
         mpesaPhone,
         cardLast4: cardDetails?.last4,
         cardBrand: cardDetails?.brand,
+        cityName: resolvedCity,
+        countryName: resolvedCountry,
         processedAt: new Date().toISOString(),
       },
       registeredBy: userId ? `Owner (${userId})` : "Portal Checkout",

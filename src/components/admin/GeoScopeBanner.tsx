@@ -154,55 +154,47 @@ export function GeoScopeBanner({
           {/* Country Scope Dropdown */}
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] text-slate-400">Country:</span>
-            {isCountryAdmin || isCityAdmin ? (
-              <div className="h-8 rounded-xl bg-indigo-950/80 border border-indigo-400/40 px-3 flex items-center gap-1.5 text-xs font-bold text-white shadow-inner">
-                <span>{countryEntry?.flag || "🌍"}</span>
-                <span>{selectedCountry}</span>
-                <span className="text-[10px] text-indigo-300 font-semibold">(Jurisdiction Locked)</span>
-              </div>
-            ) : (
-              <select
-                value={selectedCountry}
-                onChange={(e) => {
-                  onCountryChange(e.target.value);
-                  onCityChange("all");
-                }}
-                className="h-8 rounded-xl bg-slate-800 border border-white/20 px-2.5 text-xs font-bold text-white focus:ring-2 focus:ring-indigo-400"
-              >
+            <select
+              value={selectedCountry}
+              onChange={(e) => {
+                onCountryChange(e.target.value);
+                const cEntry = COUNTRIES_WITH_CITIES.find(
+                  (c) => c.name.toLowerCase() === e.target.value.toLowerCase()
+                );
+                const firstCity = cEntry?.cities[0] || "all";
+                onCityChange(isCityAdmin ? firstCity : "all");
+              }}
+              className="h-8 rounded-xl bg-slate-800 border border-white/20 px-2.5 text-xs font-bold text-white focus:ring-2 focus:ring-indigo-400 cursor-pointer"
+            >
+              {!isCountryAdmin && !isCityAdmin && (
                 <option value="all">🌐 All 195 Countries (Worldwide Global)</option>
-                {COUNTRIES_WITH_CITIES.map((c) => (
-                  <option key={c.name} value={c.name}>
-                    {c.flag} {c.name}
-                  </option>
-                ))}
-              </select>
-            )}
+              )}
+              {COUNTRIES_WITH_CITIES.map((c) => (
+                <option key={c.name} value={c.name}>
+                  {c.flag} {c.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* City Scope Dropdown */}
           {selectedCountry !== "all" && (
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] text-slate-400">City:</span>
-              {isCityAdmin ? (
-                <div className="h-8 rounded-xl bg-sky-950/80 border border-sky-400/40 px-3 flex items-center gap-1.5 text-xs font-bold text-white shadow-inner">
-                  <span>🏙️</span>
-                  <span>{selectedCity || "Addis Ababa"}</span>
-                  <span className="text-[10px] text-sky-300 font-semibold">(Municipal Locked)</span>
-                </div>
-              ) : (
-                <select
-                  value={selectedCity}
-                  onChange={(e) => onCityChange(e.target.value)}
-                  className="h-8 rounded-xl bg-slate-800 border border-white/20 px-2.5 text-xs font-bold text-white focus:ring-2 focus:ring-indigo-400"
-                >
+              <select
+                value={selectedCity}
+                onChange={(e) => onCityChange(e.target.value)}
+                className="h-8 rounded-xl bg-slate-800 border border-white/20 px-2.5 text-xs font-bold text-white focus:ring-2 focus:ring-indigo-400 cursor-pointer"
+              >
+                {!isCityAdmin && (
                   <option value="all">🏙️ All {availableCities.length || 30} Cities in {selectedCountry}</option>
-                  {availableCities.map((city) => (
-                    <option key={city} value={city}>
-                      {city}
-                    </option>
-                  ))}
-                </select>
-              )}
+                )}
+                {availableCities.map((city) => (
+                  <option key={city} value={city}>
+                    {city}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
         </div>

@@ -45,6 +45,8 @@ export interface ISecurityEvent {
   ipAddress: string;
   city?: string;
   country?: string;
+  businessId?: string;
+  businessName?: string;
   device?: "Desktop" | "Mobile" | "Tablet" | "Server" | "Bot";
   browser?: string;
   os?: string;
@@ -93,5 +95,6 @@ export interface SecurityFilterOptions {
   actorRole?: string;
   city?: string;
   country?: string;
+  businessId?: string;
   sort?: "desc" | "asc";
 }

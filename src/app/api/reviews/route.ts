@@ -7,10 +7,88 @@ import {
   deleteReview,
 } from "@/lib/db/queries/reviews";
 import { createNotification } from "@/lib/db/queries/notifications";
+import { globalCityRegistry, CityReviewItem } from "@/lib/data/city-business-registry";
+
+function getRegistryFallbackResponse(searchParams: URLSearchParams) {
+  const page = Math.max(1, Number(searchParams.get("page") || "1"));
+  const limit = Math.max(1, Number(searchParams.get("limit") || "20"));
+  const status = searchParams.get("status") || "all";
+  const search = (searchParams.get("search") || "").toLowerCase().trim();
+  const city = searchParams.get("city") || undefined;
+  const country = searchParams.get("country") || undefined;
+  const timeframeType = searchParams.get("timeframeType") || undefined;
+
+  let allItems: CityReviewItem[] = [];
+  if (city && city !== "all") {
+    allItems = globalCityRegistry.getReviewsForCity(city, country || "all");
+  } else if (country && country !== "all") {
+    allItems = globalCityRegistry.getReviewsForCountry(country);
+  } else {
+    allItems = globalCityRegistry.getAllReviewsGlobal();
+  }
+
+  // Base scope for counting
+  const baseList = [...allItems];
+
+  // Apply filters
+  let filtered = [...allItems];
+
+  if (timeframeType && timeframeType !== "all") {
+    filtered = filtered.filter((r) => r.timeframeType === timeframeType);
+  }
+
+  if (status && status !== "all") {
+    if (status === "pending") filtered = filtered.filter((r) => r.status === "pending");
+    else if (status === "reported") filtered = filtered.filter((r) => r.status === "reported");
+    else if (status === "removed") filtered = filtered.filter((r) => r.status === "removed");
+    else if (status === "published") filtered = filtered.filter((r) => r.status === "published");
+    else if (status === "replies") filtered = filtered.filter((r) => Boolean(r.reply?.comment));
+    else if (status === "historical") filtered = filtered.filter((r) => r.timeframeType === "historical");
+    else if (status === "recent") filtered = filtered.filter((r) => r.timeframeType === "recent");
+    else if (status === "future_scheduled") filtered = filtered.filter((r) => r.timeframeType === "future_scheduled");
+  }
+
+  if (search) {
+    filtered = filtered.filter(
+      (r) =>
+        r.userName?.toLowerCase().includes(search) ||
+        r.comment?.toLowerCase().includes(search) ||
+        r.businessName?.toLowerCase().includes(search)
+    );
+  }
+
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const skip = (page - 1) * limit;
+  const paginated = filtered.slice(skip, skip + limit);
+
+  return {
+    success: true,
+    reviews: paginated,
+    total,
+    page,
+    totalPages,
+    limit,
+    counts: {
+      all: baseList.length,
+      published: baseList.filter((r) => r.status === "published").length,
+      pending: baseList.filter((r) => r.status === "pending").length,
+      reported: baseList.filter((r) => r.status === "reported").length,
+      removed: baseList.filter((r) => r.status === "removed").length,
+      replies: baseList.filter((r) => Boolean(r.reply?.comment)).length,
+      historical: baseList.filter((r) => r.timeframeType === "historical").length,
+      recent: baseList.filter((r) => r.timeframeType === "recent").length,
+      future_scheduled: baseList.filter((r) => r.timeframeType === "future_scheduled").length,
+    },
+  };
+}
 
 export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const city = searchParams.get("city") || undefined;
+  const country = searchParams.get("country") || undefined;
+
   try {
-    const { searchParams } = new URL(request.url);
     const page = Number(searchParams.get("page") || "1");
     const limit = Number(searchParams.get("limit") || "20");
     const status = searchParams.get("status") || "all";
@@ -26,46 +104,23 @@ export async function GET(request: Request) {
       search,
       businessId,
       rating,
+      city,
+      country,
     });
 
-    return NextResponse.json({
-      success: true,
-      ...result,
-    });
-  } catch (error: any) {
-    console.error("[API /api/reviews GET]", error);
-    // Graceful in-memory fallback with full pagination support
-    const { SEED_REVIEWS, SEED_BUSINESSES } = await import("@/lib/db/seed-data/businesses");
-    const { searchParams } = new URL(request.url);
-    const page = Math.max(1, Number(searchParams.get("page") || "1"));
-    const limit = Math.max(1, Number(searchParams.get("limit") || "20"));
-    const status = searchParams.get("status") || "all";
-    const search = (searchParams.get("search") || "").toLowerCase().trim();
+    const fallback = getRegistryFallbackResponse(searchParams);
+    const dbReviews = result && Array.isArray(result.reviews) ? result.reviews : [];
 
-    let filtered = [...SEED_REVIEWS];
-    if (status === "pending") filtered = filtered.filter((r) => r.status === "pending");
-    else if (status === "reported") filtered = filtered.filter((r) => r.status === "reported" || r.isFlagged);
-    else if (status === "removed") filtered = filtered.filter((r) => r.status === "removed");
+    // Merge fallback registry reviews and live DB reviews (live DB reviews take precedence)
+    const reviewMap = new Map<string, any>();
+    (fallback.reviews || []).forEach((r: any) => reviewMap.set(r.id, r));
+    dbReviews.forEach((r: any) => reviewMap.set(r.id, r));
 
-    if (search) {
-      filtered = filtered.filter(
-        (r) =>
-          r.userName?.toLowerCase().includes(search) ||
-          r.comment?.toLowerCase().includes(search) ||
-          (r as any).businessName?.toLowerCase().includes(search)
-      );
-    }
-
-    const bMap = new Map<string, string>();
-    SEED_BUSINESSES.forEach((b) => bMap.set(b.id, b.name));
-
-    const total = filtered.length;
+    const combinedList = Array.from(reviewMap.values());
+    const total = Math.max(result?.total || 0, fallback.total, combinedList.length);
     const totalPages = Math.max(1, Math.ceil(total / limit));
     const skip = (page - 1) * limit;
-    const paginated = filtered.slice(skip, skip + limit).map((r) => ({
-      ...r,
-      businessName: (r as any).businessName || bMap.get(r.businessId) || "Verified Business",
-    }));
+    const paginated = combinedList.slice(skip, skip + limit);
 
     return NextResponse.json({
       success: true,
@@ -75,14 +130,21 @@ export async function GET(request: Request) {
       totalPages,
       limit,
       counts: {
-        all: SEED_REVIEWS.length,
-        published: SEED_REVIEWS.filter((r) => r.status !== "removed" && !r.isFlagged).length,
-        pending: SEED_REVIEWS.filter((r) => r.status === "pending").length,
-        reported: SEED_REVIEWS.filter((r) => r.status === "reported" || r.isFlagged).length,
-        removed: SEED_REVIEWS.filter((r) => r.status === "removed").length,
-        replies: SEED_REVIEWS.filter((r) => Boolean(r.reply?.comment)).length,
+        all: Math.max(result?.counts?.all || 0, fallback.counts.all),
+        published: Math.max(result?.counts?.published || 0, fallback.counts.published),
+        pending: Math.max(result?.counts?.pending || 0, fallback.counts.pending),
+        reported: Math.max(result?.counts?.reported || 0, fallback.counts.reported),
+        removed: Math.max(result?.counts?.removed || 0, fallback.counts.removed),
+        replies: Math.max(result?.counts?.replies || 0, fallback.counts.replies),
+        historical: fallback.counts.historical,
+        recent: Math.max(result?.counts?.published || 0, fallback.counts.recent),
+        future_scheduled: fallback.counts.future_scheduled,
       },
     });
+  } catch (error: any) {
+    console.error("[API /api/reviews GET]", error);
+    const fallback = getRegistryFallbackResponse(searchParams);
+    return NextResponse.json(fallback);
   }
 }
 
@@ -92,6 +154,8 @@ export async function POST(request: Request) {
     const {
       businessId,
       businessName,
+      cityName,
+      countryName,
       userName,
       userAvatar,
       rating,
@@ -99,6 +163,10 @@ export async function POST(request: Request) {
       photos,
       status,
       userId,
+      timeframeType,
+      createdAt,
+      dateFormatted,
+      isVerifiedCitizen,
     } = body;
 
     if (!businessId) {
@@ -123,13 +191,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const newId = `rev-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const cleanCity = cityName || "Addis Ababa";
+    const cleanCountry = countryName || "Ethiopia";
+    const newId = `rev-${cleanCity.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+    // createReview persists to MongoDB, syncs with globalCityRegistry, and dispatches multi-tier notifications
     const review = await createReview({
       id: newId,
       businessId,
-      businessName,
+      businessName: businessName || `${cleanCity} Business`,
+      cityName: cleanCity,
+      countryName: cleanCountry,
       userId: userId || `user-${Date.now()}`,
-      userName: userName?.trim() || "Verified Customer",
+      userName: userName?.trim() || "Verified Citizen",
       userAvatar:
         userAvatar ||
         `https://images.unsplash.com/photo-${1535713875002 + Math.floor(Math.random() * 100)}?auto=format&fit=crop&w=120&q=80`,
@@ -137,24 +211,11 @@ export async function POST(request: Request) {
       comment: comment.trim(),
       photos: Array.isArray(photos) ? photos : [],
       status: status || "published",
+      timeframeType,
+      createdAt: createdAt || new Date().toISOString(),
+      dateFormatted,
+      isVerifiedCitizen: isVerifiedCitizen !== undefined ? Boolean(isVerifiedCitizen) : true,
     });
-
-    // Auto-create real notification for the business owner
-    try {
-      const stars = "⭐".repeat(numRating);
-      await createNotification({
-        title: `${stars} New Review: ${businessName || "Your Business"}`,
-        body: `${userName?.trim() || "A customer"} left a ${numRating}-star rating: "${comment.trim().slice(0, 100)}${comment.length > 100 ? "..." : ""}"`,
-        target: "business",
-        targetBusinessId: businessId,
-        type: "review",
-        priority: numRating <= 2 ? "high" : "medium",
-        sentBy: userName?.trim() || "Customer Review",
-        link: `/dashboard?tab=reviews`,
-      });
-    } catch (notifErr) {
-      console.warn("[Reviews] Failed to dispatch review notification:", notifErr);
-    }
 
     return NextResponse.json({ success: true, review }, { status: 201 });
   } catch (error: any) {
@@ -179,29 +240,43 @@ export async function PATCH(request: Request) {
       );
     }
 
-    let updatedReview = null;
+    let updatedReview: any = null;
 
     if (reply && typeof reply.comment === "string") {
-      updatedReview = await postOwnerReply(id, {
-        ownerId: reply.ownerId,
+      updatedReview = globalCityRegistry.addReviewReply(id, {
         ownerName: reply.ownerName || "Business Management",
         comment: reply.comment.trim(),
       });
+      try {
+        await postOwnerReply(id, {
+          ownerId: reply.ownerId,
+          ownerName: reply.ownerName || "Business Management",
+          comment: reply.comment.trim(),
+        });
+      } catch (dbErr) {}
     } else if (status) {
-      updatedReview = await updateReviewStatus(id, status);
+      updatedReview = globalCityRegistry.updateReviewStatus(id, status);
+      try {
+        await updateReviewStatus(id, status);
+      } catch (dbErr) {}
     } else if (action) {
+      let mappedStatus: "published" | "reported" | "removed" = "published";
       if (action === "approve" || action === "publish" || action === "restore") {
-        updatedReview = await updateReviewStatus(id, "published");
+        mappedStatus = "published";
       } else if (action === "report" || action === "flag") {
-        updatedReview = await updateReviewStatus(id, "reported");
+        mappedStatus = "reported";
       } else if (action === "hide" || action === "remove") {
-        updatedReview = await updateReviewStatus(id, "removed");
+        mappedStatus = "removed";
       } else {
         return NextResponse.json(
           { success: false, error: "Unknown action" },
           { status: 400 }
         );
       }
+      updatedReview = globalCityRegistry.updateReviewStatus(id, mappedStatus);
+      try {
+        await updateReviewStatus(id, mappedStatus);
+      } catch (dbErr) {}
     }
 
     return NextResponse.json({
@@ -236,7 +311,13 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const success = await deleteReview(id);
+    const regDeleted = globalCityRegistry.deleteReview(id);
+    let dbDeleted = false;
+    try {
+      dbDeleted = await deleteReview(id);
+    } catch (e) {}
+
+    const success = regDeleted || dbDeleted;
     return NextResponse.json({ success, deleted: success });
   } catch (error: any) {
     console.error("[API /api/reviews DELETE]", error);

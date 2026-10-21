@@ -263,6 +263,9 @@ export default function BusinessProfilePage({
         body: JSON.stringify({
           rating: newRating,
           comment: newComment.trim(),
+          businessName: business.name,
+          cityName: business.cityName || (business as any).city,
+          countryName: business.countryName || (business as any).country,
         }),
       });
     } catch (e) {}
@@ -318,8 +321,8 @@ export default function BusinessProfilePage({
   return (
     <div className="w-full bg-slate-50/60 dark:bg-slate-950 pb-28 sm:pb-24">
       {/* Breadcrumb Navigation */}
-      <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
-        <div className="flex items-center gap-1 text-xs text-muted-foreground overflow-x-auto no-scrollbar whitespace-nowrap">
+      <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 py-2.5 xs:py-3 sm:py-4">
+        <div className="flex items-center gap-1 text-[11px] xs:text-xs text-muted-foreground overflow-x-auto no-scrollbar whitespace-nowrap">
           <Link href="/" className="hover:text-primary transition-colors shrink-0">
             Home
           </Link>
@@ -380,30 +383,30 @@ export default function BusinessProfilePage({
                     allowFullScreen
                   />
                 ) : (
-                  <p className="text-white text-sm">No video tour available</p>
+                  <p className="text-white text-xs xs:text-sm">No video tour available</p>
                 )}
               </div>
             )}
 
             {/* Media Toggle Switch (Photos vs Video Tour) */}
-            <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/70 backdrop-blur-md p-1 xs:p-1.5 rounded-xl xs:rounded-2xl border border-white/20 z-10">
+            <div className="absolute bottom-2.5 xs:bottom-3 right-2.5 xs:right-3 flex items-center gap-1 bg-black/70 backdrop-blur-md p-1 xs:p-1.5 rounded-xl xs:rounded-2xl border border-white/20 z-10">
               <button
                 onClick={() => setActiveMediaTab("photos")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-2.5 xs:px-3 py-1 xs:py-1.5 rounded-lg xs:rounded-xl text-[10px] xs:text-xs font-bold transition-all flex items-center gap-1 xs:gap-1.5 ${
                   activeMediaTab === "photos"
                     ? "bg-white text-slate-900 shadow-md"
                     : "text-white/80 hover:text-white"
                 }`}
               >
-                <ImageIcon className="w-3.5 h-3.5" />
+                <ImageIcon className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
                 Photos ({allPhotos.length})
               </button>
               {effectiveYoutubeVideoId && (
                 <button
                   onClick={() => setActiveMediaTab("video")}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all bg-red-600 hover:bg-red-700 text-white shadow-md"
+                  className="px-2.5 xs:px-3 py-1 xs:py-1.5 rounded-lg xs:rounded-xl text-[10px] xs:text-xs font-bold flex items-center gap-1 xs:gap-1.5 transition-all bg-red-600 hover:bg-red-700 text-white shadow-md"
                 >
-                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <Play className="w-3 h-3 xs:w-3.5 xs:h-3.5 fill-current" />
                   Video Tour
                 </button>
               )}
@@ -411,12 +414,12 @@ export default function BusinessProfilePage({
           </div>
 
           {/* Profile Header Info & Action Controls */}
-          <div className="px-3 xs:px-4 sm:px-6 lg:px-8 pt-0 pb-4 xs:pb-5 sm:pb-6">
+          <div className="px-3 xs:px-4 sm:px-6 lg:px-8 pt-0 pb-3.5 xs:pb-5 sm:pb-6">
 
             {/* Logo + Name row */}
-            <div className="flex items-end gap-3 xs:gap-4 -mt-7 xs:-mt-8 sm:-mt-10 mb-3 xs:mb-4">
+            <div className="flex items-end gap-2.5 xs:gap-3 sm:gap-4 -mt-6 xs:-mt-7 sm:-mt-10 mb-2.5 xs:mb-3 sm:mb-4">
               {/* Logo floats up from the image */}
-              <div className="w-14 h-14 xs:w-16 xs:h-16 sm:w-20 sm:h-20 rounded-xl xs:rounded-2xl border-2 border-card ring-2 ring-border overflow-hidden bg-background shadow-lg shrink-0 relative z-20">
+              <div className="w-12 h-12 xs:w-14 xs:h-14 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-xl xs:rounded-2xl border-2 border-card ring-2 ring-border overflow-hidden bg-background shadow-lg shrink-0 relative z-20">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={business.logoUrl || business.coverUrl || "/placeholder-business.jpg"}
@@ -426,10 +429,10 @@ export default function BusinessProfilePage({
               </div>
 
               {/* Badges — float alongside logo */}
-              <div className="flex flex-wrap items-center gap-1.5 pb-0.5 min-w-0">
+              <div className="flex flex-wrap items-center gap-1 xs:gap-1.5 pb-0.5 min-w-0">
                 {business.isVerified && (
-                  <Badge variant="verified" className="gap-1 text-[10px] xs:text-xs">
-                    <CheckCircle2 className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-blue-500" />
+                  <Badge variant="verified" className="gap-1 text-[9px] xs:text-[10px] sm:text-xs py-0.5 px-1.5 xs:px-2">
+                    <CheckCircle2 className="w-2.5 h-2.5 xs:w-3 xs:h-3 sm:w-3.5 sm:h-3.5 text-blue-500" />
                     Verified
                   </Badge>
                 )}
@@ -441,7 +444,7 @@ export default function BusinessProfilePage({
                       ? "warning"
                       : "destructive"
                   }
-                  className="font-bold text-[10px] xs:text-xs"
+                  className="font-bold text-[9px] xs:text-[10px] sm:text-xs py-0.5 px-1.5 xs:px-2"
                 >
                   {liveStatus.statusText}
                 </Badge>
@@ -449,30 +452,30 @@ export default function BusinessProfilePage({
             </div>
 
             {/* Business name */}
-            <h1 className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-black text-foreground tracking-tight leading-tight mb-1.5 xs:mb-2">
+            <h1 className="text-base xs:text-lg sm:text-2xl lg:text-3xl font-black text-foreground tracking-tight leading-tight mb-1 xs:mb-1.5 sm:mb-2">
               {business.name}
             </h1>
 
             {/* Meta info pills — compact single-line scrollable row */}
-            <div className="flex items-center gap-2 xs:gap-3 text-[11px] xs:text-xs sm:text-sm text-muted-foreground overflow-x-auto no-scrollbar whitespace-nowrap pb-0.5">
+            <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3 text-[10px] xs:text-[11px] sm:text-sm text-muted-foreground overflow-x-auto no-scrollbar whitespace-nowrap pb-0.5">
               <span className="font-semibold text-primary shrink-0">{business.categoryName}</span>
               <span className="shrink-0 text-border">•</span>
               <div className="flex items-center gap-1 font-bold text-foreground shrink-0">
-                <Star className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-amber-500 fill-amber-500" />
+                <Star className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 text-amber-500 fill-amber-500" />
                 <span>{business.ratingAvg.toFixed(1)}</span>
-                <span className="font-normal text-muted-foreground">({reviews.length} reviews)</span>
+                <span className="font-normal text-muted-foreground text-[10px] xs:text-xs">({reviews.length} reviews)</span>
               </div>
               <span className="shrink-0 text-border">•</span>
               <span className="font-bold shrink-0">{business.attributes.priceTier || "$$"}</span>
               <span className="shrink-0 text-border">•</span>
               <span className="flex items-center gap-1 shrink-0">
-                <MapPin className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-indigo-500" />
+                <MapPin className="w-2.5 h-2.5 xs:w-3 xs:h-3 sm:w-3.5 sm:h-3.5 text-indigo-500" />
                 {business.districtName || business.cityName}
               </span>
             </div>
 
             {/* Action Buttons — 2-up grid on XS/S, flex-wrap on MD+ */}
-            <div className="mt-3 xs:mt-4 grid grid-cols-2 xs:grid-cols-2 sm:flex sm:flex-wrap gap-2 xs:gap-2.5">
+            <div className="mt-2.5 xs:mt-3 sm:mt-4 grid grid-cols-2 xs:grid-cols-2 sm:flex sm:flex-wrap gap-1.5 xs:gap-2 sm:gap-2.5">
               {business.telephone && (
                 <a
                   href={`tel:${business.telephone}`}
@@ -481,9 +484,9 @@ export default function BusinessProfilePage({
                 >
                   <Button
                     variant="gradient"
-                    className="w-full sm:w-auto gap-1.5 font-bold shadow-md h-9 xs:h-10 text-xs xs:text-sm rounded-xl"
+                    className="w-full sm:w-auto gap-1 xs:gap-1.5 font-bold shadow-md h-8 xs:h-8.5 sm:h-9.5 md:h-10 text-[11px] xs:text-xs sm:text-sm rounded-lg xs:rounded-xl px-2.5 xs:px-3 sm:px-4"
                   >
-                    <Phone className="w-3.5 h-3.5" />
+                    <Phone className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
                     Call Now
                   </Button>
                 </a>
@@ -500,9 +503,9 @@ export default function BusinessProfilePage({
                 >
                   <Button
                     variant="outline"
-                    className="w-full sm:w-auto gap-1.5 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 font-bold h-9 xs:h-10 text-xs xs:text-sm rounded-xl"
+                    className="w-full sm:w-auto gap-1 xs:gap-1.5 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 font-bold h-8 xs:h-8.5 sm:h-9.5 md:h-10 text-[11px] xs:text-xs sm:text-sm rounded-lg xs:rounded-xl px-2.5 xs:px-3 sm:px-4"
                   >
-                    <MessageSquare className="w-3.5 h-3.5" />
+                    <MessageSquare className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
                     WhatsApp
                   </Button>
                 </a>
@@ -515,14 +518,14 @@ export default function BusinessProfilePage({
                 onClick={() => trackInteraction("click_direction")}
                 className="sm:w-auto"
               >
-                <Button variant="outline" className="w-full sm:w-auto gap-1.5 font-semibold h-9 xs:h-10 text-xs xs:text-sm rounded-xl">
-                  <Navigation className="w-3.5 h-3.5 text-indigo-500" />
+                <Button variant="outline" className="w-full sm:w-auto gap-1 xs:gap-1.5 font-semibold h-8 xs:h-8.5 sm:h-9.5 md:h-10 text-[11px] xs:text-xs sm:text-sm rounded-lg xs:rounded-xl px-2.5 xs:px-3 sm:px-4">
+                  <Navigation className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-indigo-500" />
                   Directions
                 </Button>
               </a>
 
               {/* Save + Share — inline, right-aligned on XS */}
-              <div className="flex items-center gap-2 sm:ml-auto">
+              <div className="flex items-center gap-1.5 xs:gap-2 sm:ml-auto">
                 <FavoriteButton
                   businessId={business.id}
                   businessName={business.name}
@@ -533,13 +536,13 @@ export default function BusinessProfilePage({
                 />
                 <button
                   onClick={handleShare}
-                  className="p-2 xs:p-2.5 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  className="p-1.5 xs:p-2 sm:p-2.5 rounded-lg xs:rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                   title="Share"
                 >
                   {shareCopied ? (
-                    <Check className="w-4 h-4 text-emerald-500" />
+                    <Check className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-emerald-500" />
                   ) : (
-                    <Share2 className="w-4 h-4" />
+                    <Share2 className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
                   )}
                 </button>
               </div>
@@ -549,49 +552,49 @@ export default function BusinessProfilePage({
       </div>
 
       {/* Main Two-Column Content Grid */}
-      <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 mt-5 sm:mt-8 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8">
+      <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 mt-4 xs:mt-5 sm:mt-8 grid grid-cols-1 lg:grid-cols-12 gap-4 xs:gap-5 sm:gap-8">
         {/* Left Column: Details, Services, Amenities, Reviews */}
-        <div className="lg:col-span-8 space-y-8">
+        <div className="lg:col-span-8 space-y-5 xs:space-y-6 sm:space-y-8">
           {/* About Section */}
-          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-6 sm:p-8 shadow-sm">
-            <h2 className="text-lg font-bold text-foreground mb-3">
+          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-3.5 xs:p-5 sm:p-8 shadow-sm">
+            <h2 className="text-base xs:text-lg font-bold text-foreground mb-2 xs:mb-3">
               About This Business
             </h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-xs xs:text-sm text-muted-foreground leading-relaxed">
               {business.description}
             </p>
           </div>
 
           {/* Services / Menu / Products */}
           {business.services && business.services.length > 0 && (
-            <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-6 sm:p-8 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-foreground">
+            <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-3.5 xs:p-5 sm:p-8 shadow-sm">
+              <div className="flex items-center justify-between mb-3 xs:mb-4">
+                <h2 className="text-base xs:text-lg font-bold text-foreground">
                   Services & Menu Highlights
                 </h2>
-                <Badge variant="outline" className="font-semibold text-xs">
+                <Badge variant="outline" className="font-semibold text-[10px] xs:text-xs">
                   {business.services.length} items
                 </Badge>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4">
                 {business.services.map((item) => (
                   <div
                     key={item.id}
-                    className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-border/70 flex flex-col justify-between hover:border-primary/40 transition-colors"
+                    className="p-3 xs:p-4 rounded-xl xs:rounded-2xl bg-slate-50 dark:bg-slate-900 border border-border/70 flex flex-col justify-between hover:border-primary/40 transition-colors"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2">
-                        <span className="font-bold text-sm text-foreground">
+                        <span className="font-bold text-xs xs:text-sm text-foreground">
                           {item.name}
                         </span>
                         {item.price && (
-                          <span className="font-bold text-xs text-primary bg-primary/10 px-2.5 py-1 rounded-lg">
+                          <span className="font-bold text-[10px] xs:text-xs text-primary bg-primary/10 px-2 py-0.5 xs:px-2.5 xs:py-1 rounded-md xs:rounded-lg">
                             {item.price}
                           </span>
                         )}
                       </div>
                       {item.description && (
-                        <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                        <p className="text-[11px] xs:text-xs text-muted-foreground mt-1 xs:mt-1.5 leading-relaxed">
                           {item.description}
                         </p>
                       )}
@@ -612,19 +615,19 @@ export default function BusinessProfilePage({
 
           {/* Photo Gallery Grid Preview */}
           {allPhotos.length > 1 && (
-            <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-6 sm:p-8 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-foreground">
+            <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-3.5 xs:p-5 sm:p-8 shadow-sm">
+              <div className="flex items-center justify-between mb-3 xs:mb-4">
+                <h2 className="text-base xs:text-lg font-bold text-foreground">
                   Photo Gallery
                 </h2>
                 <button
                   onClick={() => handleOpenGallery(0)}
-                  className="text-xs font-bold text-primary hover:underline"
+                  className="text-[11px] xs:text-xs font-bold text-primary hover:underline"
                 >
                   View all ({allPhotos.length}) →
                 </button>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 xs:gap-2.5 sm:gap-3">
                 {allPhotos.slice(0, 4).map((photo: { url: string; title?: string; type?: string; thumbnailUrl?: string }, i: number) => {
                   const isItemVid = photo.type === "video" || isYoutubeUrl(photo.url);
                   const thumb = isItemVid ? (photo.thumbnailUrl || getYoutubeThumbnail(photo.url)) : photo.url;
@@ -633,7 +636,7 @@ export default function BusinessProfilePage({
                     <button
                       key={i}
                       onClick={() => handleOpenGallery(i)}
-                      className="group relative aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-border hover:border-primary/50 transition-all"
+                      className="group relative aspect-[4/3] rounded-xl xs:rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-border hover:border-primary/50 transition-all"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -643,13 +646,13 @@ export default function BusinessProfilePage({
                       />
                       {isItemVid && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/10 transition-colors">
-                          <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center shadow">
-                            <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
+                          <div className="w-7 h-7 xs:w-8 xs:h-8 rounded-full bg-red-600 flex items-center justify-center shadow">
+                            <Play className="w-3 h-3 xs:w-3.5 xs:h-3.5 fill-white text-white ml-0.5" />
                           </div>
                         </div>
                       )}
                       {i === 3 && allPhotos.length > 4 && (
-                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white font-bold text-sm">
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white font-bold text-xs xs:text-sm">
                           +{allPhotos.length - 4} more
                         </div>
                       )}
@@ -661,56 +664,56 @@ export default function BusinessProfilePage({
           )}
 
           {/* Amenities & Attributes */}
-          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-6 sm:p-8 shadow-sm">
-            <h2 className="text-lg font-bold text-foreground mb-4">
+          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-3.5 xs:p-5 sm:p-8 shadow-sm">
+            <h2 className="text-base xs:text-lg font-bold text-foreground mb-3 xs:mb-4">
               Amenities & Key Features
             </h2>
-            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2 xs:gap-3 text-xs font-semibold">
+            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2 xs:gap-2.5 sm:gap-3 text-[11px] xs:text-xs font-semibold">
               {business.attributes.delivery && (
-                <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
-                  <Truck className="w-4 h-4 text-emerald-500 shrink-0" />
+                <div className="flex items-center gap-2 xs:gap-2.5 p-2.5 xs:p-3 sm:p-3.5 rounded-lg xs:rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
+                  <Truck className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-emerald-500 shrink-0" />
                   <span>Delivery Available</span>
                 </div>
               )}
               {business.attributes.parking && (
-                <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
-                  <Car className="w-4 h-4 text-indigo-500 shrink-0" />
+                <div className="flex items-center gap-2 xs:gap-2.5 p-2.5 xs:p-3 sm:p-3.5 rounded-lg xs:rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
+                  <Car className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-indigo-500 shrink-0" />
                   <span>Dedicated Parking</span>
                 </div>
               )}
               {business.attributes.wifi && (
-                <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
-                  <Wifi className="w-4 h-4 text-blue-500 shrink-0" />
+                <div className="flex items-center gap-2 xs:gap-2.5 p-2.5 xs:p-3 sm:p-3.5 rounded-lg xs:rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
+                  <Wifi className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-blue-500 shrink-0" />
                   <span>High-speed Wi-Fi</span>
                 </div>
               )}
               {business.attributes.acceptsCards && (
-                <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
-                  <CreditCard className="w-4 h-4 text-purple-500 shrink-0" />
-                  <span>Accepts Credit/Debit Cards</span>
+                <div className="flex items-center gap-2 xs:gap-2.5 p-2.5 xs:p-3 sm:p-3.5 rounded-lg xs:rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
+                  <CreditCard className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-purple-500 shrink-0" />
+                  <span>Accepts Cards</span>
                 </div>
               )}
               {business.attributes.outdoorSeating && (
-                <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
-                  <Armchair className="w-4 h-4 text-amber-500 shrink-0" />
+                <div className="flex items-center gap-2.5 p-2.5 xs:p-3 sm:p-3.5 rounded-lg xs:rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
+                  <Armchair className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-amber-500 shrink-0" />
                   <span>Outdoor Patio Seating</span>
                 </div>
               )}
               {business.attributes.airConditioning && (
-                <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
-                  <Sparkles className="w-4 h-4 text-cyan-500 shrink-0" />
+                <div className="flex items-center gap-2.5 p-2.5 xs:p-3 sm:p-3.5 rounded-lg xs:rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
+                  <Sparkles className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-cyan-500 shrink-0" />
                   <span>Air Conditioning</span>
                 </div>
               )}
               {business.attributes.petFriendly && (
-                <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
-                  <Check className="w-4 h-4 text-orange-500 shrink-0" />
+                <div className="flex items-center gap-2.5 p-2.5 xs:p-3 sm:p-3.5 rounded-lg xs:rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
+                  <Check className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-orange-500 shrink-0" />
                   <span>Pet Friendly</span>
                 </div>
               )}
               {business.attributes.accessible && (
-                <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
-                  <ShieldCheck className="w-4 h-4 text-teal-500 shrink-0" />
+                <div className="flex items-center gap-2.5 p-2.5 xs:p-3 sm:p-3.5 rounded-lg xs:rounded-xl bg-slate-50 dark:bg-slate-900 border border-border/60">
+                  <ShieldCheck className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-teal-500 shrink-0" />
                   <span>Wheelchair Accessible</span>
                 </div>
               )}
@@ -718,18 +721,18 @@ export default function BusinessProfilePage({
           </div>
 
           {/* Customer Reviews Section */}
-          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-6 sm:p-8 shadow-sm space-y-5 sm:space-y-6">
+          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-3.5 xs:p-5 sm:p-8 shadow-sm space-y-4 xs:space-y-5 sm:space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-foreground">
+                <h2 className="text-base xs:text-lg font-bold text-foreground">
                   Ratings & Reviews
                 </h2>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-1.5 xs:gap-2 mt-0.5 xs:mt-1">
                   <div className="flex items-center text-amber-500">
                     {[1, 2, 3, 4, 5].map((s) => (
                       <Star
                         key={s}
-                        className={`w-4 h-4 ${
+                        className={`w-3.5 h-3.5 xs:w-4 xs:h-4 ${
                           s <= Math.round(business.ratingAvg)
                             ? "fill-current"
                             : "text-slate-300 dark:text-slate-700"
@@ -737,10 +740,10 @@ export default function BusinessProfilePage({
                       />
                     ))}
                   </div>
-                  <span className="text-sm font-bold text-foreground">
+                  <span className="text-xs xs:text-sm font-bold text-foreground">
                     {business.ratingAvg.toFixed(1)} out of 5
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-[10px] xs:text-xs text-muted-foreground">
                     • {reviews.length} total reviews
                   </span>
                 </div>
@@ -750,11 +753,11 @@ export default function BusinessProfilePage({
             {/* Write a Review Box */}
             <form
               onSubmit={handleAddReview}
-              className="p-3.5 xs:p-5 rounded-xl xs:rounded-2xl bg-slate-50 dark:bg-slate-900 border border-border/70 space-y-3.5 shadow-inner"
+              className="p-3 xs:p-4 sm:p-5 rounded-xl xs:rounded-2xl bg-slate-50 dark:bg-slate-900 border border-border/70 space-y-3 shadow-inner"
             >
-              <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2.5 xs:gap-3">
+                <div className="flex flex-wrap items-center gap-1.5 xs:gap-2">
+                  <span className="text-[10px] xs:text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Share Your Experience
                   </span>
                   <Button
@@ -762,17 +765,17 @@ export default function BusinessProfilePage({
                     size="sm"
                     variant="outline"
                     onClick={() => setIsWriteReviewOpen(true)}
-                    className="h-7 text-xs font-bold gap-1 text-primary hover:text-primary"
+                    className="h-6.5 xs:h-7 text-[10px] xs:text-xs font-bold gap-1 text-primary hover:text-primary px-2"
                   >
-                    <Star className="w-3.5 h-3.5" /> Full Review Wizard
+                    <Star className="w-3 h-3 xs:w-3.5 xs:h-3.5" /> Wizard
                   </Button>
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-semibold text-muted-foreground">
+                  <span className="text-[10px] xs:text-xs font-semibold text-muted-foreground">
                     Rating:
                   </span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-0.5">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
@@ -781,7 +784,7 @@ export default function BusinessProfilePage({
                         className="p-0.5 hover:scale-110 transition-transform"
                       >
                         <Star
-                          className={`w-5 h-5 ${
+                          className={`w-4 h-4 xs:w-5 xs:h-5 ${
                             star <= newRating
                               ? "text-amber-500 fill-amber-500"
                               : "text-slate-300 dark:text-slate-700"
@@ -798,7 +801,7 @@ export default function BusinessProfilePage({
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Write a helpful review (food quality, service, ambiance, pricing, parking)..."
                 rows={3}
-                className="w-full rounded-xl border border-input bg-background p-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary leading-relaxed"
+                className="w-full rounded-xl border border-input bg-background p-2.5 xs:p-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary leading-relaxed"
               />
 
               <div className="flex justify-end">
@@ -807,23 +810,23 @@ export default function BusinessProfilePage({
                   size="sm"
                   variant="gradient"
                   disabled={!newComment.trim() || isSubmittingReview}
-                  className="gap-2 font-bold shadow-md"
+                  className="gap-1.5 font-bold shadow-md h-7.5 xs:h-8 sm:h-9 text-xs px-3"
                 >
-                  <Send className="w-3.5 h-3.5" />
+                  <Send className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
                   Post Review
                 </Button>
               </div>
             </form>
 
             {/* Reviews Feed */}
-            <div className="space-y-4 pt-2 divide-y divide-border/60">
+            <div className="space-y-3.5 xs:space-y-4 pt-1 xs:pt-2 divide-y divide-border/60">
               {reviews.map((rev) => {
                 const isLiked = likedReviewIds.includes(rev.id);
                 return (
-                  <div key={rev.id} className="pt-4 first:pt-0 space-y-2.5">
+                  <div key={rev.id} className="pt-3.5 xs:pt-4 first:pt-0 space-y-2 xs:space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                      <div className="flex items-center gap-2 xs:gap-2.5">
+                        <div className="w-7 h-7 xs:w-8 xs:h-8 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={
@@ -835,27 +838,27 @@ export default function BusinessProfilePage({
                           />
                         </div>
                         <div>
-                          <div className="text-xs font-bold text-foreground">
+                          <div className="text-[11px] xs:text-xs font-bold text-foreground">
                             {rev.userName}
                           </div>
-                          <div className="text-[10px] text-muted-foreground">
+                          <div className="text-[9px] xs:text-[10px] text-muted-foreground">
                             {new Date(rev.createdAt).toLocaleDateString()}
                           </div>
                         </div>
                       </div>
 
-                        <div className="flex items-center text-amber-500">
-                          {[1, 2, 3, 4, 5].map((s) => (
-                            <Star
-                              key={s}
-                              className={`w-3.5 h-3.5 ${
-                                s <= rev.rating
-                                  ? "fill-current"
-                                  : "text-slate-300 dark:text-slate-700"
-                              }`}
-                            />
-                          ))}
-                        </div>
+                      <div className="flex items-center text-amber-500">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            className={`w-3 h-3 xs:w-3.5 xs:h-3.5 ${
+                              s <= rev.rating
+                                ? "fill-current"
+                                : "text-slate-300 dark:text-slate-700"
+                            }`}
+                          />
+                        ))}
+                      </div>
                     </div>
 
                     <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed">
@@ -864,30 +867,30 @@ export default function BusinessProfilePage({
 
                     {/* Photos in Review */}
                     {rev.photos && rev.photos.length > 0 && (
-                      <div className="flex items-center gap-2 pt-1">
+                      <div className="flex items-center gap-1.5 xs:gap-2 pt-1">
                         {rev.photos.map((photo, i) => (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             key={i}
                             src={photo}
                             alt="Review photo"
-                            className="w-16 h-16 rounded-xl object-cover border border-border"
+                            className="w-14 h-14 xs:w-16 xs:h-16 rounded-lg xs:rounded-xl object-cover border border-border"
                           />
                         ))}
                       </div>
                     )}
 
                     {/* Helpful Thumbs Up Action */}
-                    <div className="flex items-center gap-2 pt-1 text-xs">
+                    <div className="flex items-center gap-2 pt-0.5 xs:pt-1 text-[11px] xs:text-xs">
                       <button
                         onClick={() => handleToggleLikeReview(rev.id)}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-colors ${
+                        className={`inline-flex items-center gap-1.5 px-2 xs:px-2.5 py-0.5 xs:py-1 rounded-lg transition-colors ${
                           isLiked
                             ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 font-bold"
                             : "text-muted-foreground hover:bg-accent hover:text-foreground"
                         }`}
                       >
-                        <ThumbsUp className="w-3.5 h-3.5" />
+                        <ThumbsUp className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
                         <span>
                           Helpful ({(rev.likesCount ?? 0) + (isLiked ? 1 : 0)})
                         </span>
@@ -896,12 +899,12 @@ export default function BusinessProfilePage({
 
                     {/* Owner Response */}
                     {rev.reply && (
-                      <div className="mt-3 p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 ml-4 space-y-1">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                      <div className="mt-2.5 xs:mt-3 p-2.5 xs:p-3.5 rounded-xl xs:rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 ml-3 xs:ml-4 space-y-1">
+                        <div className="flex items-center gap-1 xs:gap-1.5 text-[11px] xs:text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                          <CheckCircle2 className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
                           Response from {rev.reply.ownerName}
                         </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
+                        <p className="text-[11px] xs:text-xs text-muted-foreground leading-relaxed">
                           {rev.reply.comment}
                         </p>
                       </div>
@@ -914,10 +917,10 @@ export default function BusinessProfilePage({
         </div>
 
         {/* Right Column: Opening Hours, Location Map, Contact Info, Claim Box, Similar Businesses */}
-        <div className="lg:col-span-4 space-y-5 sm:space-y-6">
+        <div className="lg:col-span-4 space-y-4 xs:space-y-5 sm:space-y-6">
           {/* Mini Interactive Map */}
-          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-5 shadow-sm space-y-3">
-            <div className="flex items-center justify-between text-xs font-bold text-foreground uppercase tracking-wider">
+          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-3.5 xs:p-4 sm:p-5 shadow-sm space-y-2.5 xs:space-y-3">
+            <div className="flex items-center justify-between text-[10px] xs:text-xs font-bold text-foreground uppercase tracking-wider">
               <span>Location & Pin</span>
               <span className="text-primary font-semibold">Live GPS</span>
             </div>
@@ -927,13 +930,13 @@ export default function BusinessProfilePage({
               name={business.name}
               addressLine={business.addressLine}
             />
-            <div className="text-xs text-muted-foreground space-y-1 pt-1">
+            <div className="text-[11px] xs:text-xs text-muted-foreground space-y-1 pt-0.5 xs:pt-1">
               <div className="flex items-center gap-1.5 font-medium text-foreground">
-                <MapPin className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                <MapPin className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-indigo-500 shrink-0" />
                 <span>{business.addressLine}</span>
               </div>
               {(business.building || business.floorNumber) && (
-                <div className="text-[11px] text-muted-foreground pl-5">
+                <div className="text-[10px] xs:text-[11px] text-muted-foreground pl-4 xs:pl-5">
                   Building: {business.building || "—"} | Floor: {business.floorNumber || "—"}
                 </div>
               )}
@@ -941,10 +944,10 @@ export default function BusinessProfilePage({
           </div>
 
           {/* Opening Hours Widget */}
-          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-5 sm:p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2 font-bold text-base text-foreground">
-                <Clock className="w-4 h-4 text-indigo-500" />
+          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-3.5 xs:p-4 sm:p-5 sm:p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-3 xs:mb-4">
+              <div className="flex items-center gap-1.5 xs:gap-2 font-bold text-sm xs:text-base text-foreground">
+                <Clock className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-indigo-500" />
                 Opening Hours
               </div>
               <Badge
@@ -955,25 +958,25 @@ export default function BusinessProfilePage({
                     ? "warning"
                     : "destructive"
                 }
-                className="text-[10px] font-bold"
+                className="text-[9px] xs:text-[10px] font-bold"
               >
                 {liveStatus.isOpen ? "Open Now" : "Closed"}
               </Badge>
             </div>
 
-            <div className="space-y-2.5 divide-y divide-border/40 text-xs">
+            <div className="space-y-2 xs:space-y-2.5 divide-y divide-border/40 text-[11px] xs:text-xs">
               {weekSchedule.map((slot) => (
                 <div
                   key={slot.day}
-                  className={`pt-2 first:pt-0 flex items-center justify-between ${
+                  className={`pt-1.5 xs:pt-2 first:pt-0 flex items-center justify-between ${
                     slot.isToday
-                      ? "font-bold text-primary bg-primary/5 -mx-2 px-2 py-1.5 rounded-xl"
+                      ? "font-bold text-primary bg-primary/5 -mx-2 px-2 py-1 xs:py-1.5 rounded-lg xs:rounded-xl"
                       : "text-muted-foreground"
                   }`}
                 >
-                  <span className="flex items-center gap-1.5">
+                  <span className="flex items-center gap-1 xs:gap-1.5">
                     {slot.isToday && (
-                      <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                     )}
                     {slot.day}
                   </span>
@@ -985,37 +988,37 @@ export default function BusinessProfilePage({
 
           {/* Business Overview & Registration Card */}
           {(business.businessType || business.yearEstablished || business.businessLevel) && (
-            <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-5 sm:p-6 shadow-sm space-y-3.5 text-xs">
-              <h3 className="font-bold text-base text-foreground mb-1">
+            <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-3.5 xs:p-4 sm:p-5 sm:p-6 shadow-sm space-y-3 xs:space-y-3.5 text-xs">
+              <h3 className="font-bold text-sm xs:text-base text-foreground mb-1">
                 Business Information
               </h3>
 
               {business.businessType && (
-                <div className="flex items-start gap-2.5">
-                  <Building2 className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2 xs:gap-2.5">
+                  <Building2 className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-indigo-500 shrink-0 mt-0.5" />
                   <div>
-                    <div className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Business / Legal Type</div>
-                    <div className="font-semibold text-foreground text-sm">{business.businessType}</div>
+                    <div className="text-[10px] xs:text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Business / Legal Type</div>
+                    <div className="font-semibold text-foreground text-xs xs:text-sm">{business.businessType}</div>
                   </div>
                 </div>
               )}
 
               {business.yearEstablished && (
-                <div className="flex items-start gap-2.5">
-                  <Calendar className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2 xs:gap-2.5">
+                  <Calendar className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-primary shrink-0 mt-0.5" />
                   <div>
-                    <div className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Year Established</div>
-                    <div className="font-semibold text-foreground text-sm">Founded in {business.yearEstablished}</div>
+                    <div className="text-[10px] xs:text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Year Established</div>
+                    <div className="font-semibold text-foreground text-xs xs:text-sm">Founded in {business.yearEstablished}</div>
                   </div>
                 </div>
               )}
 
               {business.businessLevel && (
-                <div className="flex items-start gap-2.5">
-                  <Layers className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2 xs:gap-2.5">
+                  <Layers className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-amber-500 shrink-0 mt-0.5" />
                   <div>
-                    <div className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Business Scale</div>
-                    <div className="font-semibold text-foreground capitalize text-sm">{business.businessLevel} Enterprise</div>
+                    <div className="text-[10px] xs:text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Business Scale</div>
+                    <div className="font-semibold text-foreground capitalize text-xs xs:text-sm">{business.businessLevel} Enterprise</div>
                   </div>
                 </div>
               )}
@@ -1023,14 +1026,14 @@ export default function BusinessProfilePage({
           )}
 
           {/* Contact & Location Info */}
-          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-5 sm:p-6 shadow-sm space-y-3.5 text-xs">
-            <h3 className="font-bold text-base text-foreground mb-1">
+          <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-3.5 xs:p-4 sm:p-5 sm:p-6 shadow-sm space-y-2.5 xs:space-y-3.5 text-[11px] xs:text-xs">
+            <h3 className="font-bold text-sm xs:text-base text-foreground mb-1">
               Direct Contact
             </h3>
 
             {business.telephone && (
-              <div className="flex items-center gap-2.5 text-muted-foreground">
-                <Phone className="w-4 h-4 text-indigo-500 shrink-0" />
+              <div className="flex items-center gap-2 xs:gap-2.5 text-muted-foreground">
+                <Phone className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-indigo-500 shrink-0" />
                 <a
                   href={`tel:${business.telephone}`}
                   className="hover:text-primary font-medium"
@@ -1041,8 +1044,8 @@ export default function BusinessProfilePage({
             )}
 
             {business.whatsapp && (
-              <div className="flex items-center gap-2.5 text-muted-foreground">
-                <MessageSquare className="w-4 h-4 text-emerald-500 shrink-0" />
+              <div className="flex items-center gap-2 xs:gap-2.5 text-muted-foreground">
+                <MessageSquare className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-emerald-500 shrink-0" />
                 <a
                   href={`https://wa.me/${business.whatsapp}`}
                   target="_blank"
@@ -1055,11 +1058,11 @@ export default function BusinessProfilePage({
             )}
 
             {business.email && (
-              <div className="flex items-center gap-2.5 text-muted-foreground">
-                <Mail className="w-4 h-4 text-indigo-500 shrink-0" />
+              <div className="flex items-center gap-2 xs:gap-2.5 text-muted-foreground">
+                <Mail className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-indigo-500 shrink-0" />
                 <a
                   href={`mailto:${business.email}`}
-                  className="hover:text-primary font-medium"
+                  className="hover:text-primary font-medium truncate"
                 >
                   {business.email}
                 </a>
@@ -1067,13 +1070,13 @@ export default function BusinessProfilePage({
             )}
 
             {business.website && (
-              <div className="flex items-center gap-2.5 text-muted-foreground">
-                <Globe className="w-4 h-4 text-indigo-500 shrink-0" />
+              <div className="flex items-center gap-2 xs:gap-2.5 text-muted-foreground">
+                <Globe className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-indigo-500 shrink-0" />
                 <a
                   href={normalizeUrl(business.website)}
                   target="_blank"
                   rel="noreferrer"
-                  className="hover:text-primary font-medium truncate max-w-[220px]"
+                  className="hover:text-primary font-medium truncate max-w-[200px] xs:max-w-[220px]"
                 >
                   {business.website}
                 </a>
@@ -1083,10 +1086,10 @@ export default function BusinessProfilePage({
 
           {/* Social Media Card */}
           {(business.facebookUrl || business.instagramUrl || business.tiktokUrl) && (
-            <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-5 sm:p-6 shadow-sm space-y-3 text-xs">
+            <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-3.5 xs:p-4 sm:p-5 sm:p-6 shadow-sm space-y-2.5 xs:space-y-3 text-xs">
               <div className="flex items-center justify-between mb-1">
-                <h3 className="font-bold text-base text-foreground">Social Media</h3>
-                <span className="text-[11px] text-muted-foreground font-medium">Official Links</span>
+                <h3 className="font-bold text-sm xs:text-base text-foreground">Social Media</h3>
+                <span className="text-[10px] xs:text-[11px] text-muted-foreground font-medium">Official Links</span>
               </div>
 
               {business.facebookUrl && (
@@ -1094,20 +1097,20 @@ export default function BusinessProfilePage({
                   href={normalizeUrl(business.facebookUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-all group"
+                  className="flex items-center justify-between p-2.5 xs:p-3 rounded-xl xs:rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-all group"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-[#1877F2]/10 flex items-center justify-center shrink-0">
-                      <svg viewBox="0 0 24 24" fill="#1877F2" className="w-4 h-4"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                  <div className="flex items-center gap-2.5 xs:gap-3 min-w-0">
+                    <div className="w-7 h-7 xs:w-8 xs:h-8 rounded-lg xs:rounded-xl bg-[#1877F2]/10 flex items-center justify-center shrink-0">
+                      <svg viewBox="0 0 24 24" fill="#1877F2" className="w-3.5 h-3.5 xs:w-4 xs:h-4"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                     </div>
                     <div className="min-w-0">
                       <div className="font-bold text-foreground text-xs">Facebook</div>
-                      <div className="text-[11px] text-muted-foreground truncate group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                      <div className="text-[10px] xs:text-[11px] text-muted-foreground truncate group-hover:text-blue-600 dark:group-hover:text-blue-400">
                         {getSocialHandle(business.facebookUrl, "facebook")}
                       </div>
                     </div>
                   </div>
-                  <ExternalLink className="w-3.5 h-3.5 text-muted-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 shrink-0 ml-2" />
+                  <ExternalLink className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-muted-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 shrink-0 ml-2" />
                 </a>
               )}
 
@@ -1116,23 +1119,23 @@ export default function BusinessProfilePage({
                   href={normalizeUrl(business.instagramUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3 rounded-2xl bg-pink-50/50 dark:bg-pink-950/20 border border-pink-100 dark:border-pink-900/40 hover:border-pink-300 dark:hover:border-pink-700 hover:bg-pink-50 dark:hover:bg-pink-950/40 transition-all group"
+                  className="flex items-center justify-between p-2.5 xs:p-3 rounded-xl xs:rounded-2xl bg-pink-50/50 dark:bg-pink-950/20 border border-pink-100 dark:border-pink-900/40 hover:border-pink-300 dark:hover:border-pink-700 hover:bg-pink-50 dark:hover:bg-pink-950/40 transition-all group"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-pink-500/10 flex items-center justify-center shrink-0">
-                      <svg viewBox="0 0 24 24" className="w-4 h-4">
+                  <div className="flex items-center gap-2.5 xs:gap-3 min-w-0">
+                    <div className="w-7 h-7 xs:w-8 xs:h-8 rounded-lg xs:rounded-xl bg-pink-500/10 flex items-center justify-center shrink-0">
+                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 xs:w-4 xs:h-4">
                         <defs><linearGradient id="card-ig-grad" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#FFDC80"/><stop offset="20%" stopColor="#FCAF45"/><stop offset="40%" stopColor="#F77737"/><stop offset="60%" stopColor="#F56040"/><stop offset="80%" stopColor="#FD1D1D"/><stop offset="100%" stopColor="#833AB4"/></linearGradient></defs>
                         <path fill="url(#card-ig-grad)" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
                       </svg>
                     </div>
                     <div className="min-w-0">
                       <div className="font-bold text-foreground text-xs">Instagram</div>
-                      <div className="text-[11px] text-muted-foreground truncate group-hover:text-pink-600 dark:group-hover:text-pink-400">
+                      <div className="text-[10px] xs:text-[11px] text-muted-foreground truncate group-hover:text-pink-600 dark:group-hover:text-pink-400">
                         {getSocialHandle(business.instagramUrl, "instagram")}
                       </div>
                     </div>
                   </div>
-                  <ExternalLink className="w-3.5 h-3.5 text-muted-foreground group-hover:text-pink-600 dark:group-hover:text-pink-400 shrink-0 ml-2" />
+                  <ExternalLink className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-muted-foreground group-hover:text-pink-600 dark:group-hover:text-pink-400 shrink-0 ml-2" />
                 </a>
               )}
 
@@ -1141,42 +1144,42 @@ export default function BusinessProfilePage({
                   href={normalizeUrl(business.tiktokUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-border hover:border-slate-400 dark:hover:border-slate-600 transition-all group"
+                  className="flex items-center justify-between p-2.5 xs:p-3 rounded-xl xs:rounded-2xl bg-slate-50 dark:bg-slate-900 border border-border hover:border-slate-400 dark:hover:border-slate-600 transition-all group"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center gap-2.5 xs:gap-3 min-w-0">
                   {/* TikTok */}
-                  <div className="w-4 h-4 shrink-0 flex items-center justify-center">
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-foreground"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.98a8.19 8.19 0 004.79 1.54V7.07a4.85 4.85 0 01-1.03-.38z"/></svg>
+                  <div className="w-3.5 h-3.5 xs:w-4 xs:h-4 shrink-0 flex items-center justify-center">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-foreground"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.98a8.19 8.19 0 004.79 1.54V7.07a4.85 4.85 0 01-1.03-.38z"/></svg>
                   </div>
                     <div className="min-w-0">
                       <div className="font-bold text-foreground text-xs">TikTok</div>
-                      <div className="text-[11px] text-muted-foreground truncate group-hover:text-foreground">
+                      <div className="text-[10px] xs:text-[11px] text-muted-foreground truncate group-hover:text-foreground">
                         {getSocialHandle(business.tiktokUrl, "tiktok")}
                       </div>
                     </div>
                   </div>
-                  <ExternalLink className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground shrink-0 ml-2" />
+                  <ExternalLink className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-muted-foreground group-hover:text-foreground shrink-0 ml-2" />
                 </a>
               )}
             </div>
           )}
 
           {/* Claim This Business Widget */}
-          <div className="rounded-2xl xs:rounded-3xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/60 dark:bg-indigo-950/30 p-4 xs:p-5 sm:p-6 shadow-sm space-y-2.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
+          <div className="rounded-2xl xs:rounded-3xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/60 dark:bg-indigo-950/30 p-3.5 xs:p-4 sm:p-5 sm:p-6 shadow-sm space-y-2 xs:space-y-2.5">
+            <span className="text-[10px] xs:text-[11px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
               Business Owner?
             </span>
-            <h4 className="font-bold text-sm text-foreground">
+            <h4 className="font-bold text-xs xs:text-sm text-foreground">
               Own or manage {business.name}?
             </h4>
-            <p className="text-xs text-muted-foreground leading-relaxed">
+            <p className="text-[11px] xs:text-xs text-muted-foreground leading-relaxed">
               Verify your ownership to manage contact details, post menus/services, and respond directly to customer reviews.
             </p>
             <Link href={`/claim/${business.id}`}>
               <Button
                 size="sm"
                 variant="gradient"
-                className="w-full mt-2 font-bold shadow-md shadow-indigo-500/10"
+                className="w-full mt-2 font-bold shadow-md shadow-indigo-500/10 h-7.5 xs:h-8.5 sm:h-9 text-xs"
               >
                 Claim This Business
               </Button>
@@ -1185,28 +1188,28 @@ export default function BusinessProfilePage({
 
           {/* Similar Businesses Nearby */}
           {similarBusinesses.length > 0 && (
-            <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-4 xs:p-5 sm:p-6 shadow-sm space-y-4">
-              <h3 className="font-bold text-sm text-foreground uppercase tracking-wider">
+            <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-3.5 xs:p-4 sm:p-5 sm:p-6 shadow-sm space-y-3 xs:space-y-4">
+              <h3 className="font-bold text-xs xs:text-sm text-foreground uppercase tracking-wider">
                 Similar Places Nearby
               </h3>
-              <div className="space-y-3">
+              <div className="space-y-2 xs:space-y-3">
                 {similarBusinesses.slice(0, 3).map((sim) => (
                   <Link
                     key={sim.id}
                     href={`/business/${sim.id}`}
-                    className="group flex items-center gap-3 p-2 rounded-2xl hover:bg-accent transition-colors"
+                    className="group flex items-center gap-2.5 xs:gap-3 p-1.5 xs:p-2 rounded-xl xs:rounded-2xl hover:bg-accent transition-colors"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={sim.coverUrl || "/placeholder-business.jpg"}
                       alt={sim.name}
-                      className="w-12 h-12 rounded-xl object-cover shrink-0"
+                      className="w-10 h-10 xs:w-12 xs:h-12 rounded-lg xs:rounded-xl object-cover shrink-0"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-xs text-foreground group-hover:text-primary transition-colors truncate">
                         {sim.name}
                       </div>
-                      <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <div className="text-[10px] xs:text-[11px] text-muted-foreground flex items-center gap-1">
                         <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                         <span>{sim.ratingAvg.toFixed(1)}</span>
                         <span>•</span>
@@ -1237,10 +1240,13 @@ export default function BusinessProfilePage({
         isOpen={isWriteReviewOpen}
         onClose={() => setIsWriteReviewOpen(false)}
         business={business}
-        onSubmit={(submitted) => {
+        onSubmit={async (submitted) => {
           const newRev: Review = {
             id: `rev-${Date.now()}`,
             businessId: business.id,
+            businessName: business.name,
+            cityName: business.cityName || (business as any).city,
+            countryName: business.countryName || (business as any).country,
             userId: "user-current",
             userName: submitted.authorName || "You (Verified Customer)",
             userAvatar:
@@ -1253,6 +1259,23 @@ export default function BusinessProfilePage({
             createdAt: submitted.submittedAt || new Date().toISOString(),
           };
           setReviews((prev) => [newRev, ...prev]);
+
+          try {
+            await fetch(`/api/businesses/${business.id}/reviews`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                rating: submitted.rating,
+                comment: newRev.comment,
+                userName: submitted.authorName,
+                businessName: business.name,
+                cityName: business.cityName || (business as any).city,
+                countryName: business.countryName || (business as any).country,
+              }),
+            });
+          } catch (e) {
+            console.error("Failed to post review to API:", e);
+          }
         }}
       />
     </div>

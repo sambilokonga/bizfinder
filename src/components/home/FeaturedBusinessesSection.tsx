@@ -37,31 +37,31 @@ export function FeaturedBusinessesSection({
 
   return (
     <section className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 mt-12 xs:mt-16 sm:mt-20">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 sm:mb-8 gap-3 sm:gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-4 xs:mb-6 sm:mb-8 gap-2.5 xs:gap-3 sm:gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">
-            <TrendingUp className="w-4 h-4 text-indigo-500" />
+          <div className="inline-flex items-center gap-1.5 text-[10px] xs:text-[11px] sm:text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">
+            <TrendingUp className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 text-indigo-500" />
             Hand-picked & Verified
           </div>
-          <h2 className="text-xl xs:text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+          <h2 className="text-lg xs:text-xl sm:text-2xl md:text-3xl font-black text-foreground tracking-tight">
             Featured Local Businesses
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
+          <p className="text-[11px] xs:text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
             Discover latest verified additions and popular community picks.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-1 sm:pb-0 shrink-0">
+        <div className="flex items-center gap-1.5 xs:gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-0.5 sm:pb-0 shrink-0">
           <Button
             variant="outline"
             size="sm"
             onClick={handleShuffle}
             disabled={isRefreshing}
-            className="gap-2 font-medium rounded-xl text-xs sm:text-sm hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shrink-0"
+            className="h-7.5 xs:h-8 sm:h-9 px-2.5 xs:px-3 sm:px-3.5 rounded-lg xs:rounded-xl gap-1.5 text-[11px] xs:text-xs sm:text-sm font-medium hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shrink-0"
             title="Discover different listings"
           >
             <RotateCw
-              className={`w-3.5 h-3.5 text-indigo-500 transition-transform ${
+              className={`w-3 h-3 xs:w-3.5 xs:h-3.5 text-indigo-500 transition-transform ${
                 isRefreshing ? "animate-spin" : ""
               }`}
             />
@@ -72,10 +72,10 @@ export function FeaturedBusinessesSection({
             <Button
               variant="default"
               size="sm"
-              className="gap-2 font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm text-xs sm:text-sm shrink-0"
+              className="h-7.5 xs:h-8 sm:h-9 px-2.5 xs:px-3 sm:px-3.5 rounded-lg xs:rounded-xl gap-1.5 font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs text-[11px] xs:text-xs sm:text-sm shrink-0"
             >
-              Browse All Listings
-              <ArrowRight className="w-4 h-4" />
+              <span>Browse All</span>
+              <ArrowRight className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
             </Button>
           </Link>
         </div>

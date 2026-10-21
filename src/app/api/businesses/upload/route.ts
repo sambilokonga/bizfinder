@@ -4,6 +4,7 @@ import { createBusiness } from "@/lib/db/queries/businesses";
 import { dispatchBusinessConfirmationNotifications } from "@/lib/notifications/business-confirmation";
 import { getUserByClerkId } from "@/lib/db/queries/users";
 import { Business } from "@/types/business";
+import { globalCityRegistry } from "@/lib/data/city-business-registry";
 
 export async function POST(request: Request) {
   let userId: string | null = null;
@@ -89,6 +90,13 @@ export async function POST(request: Request) {
       const created = await createBusiness(newBizPayload as any);
       createdList.push(created);
 
+      // Register in global city registry for city & country visibility
+      try {
+        globalCityRegistry.registerBusiness(created);
+      } catch (regErr) {
+        console.warn(`[Upload] Registry note for "${created.name}":`, regErr);
+      }
+
       // Dispatch confirmation alert for this listing
       try {
         const dispatchRes = await dispatchBusinessConfirmationNotifications({
@@ -103,6 +111,31 @@ export async function POST(request: Request) {
         notificationsCount += dispatchRes.notifications.length;
       } catch (dispErr) {
         console.warn(`[Upload] Alert dispatch failed for "${created.name}":`, dispErr);
+      }
+    }
+
+    // Immediately associate uploader with uploaded city & country in UserModel
+    if (createdList.length > 0) {
+      try {
+        const { UserModel } = await import("@/lib/db/models/User");
+        const firstBiz = createdList[0];
+        const targetOwnerId = userId || defaultOwnerId;
+        if (targetOwnerId && (firstBiz.countryName || firstBiz.cityName)) {
+          await UserModel.findOneAndUpdate(
+            { $or: [{ id: targetOwnerId }, { clerkId: targetOwnerId }] },
+            {
+              $set: {
+                ...(firstBiz.countryName && { country: firstBiz.countryName, assignedCountry: firstBiz.countryName }),
+                ...(firstBiz.cityName && { city: firstBiz.cityName, assignedCity: firstBiz.cityName }),
+                role: "owner",
+                updatedAt: new Date(),
+              },
+              $addToSet: { claimedBusinessIds: { $each: createdList.map((b) => b.id) } },
+            }
+          );
+        }
+      } catch (uErr) {
+        console.warn("[Upload] User geo-update warning:", uErr);
       }
     }
 

@@ -95,8 +95,8 @@ const TicketSchema = new Schema<ITicketDoc>(
     messages: [TicketMessageSchema],
     lastReply: { type: String },
     lastReplyAt: { type: Date, default: Date.now },
-    city: { type: String, default: "Addis Ababa" },
-    country: { type: String, default: "Ethiopia" },
+    city: { type: String, index: true },
+    country: { type: String, index: true },
   },
   {
     timestamps: true,
@@ -109,6 +109,9 @@ TicketSchema.index({ userId: 1, createdAt: -1 });
 TicketSchema.index({ businessId: 1, status: 1 });
 TicketSchema.index({ priority: 1, status: 1 });
 TicketSchema.index({ category: 1, status: 1 });
+TicketSchema.index({ country: 1, status: 1 });
+TicketSchema.index({ city: 1, status: 1 });
+TicketSchema.index({ city: 1, country: 1 });
 
 export const TicketModel =
   mongoose.models.Ticket || mongoose.model<ITicketDoc>("Ticket", TicketSchema);

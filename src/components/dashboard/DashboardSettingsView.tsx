@@ -33,6 +33,9 @@ import {
   Copy,
   QrCode,
   ShieldAlert,
+  Landmark,
+  Building2,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +50,7 @@ import {
   DialogHeader,
 } from "@/components/ui/dialog";
 import { Business } from "@/types/business";
+import { ISystemSettingsData } from "@/types/settings";
 import { toast } from "sonner";
 
 export interface TeamMember {
@@ -246,9 +250,38 @@ export function DashboardSettingsView({ business, onBusinessUpdated }: Dashboard
     }
   };
 
+  // Territory / Platform Policy Settings (Effective for this business's City & Country)
+  const [platformSettings, setPlatformSettings] = useState<ISystemSettingsData | null>(null);
+  const [isPlatformLoading, setIsPlatformLoading] = useState<boolean>(true);
+
+  const effectiveCountry = business?.countryName || (business as any)?.country || "Ethiopia";
+  const effectiveCity = business?.cityName || (business as any)?.city || "Addis Ababa";
+
+  const loadPlatformSettings = async () => {
+    setIsPlatformLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (effectiveCountry) params.set("country", effectiveCountry);
+      if (effectiveCity) params.set("city", effectiveCity);
+      if (business?.id) params.set("businessId", business.id);
+
+      const res = await fetch(`/api/settings?${params.toString()}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json?.settings) {
+        setPlatformSettings(json.settings);
+      }
+    } catch (err) {
+      console.warn("Failed to load territory settings:", err);
+    } finally {
+      setIsPlatformLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadSettings();
-  }, []);
+    loadPlatformSettings();
+  }, [effectiveCountry, effectiveCity, business?.id]);
 
   // Update helper
   const updateSection = <K extends keyof UserSettingsPayload>(
@@ -583,6 +616,7 @@ export function DashboardSettingsView({ business, onBusinessUpdated }: Dashboard
   const navItems = [
     { key: "profile", label: "Profile & Account", icon: User },
     { key: "localization", label: "Preferences", icon: Globe },
+    { key: "jurisdiction", label: "Territory & Platform Policy", icon: ShieldCheck },
     { key: "notifications", label: "Notifications", icon: Bell },
     { key: "security", label: "Security & Login", icon: Lock },
     { key: "team", label: "Team Members", icon: Users },
@@ -1238,6 +1272,181 @@ export function DashboardSettingsView({ business, onBusinessUpdated }: Dashboard
               >
                 Delete Account
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── TAB: Territory & Platform Policy (Live Municipal Sync) ──────── */}
+      {activeTab === "jurisdiction" && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="p-6 rounded-3xl bg-card border border-border shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                  <h3 className="font-black text-foreground text-base">
+                    Territory Administration &amp; Verification Policy
+                  </h3>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Active municipal directives, verification rules, and bureau contacts governing your business location.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs font-bold gap-1.5 py-1 px-3 border-emerald-500/30 text-emerald-600 bg-emerald-500/10">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Policy Active
+                </Badge>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={loadPlatformSettings}
+                  disabled={isPlatformLoading}
+                  className="h-8 text-xs font-semibold gap-1.5"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isPlatformLoading ? "animate-spin" : ""}`} />
+                  Sync
+                </Button>
+              </div>
+            </div>
+
+            {/* Jurisdiction Location Header Card */}
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-primary/5 via-sky-500/5 to-transparent border border-primary/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-primary">
+                  Assigned Administrative Jurisdiction
+                </span>
+                <span className="text-xs font-mono font-bold text-muted-foreground">
+                  Scope: {platformSettings?.city ? "Municipal (City)" : platformSettings?.country ? "National (Country)" : "Global Platform"}
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
+                  <MapPin className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-black text-foreground text-sm">
+                    {effectiveCity}, {effectiveCountry}
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Your business listing is verified under this municipal administration and complies with local regulatory policies.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Verification & Compliance Rules Matrix */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                Storefront Verification &amp; Asset Standards
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="p-4 rounded-2xl bg-muted/30 border border-border space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-foreground">Physical Storefront Photo</span>
+                    <Badge className={platformSettings?.requirePhysicalStorefrontPhotos ? "bg-amber-500/10 text-amber-600 border-amber-500/30 text-[10px]" : "bg-muted text-muted-foreground text-[10px]"}>
+                      {platformSettings?.requirePhysicalStorefrontPhotos ? "Required" : "Optional"}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Exterior entrance photo is required before verification approval by the city admin.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-muted/30 border border-border space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-foreground">Sub-City / District Designation</span>
+                    <Badge className={platformSettings?.mandateSubcityDesignation ? "bg-blue-500/10 text-blue-600 border-blue-500/30 text-[10px]" : "bg-muted text-muted-foreground text-[10px]"}>
+                      {platformSettings?.mandateSubcityDesignation ? "Mandatory" : "Optional"}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Listing must be mapped to an official local municipal sub-city or woreda.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-muted/30 border border-border space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-foreground">Trade License for Claims</span>
+                    <Badge className={platformSettings?.tradeLicenseRequiredForClaims ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px]" : "bg-muted text-muted-foreground text-[10px]"}>
+                      {platformSettings?.tradeLicenseRequiredForClaims ? "Mandatory" : "Optional"}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Ownership claims require official business registration certificate upload.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-muted/30 border border-border space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-foreground">Photos Capacity Allocation</span>
+                    <Badge variant="outline" className="text-[10px] font-mono">
+                      Max {platformSettings?.maxPhotosPerListing ?? 10} Photos Per Listing
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    High-resolution gallery image capacity allocated for your listing profile.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Regional Currency & Financial Rules */}
+            <div className="p-4 rounded-2xl bg-card border border-border space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-foreground text-xs">Regional Currency Standard</h4>
+                  <p className="text-[11px] text-muted-foreground">
+                    Transactions and pricing in your territory default to {platformSettings?.defaultCurrency ?? "ETB"}.
+                  </p>
+                </div>
+                <Badge className="bg-primary/10 text-primary border-primary/20 font-mono font-bold text-xs">
+                  {platformSettings?.defaultCurrency ?? "ETB"}
+                </Badge>
+              </div>
+              {platformSettings?.supportedCurrencies && (
+                <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-border/60">
+                  <span className="text-[10px] font-semibold text-muted-foreground">Accepted Currencies:</span>
+                  {platformSettings.supportedCurrencies.map((c) => (
+                    <span key={c} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-muted text-foreground">
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Municipal Bureau & Country Lead Contact */}
+            <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 space-y-3 text-xs">
+              <div className="flex items-center gap-2">
+                <Landmark className="w-4 h-4 text-indigo-500" />
+                <h4 className="font-bold text-foreground text-sm">
+                  {platformSettings?.bureauOfficeName || `${effectiveCity} Municipal Trade & Industry Bureau`}
+                </h4>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-muted-foreground">
+                <div>
+                  <span className="text-[10px] font-bold block text-muted-foreground/80">OFFICE ADDRESS</span>
+                  <span className="text-foreground font-medium">
+                    {platformSettings?.bureauOfficeAddress || "Municipal Administrative Hall, Churchill Avenue"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold block text-muted-foreground/80">DIRECT PHONE HOTLINE</span>
+                  <span className="text-foreground font-medium">
+                    {platformSettings?.bureauOfficePhone || "+251 11 551 0000"}
+                  </span>
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="text-[10px] font-bold block text-muted-foreground/80">COUNTRY LEAD LIAISON EMAIL</span>
+                  <span className="text-indigo-600 dark:text-indigo-400 font-mono font-semibold">
+                    {platformSettings?.countryLeadLiaisonEmail || `national-lead@bizfinder.et`}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

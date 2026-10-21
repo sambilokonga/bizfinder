@@ -26,6 +26,8 @@ export interface IReport {
   targetId: string;
   targetName: string;
   targetType: string;
+  businessId?: string;
+  businessName?: string;
   reporterName: string;
   reporterEmail?: string;
   reporterId?: string;

@@ -161,40 +161,130 @@ export async function getPayments(
       }
 
       // Build MongoDB Query
-      const query: Record<string, any> = {};
+      const andClauses: any[] = [];
 
       if (status && status !== "all") {
-        query.status = status;
+        andClauses.push({ status });
       }
 
       if (provider && provider !== "all") {
-        query.provider = provider;
+        andClauses.push({ provider });
       }
 
       if (businessId) {
-        query.businessId = businessId;
+        andClauses.push({ businessId });
       }
 
       if (search) {
-        query.$or = [
-          { id: { $regex: search, $options: "i" } },
-          { businessName: { $regex: search, $options: "i" } },
-          { payerName: { $regex: search, $options: "i" } },
-          { payerEmail: { $regex: search, $options: "i" } },
-          { reference: { $regex: search, $options: "i" } },
-          { description: { $regex: search, $options: "i" } },
-          { cityName: { $regex: search, $options: "i" } },
-          { countryName: { $regex: search, $options: "i" } },
-        ];
+        andClauses.push({
+          $or: [
+            { id: { $regex: search, $options: "i" } },
+            { businessName: { $regex: search, $options: "i" } },
+            { payerName: { $regex: search, $options: "i" } },
+            { payerEmail: { $regex: search, $options: "i" } },
+            { reference: { $regex: search, $options: "i" } },
+            { description: { $regex: search, $options: "i" } },
+            { cityName: { $regex: search, $options: "i" } },
+            { countryName: { $regex: search, $options: "i" } },
+          ],
+        });
       }
 
-      // Geo filters
-      if (country && country !== "all") {
-        query.countryName = { $regex: new RegExp(`^${country}$`, "i") };
+      // Territory resolution: look up all businesses in target territory so any payment
+      // belonging to a business in that city/country appears on City Admin and Country Admin dashboards.
+      let territoryBizIds: string[] = [];
+      let territoryBizNames: string[] = [];
+      const hasCountryFilter = !!(country && country !== "all");
+      const hasCityFilter = !!(city && city !== "all");
+
+      if (hasCountryFilter || hasCityFilter) {
+        try {
+          const { BusinessModel } = await import("@/lib/db/models/Business");
+          const bizConditions: any[] = [];
+          if (hasCountryFilter) {
+            const cRx = new RegExp(`^${country.trim()}$`, "i");
+            bizConditions.push({ $or: [{ countryName: cRx }, { country: cRx }] });
+          }
+          if (hasCityFilter) {
+            const ciRx = new RegExp(`^${city.trim()}$`, "i");
+            bizConditions.push({ $or: [{ cityName: ciRx }, { city: ciRx }] });
+          }
+          const bizDocs = await BusinessModel.find(bizConditions.length > 0 ? { $and: bizConditions } : {}).select("id name").lean();
+          for (const b of bizDocs as any[]) {
+            if (b.id) territoryBizIds.push(b.id);
+            if (b.name) territoryBizNames.push(b.name);
+          }
+          for (const sb of SEED_BUSINESSES) {
+            const matchC = !hasCountryFilter || sb.countryName?.toLowerCase() === country.toLowerCase();
+            const matchCi = !hasCityFilter || sb.cityName?.toLowerCase() === city.toLowerCase();
+            if (matchC && matchCi) {
+              if (sb.id) territoryBizIds.push(sb.id);
+              if (sb.name) territoryBizNames.push(sb.name);
+            }
+          }
+          territoryBizIds = Array.from(new Set(territoryBizIds));
+          territoryBizNames = Array.from(new Set(territoryBizNames));
+
+          // Also self-heal / backfill any unpopulated payments for these businesses
+          if (territoryBizIds.length > 0 || territoryBizNames.length > 0) {
+            const setFields: any = {};
+            if (hasCountryFilter) setFields.countryName = country.trim();
+            if (hasCityFilter) setFields.cityName = city.trim();
+            PaymentModel.updateMany(
+              {
+                $and: [
+                  {
+                    $or: [
+                      ...(territoryBizIds.length > 0 ? [{ businessId: { $in: territoryBizIds } }] : []),
+                      ...(territoryBizNames.length > 0 ? [{ businessName: { $in: territoryBizNames } }] : []),
+                    ],
+                  },
+                  {
+                    $or: [
+                      { cityName: { $exists: false } },
+                      { cityName: null },
+                      { cityName: "" },
+                      { countryName: { $exists: false } },
+                      { countryName: null },
+                      { countryName: "" },
+                    ],
+                  },
+                ],
+              },
+              { $set: setFields }
+            ).catch(() => {});
+          }
+        } catch (bizErr) {
+          console.warn("[getPayments] Error resolving territory businesses:", bizErr);
+        }
       }
-      if (city && city !== "all") {
-        query.cityName = { $regex: new RegExp(`^${city}$`, "i") };
+
+      // Geo filters with territory business cross-reference
+      if (hasCountryFilter) {
+        const countryRegex = new RegExp(`^${country}$`, "i");
+        const cOr: any[] = [{ countryName: countryRegex }];
+        if (territoryBizIds.length > 0) {
+          cOr.push({ businessId: { $in: territoryBizIds } });
+        }
+        if (territoryBizNames.length > 0) {
+          cOr.push({ businessName: { $in: territoryBizNames } });
+        }
+        andClauses.push({ $or: cOr });
       }
+
+      if (hasCityFilter) {
+        const cityRegex = new RegExp(`^${city}$`, "i");
+        const ciOr: any[] = [{ cityName: cityRegex }];
+        if (territoryBizIds.length > 0) {
+          ciOr.push({ businessId: { $in: territoryBizIds } });
+        }
+        if (territoryBizNames.length > 0) {
+          ciOr.push({ businessName: { $in: territoryBizNames } });
+        }
+        andClauses.push({ $or: ciOr });
+      }
+
+      const query = andClauses.length > 0 ? { $and: andClauses } : {};
 
       const total = await PaymentModel.countDocuments(query);
       const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -306,12 +396,16 @@ export async function getPayments(
   // Geo filters for in-memory fallback
   if (country && country !== "all") {
     filtered = filtered.filter(
-      (p) => p.countryName?.toLowerCase() === country.toLowerCase()
+      (p) =>
+        p.countryName?.toLowerCase() === country.toLowerCase() ||
+        (p.businessId && SEED_BUSINESSES.some((sb) => sb.id === p.businessId && sb.countryName?.toLowerCase() === country.toLowerCase()))
     );
   }
   if (city && city !== "all") {
     filtered = filtered.filter(
-      (p) => p.cityName?.toLowerCase() === city.toLowerCase()
+      (p) =>
+        p.cityName?.toLowerCase() === city.toLowerCase() ||
+        (p.businessId && SEED_BUSINESSES.some((sb) => sb.id === p.businessId && sb.cityName?.toLowerCase() === city.toLowerCase()))
     );
   }
 
@@ -364,8 +458,30 @@ export async function createPayment(
   let resolvedCountry = input.countryName?.trim();
 
   if (!resolvedCity || !resolvedCountry) {
-    if (input.businessId) {
-      const matchBiz = SEED_BUSINESSES.find((b) => b.id === input.businessId);
+    // 1. Look up business in MongoDB BusinessModel
+    try {
+      const { BusinessModel } = await import("@/lib/db/models/Business");
+      const dbBiz = await BusinessModel.findOne({
+        $or: [
+          ...(input.businessId ? [{ id: input.businessId }] : []),
+          ...(input.businessName ? [{ name: new RegExp(`^${input.businessName.trim()}$`, "i") }] : []),
+        ],
+      }).lean();
+      if (dbBiz) {
+        resolvedCity = resolvedCity || (dbBiz as any).cityName;
+        resolvedCountry = resolvedCountry || (dbBiz as any).countryName;
+      }
+    } catch (e) {
+      console.warn("[createPayment] Error resolving business geo from MongoDB:", e);
+    }
+
+    // 2. Check SEED_BUSINESSES fallback
+    if (!resolvedCity || !resolvedCountry) {
+      const matchBiz = SEED_BUSINESSES.find(
+        (b) =>
+          (input.businessId && b.id === input.businessId) ||
+          (input.businessName && b.name?.toLowerCase() === input.businessName?.trim().toLowerCase())
+      );
       if (matchBiz) {
         resolvedCity = resolvedCity || matchBiz.cityName;
         resolvedCountry = resolvedCountry || matchBiz.countryName;

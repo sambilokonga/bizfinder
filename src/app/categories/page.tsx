@@ -2,11 +2,14 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import * as LucideIcons from "lucide-react";
+import { getCategoryLucideIcon } from "@/lib/utils/category-icon-helper";
 import {
   Layers,
   Search,
   ChevronRight,
+  ChevronLeft,
+  ChevronFirst,
+  ChevronLast,
   Sparkles,
   ArrowRight,
   Building2,
@@ -191,16 +194,17 @@ const SECTOR_THEMES: Record<string, CategoryTheme> = {
   },
 };
 
-// Helper to dynamically render category icons safely
+// Helper to dynamically render category icons safely with rich intelligent fallback matching
 function CategoryIcon({
   name,
+  categoryName,
   className = "w-5 h-5",
 }: {
   name?: string;
+  categoryName?: string;
   className?: string;
 }) {
-  if (!name) return <Layers className={className} />;
-  const IconComponent = (LucideIcons as any)[name] || Layers;
+  const IconComponent = getCategoryLucideIcon(name, categoryName);
   return <IconComponent className={className} />;
 }
 
@@ -224,6 +228,8 @@ export default function CategoriesDirectoryPage() {
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
   const [allBusinesses, setAllBusinesses] = useState<Business[]>(SEED_BUSINESSES);
   const [loadingBiz, setLoadingBiz] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
   const [previewCategory, setPreviewCategory] = useState<{
     id: string;
     name: string;
@@ -234,6 +240,11 @@ export default function CategoriesDirectoryPage() {
   const [drawerSearch, setDrawerSearch] = useState("");
 
   const categoryTree = useMemo(() => getCategoryTree(), []);
+
+  // Reset pagination when filter criteria change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedLetter, selectedSector]);
 
   // Fetch all recorded businesses from database API
   useEffect(() => {
@@ -253,14 +264,15 @@ export default function CategoriesDirectoryPage() {
   // Compute live businesses count for each category in the taxonomy tree
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
+    if (!allBusinesses || allBusinesses.length === 0) return counts;
+
     categoryTree.forEach((ind) => {
       counts[ind.id] = allBusinesses.filter((b) => isBusinessInCategory(b, ind.slug || ind.id)).length;
-      ind.children?.forEach((cat) => {
-        counts[cat.id] = allBusinesses.filter((b) => isBusinessInCategory(b, cat.slug || cat.id)).length;
-        cat.children?.forEach((sub) => {
-          counts[sub.id] = allBusinesses.filter((b) => isBusinessInCategory(b, sub.slug || sub.id)).length;
+      if (ind.children) {
+        ind.children.forEach((cat) => {
+          counts[cat.id] = allBusinesses.filter((b) => isBusinessInCategory(b, cat.slug || cat.id)).length;
         });
-      });
+      }
     });
     return counts;
   }, [categoryTree, allBusinesses]);
@@ -339,6 +351,41 @@ export default function CategoriesDirectoryPage() {
     });
   }, [categoryTree, selectedSector, selectedLetter, searchQuery]);
 
+  // Pagination calculations for Grid view
+  const totalPages = Math.ceil(filteredTree.length / pageSize) || 1;
+  const paginatedIndustries = useMemo(() => {
+    if (pageSize >= 9999) return filteredTree;
+    const start = (currentPage - 1) * pageSize;
+    return filteredTree.slice(start, start + pageSize);
+  }, [filteredTree, currentPage, pageSize]);
+
+  // Generate clean page numbers with ellipses
+  const pageNumbers = useMemo(() => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 4) {
+        for (let i = 1; i <= 5; i++) pages.push(i);
+        pages.push("...");
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1);
+        pages.push("...");
+        for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push("...");
+        pages.push(currentPage - 1);
+        pages.push(currentPage);
+        pages.push(currentPage + 1);
+        pages.push("...");
+        pages.push(totalPages);
+      }
+    }
+    return pages;
+  }, [currentPage, totalPages]);
+
   // Alphabet list present in current taxonomy
   const availableLetters = useMemo(() => {
     const letters = new Set<string>();
@@ -370,22 +417,22 @@ export default function CategoriesDirectoryPage() {
   return (
     <div className="w-full bg-slate-50/60 dark:bg-slate-950/80 min-h-screen">
       {/* ─── Modern Hero Section with Ambient Glow ─── */}
-      <section className="relative overflow-hidden pt-8 xs:pt-10 sm:pt-12 pb-10 sm:pb-16 border-b border-border/60 bg-gradient-to-b from-background via-card/50 to-background">
+      <section className="relative overflow-hidden pt-6 xs:pt-8 sm:pt-12 pb-8 xs:pb-10 sm:pb-16 border-b border-border/60 bg-gradient-to-b from-background via-card/50 to-background">
         {/* Ambient background blur blobs */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-gradient-to-tr from-indigo-500/15 via-purple-500/10 to-pink-500/15 blur-3xl pointer-events-none -z-10" />
         <div className="absolute -top-20 -left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
         <div className="absolute -top-20 -right-20 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
 
         <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto space-y-3 sm:space-y-4">
+          <div className="text-center max-w-3xl mx-auto space-y-2.5 xs:space-y-3 sm:space-y-4">
             {/* Pill Badge */}
-            <div className="inline-flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 py-1 xs:py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-[11px] xs:text-xs font-bold shadow-sm backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse shrink-0" />
+            <div className="inline-flex items-center gap-1 xs:gap-1.5 px-2.5 xs:px-3.5 py-0.5 xs:py-1 rounded-full bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-[10px] xs:text-[11px] sm:text-xs font-bold shadow-sm backdrop-blur-md">
+              <Sparkles className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-indigo-500 animate-pulse shrink-0" />
               <span>Worldwide Directory Taxonomy • 70 Core Sectors</span>
             </div>
 
             {/* Title with Gradient Text */}
-            <h1 className="text-2xl xs:text-3xl sm:text-5xl md:text-6xl font-black text-foreground tracking-tight leading-[1.15]">
+            <h1 className="text-xl xs:text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-foreground tracking-tight leading-[1.15]">
               Explore Businesses Across <br className="hidden sm:inline" />
               <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                 Every Industry
@@ -393,35 +440,35 @@ export default function CategoriesDirectoryPage() {
             </h1>
 
             {/* Subtitle */}
-            <p className="text-xs xs:text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            <p className="text-[11px] xs:text-xs sm:text-sm md:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
               Find verified restaurants, medical clinics, corporate services, retail outlets, and specialized vendors categorized under our structured global classification system.
             </p>
 
             {/* Quick Live Search Bar */}
-            <div className="pt-2 max-w-xl mx-auto">
-              <div className="relative flex items-center shadow-lg shadow-indigo-500/5 rounded-2xl border border-border bg-card/90 backdrop-blur-xl focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all p-1.5">
-                <Search className="w-5 h-5 text-muted-foreground ml-3 shrink-0" />
+            <div className="pt-1.5 xs:pt-2 max-w-xl mx-auto">
+              <div className="relative flex items-center shadow-md sm:shadow-lg shadow-indigo-500/5 rounded-xl xs:rounded-2xl border border-border bg-card/90 backdrop-blur-xl focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all p-1 xs:p-1.5">
+                <Search className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-muted-foreground ml-2 xs:ml-2.5 sm:ml-3 shrink-0" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search industries, cuisines, medical specialties, auto services..."
-                  className="w-full bg-transparent px-3 py-2 text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  placeholder="Search industries, cuisines, services..."
+                  className="w-full bg-transparent px-2 xs:px-2.5 sm:px-3 py-1.5 xs:py-2 text-xs xs:text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg transition-colors mr-1"
+                    className="p-1 text-muted-foreground hover:text-foreground rounded-md transition-colors mr-1"
                     title="Clear Search"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
                   </button>
                 )}
                 <Link
                   href={searchQuery ? `/search?q=${encodeURIComponent(searchQuery)}` : "/search"}
                   className="hidden sm:inline-flex"
                 >
-                  <Button size="sm" variant="gradient" className="rounded-xl px-4 font-bold shadow-sm">
+                  <Button size="sm" variant="gradient" className="rounded-xl px-3 sm:px-4 text-xs font-bold shadow-sm h-8 sm:h-9">
                     Search Listings
                   </Button>
                 </Link>
@@ -429,35 +476,35 @@ export default function CategoriesDirectoryPage() {
             </div>
 
             {/* Metric Counters Strip */}
-            <div className="pt-4 flex items-center justify-center gap-6 sm:gap-12 text-xs font-semibold text-muted-foreground flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />
-                <span className="font-bold text-foreground text-sm sm:text-base">
+            <div className="pt-2 xs:pt-3 flex items-center justify-center gap-3 xs:gap-4 sm:gap-8 md:gap-12 text-[10px] xs:text-[11px] sm:text-xs font-semibold text-muted-foreground flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping" />
+                <span className="font-bold text-foreground text-xs xs:text-sm sm:text-base">
                   {stats.industries}
                 </span>{" "}
                 Industries
               </div>
-              <div className="h-4 w-px bg-border hidden sm:block" />
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-foreground text-sm sm:text-base">
+              <div className="h-3 w-px bg-border hidden sm:block" />
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-foreground text-xs xs:text-sm sm:text-base">
                   {stats.subcategories}+
                 </span>{" "}
                 Subcategories
               </div>
-              <div className="h-4 w-px bg-border hidden sm:block" />
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-foreground text-sm sm:text-base">
+              <div className="h-3 w-px bg-border hidden sm:block" />
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-foreground text-xs xs:text-sm sm:text-base">
                   {stats.specialties}+
                 </span>{" "}
                 Specialties
               </div>
-              <div className="h-4 w-px bg-border hidden sm:block" />
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                <span className="font-bold text-foreground text-sm sm:text-base">
+              <div className="h-3 w-px bg-border hidden sm:block" />
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="font-bold text-foreground text-xs xs:text-sm sm:text-base">
                   {allBusinesses.length}+
                 </span>{" "}
-                Recorded Businesses
+                Recorded
               </div>
             </div>
           </div>
@@ -466,20 +513,20 @@ export default function CategoriesDirectoryPage() {
 
       {/* ─── Trending / Spotlight Sectors Showcase ─── */}
       {!hasActiveFilters && (
-        <section className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 pt-7 sm:pt-10">
-          <div className="flex items-center justify-between mb-4 sm:mb-5">
+        <section className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 pt-5 xs:pt-7 sm:pt-10">
+          <div className="flex items-center justify-between mb-3 xs:mb-4 sm:mb-5">
             <div className="flex items-center gap-1.5 xs:gap-2">
-              <TrendingUp className="w-4 h-4 xs:w-5 xs:h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-              <h2 className="text-base xs:text-lg font-black text-foreground tracking-tight">
+              <TrendingUp className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <h2 className="text-sm xs:text-base sm:text-lg font-black text-foreground tracking-tight">
                 Trending &amp; Popular Sectors
               </h2>
             </div>
-            <span className="text-xs font-semibold text-muted-foreground hidden xs:inline">
+            <span className="text-[11px] xs:text-xs font-semibold text-muted-foreground hidden xs:inline">
               Most requested business categories
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2.5 xs:gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2 xs:gap-2.5 sm:gap-4">
             {categoryTree
               .filter((ind) => FEATURED_SECTOR_IDS.includes(ind.id))
               .slice(0, 8)
@@ -489,7 +536,7 @@ export default function CategoriesDirectoryPage() {
                 return (
                   <div
                     key={sector.id}
-                    className={`group relative rounded-2xl border border-border/80 bg-card p-3 xs:p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${theme.borderHover} flex flex-col justify-between overflow-hidden`}
+                    className={`group relative rounded-xl xs:rounded-2xl border border-border/80 bg-card p-2.5 xs:p-3 sm:p-4 transition-all duration-300 hover:-translate-y-0.5 sm:hover:-translate-y-1 hover:shadow-lg sm:hover:shadow-xl ${theme.borderHover} flex flex-col justify-between overflow-hidden`}
                   >
                     {/* Ambient subtle glow background */}
                     <div
@@ -497,11 +544,11 @@ export default function CategoriesDirectoryPage() {
                     />
 
                     <div>
-                      <div className="flex items-center justify-between mb-2.5 xs:mb-3">
+                      <div className="flex items-center justify-between mb-2 xs:mb-2.5 sm:mb-3">
                         <div
-                          className={`w-8 h-8 xs:w-10 xs:h-10 rounded-xl ${theme.iconBg} ${theme.iconColor} flex items-center justify-center font-bold transition-transform group-hover:scale-110 duration-300`}
+                          className={`w-7 h-7 xs:w-8 xs:h-8 sm:w-10 sm:h-10 rounded-lg xs:rounded-xl ${theme.iconBg} ${theme.iconColor} flex items-center justify-center font-bold transition-transform group-hover:scale-105 duration-300`}
                         >
-                          <CategoryIcon name={sector.icon} className="w-4 h-4 xs:w-5 xs:h-5" />
+                          <CategoryIcon name={sector.icon} className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5" />
                         </div>
                         <button
                           type="button"
@@ -510,7 +557,7 @@ export default function CategoriesDirectoryPage() {
                             e.stopPropagation();
                             setPreviewCategory({ id: sector.id, name: sector.name, slug: sector.slug, level: 1, icon: sector.icon });
                           }}
-                          className="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] border border-emerald-200/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors flex items-center gap-1"
+                          className="px-1.5 xs:px-2 py-0.5 rounded-md xs:rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-[9px] xs:text-[10px] border border-emerald-200/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors flex items-center gap-1"
                           title="Click to preview recorded businesses"
                         >
                           <Store className="w-2.5 h-2.5" />
@@ -519,16 +566,16 @@ export default function CategoriesDirectoryPage() {
                       </div>
                       <Link
                         href={`/search?category=${sector.slug}`}
-                        className="font-bold text-sm text-foreground group-hover:text-primary transition-colors line-clamp-1 block"
+                        className="font-bold text-xs xs:text-sm text-foreground group-hover:text-primary transition-colors line-clamp-1 block"
                       >
                         {sector.name}
                       </Link>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                      <p className="text-[10px] xs:text-[11px] text-muted-foreground mt-0.5">
                         {sector.children?.length || 0} subcategories • {bizCount} businesses
                       </p>
                     </div>
 
-                    <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between text-[11px] font-semibold text-muted-foreground">
+                    <div className="mt-2 xs:mt-3 pt-2 xs:pt-2.5 border-t border-border/50 flex items-center justify-between text-[10px] xs:text-[11px] font-semibold text-muted-foreground">
                       <button
                         type="button"
                         onClick={() => {
@@ -536,7 +583,7 @@ export default function CategoriesDirectoryPage() {
                         }}
                         className="hover:text-foreground flex items-center gap-1 text-primary font-bold"
                       >
-                        <Eye className="w-3 h-3" />
+                        <Eye className="w-2.5 h-2.5 xs:w-3 xs:h-3" />
                         <span>Quick View</span>
                       </button>
                       <Link
@@ -544,7 +591,7 @@ export default function CategoriesDirectoryPage() {
                         className="text-primary font-bold hover:underline flex items-center gap-0.5"
                       >
                         <span>Explore</span>
-                        <ArrowRight className="w-3 h-3" />
+                        <ArrowRight className="w-2.5 h-2.5 xs:w-3 xs:h-3" />
                       </Link>
                     </div>
                   </div>
@@ -555,67 +602,67 @@ export default function CategoriesDirectoryPage() {
       )}
 
       {/* ─── Main Category Explorer Section ─── */}
-      <section className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-4 sm:space-y-6">
+      <section className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 py-5 xs:py-6 sm:py-10 space-y-3.5 xs:space-y-4 sm:space-y-6">
         {/* Navigation & Controls Bar */}
-        <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3 xs:gap-4 pb-2">
+        <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2.5 xs:gap-4 pb-1 xs:pb-2">
           <div>
-            <h2 className="text-lg xs:text-xl sm:text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
+            <h2 className="text-base xs:text-lg sm:text-xl md:text-2xl font-black text-foreground tracking-tight flex items-center gap-1.5 xs:gap-2">
               <span>All 70 Industry Sectors</span>
-              <Badge variant="outline" className="text-xs font-bold px-2 py-0.5">
+              <Badge variant="outline" className="text-[10px] xs:text-xs font-bold px-1.5 xs:px-2 py-0.5">
                 {filteredTree.length} Shown
               </Badge>
             </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-[11px] xs:text-xs text-muted-foreground mt-0.5">
               Click any specialty tag or sector card to browse relevant verified business listings
             </p>
           </div>
 
           {/* View Mode Toggle */}
-          <div className="flex items-center gap-1 xs:gap-1.5 p-1 rounded-2xl bg-card border border-border shadow-sm shrink-0 self-start xs:self-auto overflow-x-auto no-scrollbar max-w-full">
+          <div className="flex items-center gap-1 p-0.5 xs:p-1 rounded-xl xs:rounded-2xl bg-card border border-border shadow-sm shrink-0 self-start xs:self-auto overflow-x-auto no-scrollbar max-w-full">
             <button
               onClick={() => setViewMode("grid")}
-              className={`flex items-center gap-1 xs:gap-1.5 px-2.5 xs:px-3 py-1.5 rounded-xl text-[11px] xs:text-xs font-bold transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1 xs:gap-1.5 px-2 xs:px-2.5 sm:px-3 py-1 xs:py-1.5 rounded-lg xs:rounded-xl text-[10px] xs:text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap ${
                 viewMode === "grid"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
               title="Visual Cards View"
             >
-              <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
+              <LayoutGrid className="w-3 h-3 xs:w-3.5 xs:h-3.5 shrink-0" />
               <span>Cards</span>
             </button>
             <button
               onClick={() => setViewMode("list")}
-              className={`flex items-center gap-1 xs:gap-1.5 px-2.5 xs:px-3 py-1.5 rounded-xl text-[11px] xs:text-xs font-bold transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1 xs:gap-1.5 px-2 xs:px-2.5 sm:px-3 py-1 xs:py-1.5 rounded-lg xs:rounded-xl text-[10px] xs:text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap ${
                 viewMode === "list"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
               title="Alphabetical Directory View"
             >
-              <ListFilter className="w-3.5 h-3.5 shrink-0" />
+              <ListFilter className="w-3 h-3 xs:w-3.5 xs:h-3.5 shrink-0" />
               <span>A–Z Index</span>
             </button>
             <button
               onClick={() => setViewMode("tree")}
-              className={`flex items-center gap-1 xs:gap-1.5 px-2.5 xs:px-3 py-1.5 rounded-xl text-[11px] xs:text-xs font-bold transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1 xs:gap-1.5 px-2 xs:px-2.5 sm:px-3 py-1 xs:py-1.5 rounded-lg xs:rounded-xl text-[10px] xs:text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap ${
                 viewMode === "tree"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
               title="Hierarchy Tree View"
             >
-              <ListTree className="w-3.5 h-3.5 shrink-0" />
+              <ListTree className="w-3 h-3 xs:w-3.5 xs:h-3.5 shrink-0" />
               <span><span className="hidden sm:inline">Taxonomy </span>Tree</span>
             </button>
           </div>
         </div>
 
         {/* Alphabetical Fast Jump Bar */}
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1 text-xs -mx-3 px-3 xs:-mx-4 xs:px-4 sm:-mx-0 sm:px-0">
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 xs:py-1 text-[11px] xs:text-xs -mx-3 px-3 xs:-mx-4 xs:px-4 sm:-mx-0 sm:px-0">
           <button
             onClick={() => setSelectedLetter("ALL")}
-            className={`px-2.5 xs:px-3 py-1 rounded-xl font-bold shrink-0 transition-all ${
+            className={`px-2 xs:px-2.5 sm:px-3 py-0.5 xs:py-1 rounded-lg xs:rounded-xl font-bold shrink-0 transition-all ${
               selectedLetter === "ALL"
                 ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/20"
                 : "bg-card text-muted-foreground border border-border hover:text-foreground"
@@ -629,7 +676,7 @@ export default function CategoriesDirectoryPage() {
               <button
                 key={char}
                 onClick={() => setSelectedLetter(char)}
-                className={`w-7 h-7 rounded-xl font-bold shrink-0 flex items-center justify-center transition-all ${
+                className={`w-6 h-6 xs:w-6.5 xs:h-6.5 sm:w-7 sm:h-7 rounded-lg xs:rounded-xl font-bold shrink-0 flex items-center justify-center transition-all text-[10px] xs:text-xs ${
                   isSelected
                     ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/20"
                     : "bg-card text-muted-foreground border border-border hover:border-foreground/30 hover:text-foreground"
@@ -642,10 +689,10 @@ export default function CategoriesDirectoryPage() {
         </div>
 
         {/* Sector Quick Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 text-xs">
+        <div className="flex items-center gap-1.5 xs:gap-2 overflow-x-auto no-scrollbar py-0.5 xs:py-1 text-[11px] xs:text-xs">
           <button
             onClick={() => setSelectedSector("all")}
-            className={`px-3.5 py-1.5 rounded-xl font-bold transition-all shrink-0 border ${
+            className={`px-2.5 xs:px-3 sm:px-3.5 py-1 xs:py-1.5 rounded-lg xs:rounded-xl font-bold transition-all shrink-0 border ${
               selectedSector === "all"
                 ? "bg-foreground text-background border-foreground shadow-sm"
                 : "bg-card text-muted-foreground border-border hover:border-foreground/30"
@@ -659,13 +706,13 @@ export default function CategoriesDirectoryPage() {
               <button
                 key={ind.id}
                 onClick={() => setSelectedSector(ind.id)}
-                className={`px-3.5 py-1.5 rounded-xl font-bold transition-all shrink-0 border flex items-center gap-1.5 ${
+                className={`px-2.5 xs:px-3 sm:px-3.5 py-1 xs:py-1.5 rounded-lg xs:rounded-xl font-bold transition-all shrink-0 border flex items-center gap-1 xs:gap-1.5 ${
                   isSelected
                     ? "bg-foreground text-background border-foreground shadow-sm"
                     : "bg-card text-muted-foreground border-border hover:border-foreground/30"
                 }`}
               >
-                <CategoryIcon name={ind.icon} className="w-3.5 h-3.5" />
+                <CategoryIcon name={ind.icon} className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
                 <span>{ind.name.split("&")[0].trim()}</span>
               </button>
             );
@@ -674,30 +721,30 @@ export default function CategoriesDirectoryPage() {
 
         {/* Active Filter Indicators */}
         {hasActiveFilters && (
-          <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 text-xs">
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center justify-between p-2.5 xs:p-3 rounded-xl xs:rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 text-[10px] xs:text-xs">
+            <div className="flex items-center gap-1.5 xs:gap-2 flex-wrap">
               <span className="font-bold text-indigo-900 dark:text-indigo-200">Active Filters:</span>
               {searchQuery && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-background border border-indigo-200 text-indigo-700 dark:text-indigo-300 font-semibold">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md xs:rounded-lg bg-background border border-indigo-200 text-indigo-700 dark:text-indigo-300 font-semibold">
                   Search: &ldquo;{searchQuery}&rdquo;
                   <button onClick={() => setSearchQuery("")}>
-                    <X className="w-3 h-3 hover:text-red-500" />
+                    <X className="w-2.5 h-2.5 xs:w-3 xs:h-3 hover:text-red-500" />
                   </button>
                 </span>
               )}
               {selectedLetter !== "ALL" && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-background border border-indigo-200 text-indigo-700 dark:text-indigo-300 font-semibold">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md xs:rounded-lg bg-background border border-indigo-200 text-indigo-700 dark:text-indigo-300 font-semibold">
                   Starts with: {selectedLetter}
                   <button onClick={() => setSelectedLetter("ALL")}>
-                    <X className="w-3 h-3 hover:text-red-500" />
+                    <X className="w-2.5 h-2.5 xs:w-3 xs:h-3 hover:text-red-500" />
                   </button>
                 </span>
               )}
               {selectedSector !== "all" && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-background border border-indigo-200 text-indigo-700 dark:text-indigo-300 font-semibold">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md xs:rounded-lg bg-background border border-indigo-200 text-indigo-700 dark:text-indigo-300 font-semibold">
                   Sector: {categoryTree.find((c) => c.id === selectedSector)?.name}
                   <button onClick={() => setSelectedSector("all")}>
-                    <X className="w-3 h-3 hover:text-red-500" />
+                    <X className="w-2.5 h-2.5 xs:w-3 xs:h-3 hover:text-red-500" />
                   </button>
                 </span>
               )}
@@ -713,219 +760,320 @@ export default function CategoriesDirectoryPage() {
 
         {/* ─── Zero Results State ─── */}
         {filteredTree.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-border p-12 text-center bg-card shadow-sm">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary mx-auto flex items-center justify-center mb-3">
-              <Search className="w-6 h-6" />
+          <div className="rounded-2xl xs:rounded-3xl border border-dashed border-border p-8 xs:p-12 text-center bg-card shadow-sm">
+            <div className="w-10 h-10 xs:w-12 xs:h-12 rounded-xl xs:rounded-2xl bg-primary/10 text-primary mx-auto flex items-center justify-center mb-2.5 xs:mb-3">
+              <Search className="w-5 h-5 xs:w-6 xs:h-6" />
             </div>
-            <h3 className="font-bold text-lg text-foreground">No matching categories found</h3>
-            <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+            <h3 className="font-bold text-base xs:text-lg text-foreground">No matching categories found</h3>
+            <p className="text-xs xs:text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
               We couldn&apos;t find any categories matching your criteria. Try widening your search or clearing active filters.
             </p>
             <Button
               variant="outline"
               size="sm"
-              className="mt-4 font-semibold"
+              className="mt-3 xs:mt-4 font-semibold h-8 xs:h-9 text-xs"
               onClick={clearAllFilters}
             >
               Clear All Filters
             </Button>
           </div>
         ) : viewMode === "grid" ? (
-          /* ─── 1. Modern Cards Grid View ─── */
-          <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-4 xs:gap-5 sm:gap-6">
-            {filteredTree.map((industry) => {
-              const theme = SECTOR_THEMES[industry.id] || DEFAULT_THEME;
-              const isExpanded = expandedCards[industry.id] || false;
+          /* ─── 1. Modern Cards Grid View with Pagination ─── */
+          <div className="space-y-6 sm:space-y-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {paginatedIndustries.map((industry) => {
+                const theme = SECTOR_THEMES[industry.id] || DEFAULT_THEME;
+                const isExpanded = expandedCards[industry.id] || false;
 
-              // Calculate total sub-items in this sector
-              const totalSpecialties =
-                industry.children?.reduce(
-                  (acc, cat) => acc + (cat.children?.length || 1),
-                  0
-                ) || 0;
+                // Calculate total sub-items in this sector
+                const totalSpecialties =
+                  industry.children?.reduce(
+                    (acc, cat) => acc + (cat.children?.length || 1),
+                    0
+                  ) || 0;
 
-              // Determine primary subcategories to display
-              const visibleSubcategories = isExpanded
-                ? industry.children || []
-                : (industry.children || []).slice(0, 4);
+                // Determine primary subcategories to display
+                const visibleSubcategories = isExpanded
+                  ? industry.children || []
+                  : (industry.children || []).slice(0, 4);
 
-              const hasMore = (industry.children?.length || 0) > 4;
+                const hasMore = (industry.children?.length || 0) > 4;
 
-              return (
-                <div
-                  key={industry.id}
-                  className={`group relative rounded-3xl border border-border/80 bg-card p-6 shadow-sm transition-all duration-300 flex flex-col justify-between hover:shadow-xl ${theme.borderHover} overflow-hidden`}
-                >
-                  {/* Subtle top corner gradient glow */}
+                return (
                   <div
-                    className={`absolute top-0 right-0 w-36 h-36 bg-gradient-to-bl ${theme.glow} rounded-bl-full pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity`}
-                  />
+                    key={industry.id}
+                    className={`group relative rounded-2xl sm:rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-sm transition-all duration-300 flex flex-col justify-between hover:shadow-xl ${theme.borderHover} overflow-hidden h-full`}
+                  >
+                    {/* Subtle top corner gradient glow */}
+                    <div
+                      className={`absolute top-0 right-0 w-32 h-32 sm:w-40 sm:h-40 bg-gradient-to-bl ${theme.glow} rounded-bl-full pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity`}
+                    />
 
-                  <div>
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-3 pb-4 border-b border-border/60 mb-4">
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div
-                          className={`w-12 h-12 rounded-2xl ${theme.iconBg} ${theme.iconColor} flex items-center justify-center font-bold shrink-0 shadow-inner group-hover:scale-105 transition-transform`}
-                        >
-                          <CategoryIcon name={industry.icon} className="w-6 h-6" />
-                        </div>
-                        <div className="min-w-0">
-                          <Link
-                            href={`/search?category=${industry.slug}`}
-                            className="font-bold text-base text-foreground hover:text-primary transition-colors line-clamp-1 block"
-                            title={industry.name}
+                    <div className="flex-1">
+                      {/* Header */}
+                      <div className="flex items-start justify-between gap-3 pb-3 sm:pb-4 border-b border-border/60 mb-3 sm:mb-4">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div
+                            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl ${theme.iconBg} ${theme.iconColor} flex items-center justify-center font-bold shrink-0 shadow-inner group-hover:scale-105 transition-transform`}
                           >
-                            {industry.name}
-                          </Link>
-                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                            <span className="text-xs text-muted-foreground font-semibold">
-                              {industry.children?.length || 0} subcategories
-                            </span>
-                            <span className="text-border">•</span>
-                            <span className="text-xs text-muted-foreground">
-                              {totalSpecialties} specialties
-                            </span>
-                            <span className="text-border">•</span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setPreviewCategory({ id: industry.id, name: industry.name, slug: industry.slug, level: 1, icon: industry.icon });
-                              }}
-                              className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors"
-                              title="Click to preview recorded businesses"
+                            <CategoryIcon name={industry.icon} className="w-5 h-5 sm:w-6 sm:h-6" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <Link
+                              href={`/search?category=${industry.slug}`}
+                              className="font-bold text-sm sm:text-base text-foreground hover:text-primary transition-colors line-clamp-1 block"
+                              title={industry.name}
                             >
-                              <Store className="w-3 h-3" />
-                              <span>{categoryCounts[industry.id] || 0} Businesses</span>
-                            </button>
+                              {industry.name}
+                            </Link>
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              <span className="text-[11px] text-muted-foreground font-semibold">
+                                {industry.children?.length || 0} subs
+                              </span>
+                              <span className="text-border">•</span>
+                              <span className="text-[11px] text-muted-foreground">
+                                {totalSpecialties} specs
+                              </span>
+                              <span className="text-border">•</span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setPreviewCategory({ id: industry.id, name: industry.name, slug: industry.slug, level: 1, icon: industry.icon });
+                                }}
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors"
+                                title="Click to preview recorded businesses"
+                              >
+                                <Store className="w-3 h-3" />
+                                <span>{categoryCounts[industry.id] || 0} Biz</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
+
+                        <Link
+                          href={`/search?category=${industry.slug}`}
+                          className="w-8 h-8 rounded-xl border border-border bg-background/80 hover:bg-primary hover:text-white hover:border-primary flex items-center justify-center text-muted-foreground transition-all shrink-0 mt-0.5"
+                          title={`Browse ${industry.name}`}
+                        >
+                          <ArrowRight className="w-4 h-4" />
+                        </Link>
                       </div>
 
+                      {/* Subcategories list */}
+                      <div className="space-y-3 sm:space-y-3.5">
+                        {visibleSubcategories.map((cat) => {
+                          const subBizCount = categoryCounts[cat.id] || 0;
+                          return (
+                            <div key={cat.id} className="space-y-1 sm:space-y-1.5">
+                              <div className="flex items-center justify-between text-xs font-bold text-foreground gap-2">
+                                <Link
+                                  href={`/search?category=${cat.slug}`}
+                                  className="hover:text-primary transition-colors flex items-center gap-1.5 min-w-0"
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500/60 shrink-0" />
+                                  <span className="truncate">{cat.name}</span>
+                                </Link>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {subBizCount > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setPreviewCategory({ id: cat.id, name: cat.name, slug: cat.slug, level: 2 });
+                                      }}
+                                      className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-200/50 hover:bg-indigo-100 transition-colors"
+                                      title="View businesses in this subcategory"
+                                    >
+                                      {subBizCount} biz
+                                    </button>
+                                  )}
+                                  {cat.children && cat.children.length > 0 && (
+                                    <span className="text-[10px] font-semibold text-muted-foreground px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
+                                      {cat.children.length}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Specialties quick chips */}
+                              {cat.children && cat.children.length > 0 && (
+                                <div className="flex flex-wrap gap-1 sm:gap-1.5 pl-3">
+                                  {cat.children.slice(0, 4).map((sub) => (
+                                    <Link
+                                      key={sub.id}
+                                      href={`/search?category=${sub.slug}`}
+                                      className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-50 dark:bg-slate-900/80 border border-border/70 hover:border-primary/50 hover:bg-primary/5 hover:text-primary transition-all truncate max-w-[170px]"
+                                      title={sub.name}
+                                    >
+                                      {sub.name}
+                                    </Link>
+                                  ))}
+                                  {cat.children.length > 4 && (
+                                    <Link
+                                      href={`/category/${cat.slug}`}
+                                      className="px-1.5 py-0.5 rounded-md text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"
+                                    >
+                                      +{cat.children.length - 4} more
+                                    </Link>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Expand / Collapse Button */}
+                      {hasMore && (
+                        <button
+                          onClick={() => toggleCardExpand(industry.id)}
+                          className="mt-3 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 transition-colors"
+                        >
+                          <span>
+                            {isExpanded
+                              ? "Show Less"
+                              : `+${(industry.children?.length || 0) - 4} more subcategories`}
+                          </span>
+                          <ChevronDown
+                            className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                              isExpanded ? "rotate-180" : ""
+                            }`}
+                          />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Card Footer */}
+                    <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-border/60 flex items-center justify-between gap-2 text-xs">
                       <Link
                         href={`/search?category=${industry.slug}`}
-                        className="w-8 h-8 rounded-xl border border-border bg-background/80 hover:bg-primary hover:text-white hover:border-primary flex items-center justify-center text-muted-foreground transition-all shrink-0 mt-0.5"
-                        title={`Browse ${industry.name}`}
+                        className="font-bold text-primary hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center gap-1 min-w-0 truncate"
                       >
-                        <ArrowRight className="w-4 h-4" />
+                        <span className="truncate">Explore listings</span>
+                        <ArrowRight className="w-3.5 h-3.5 shrink-0 group-hover:translate-x-1 transition-transform" />
                       </Link>
-                    </div>
 
-                    {/* Subcategories list */}
-                    <div className="space-y-3.5">
-                      {visibleSubcategories.map((cat) => {
-                        const subBizCount = categoryCounts[cat.id] || 0;
-                        return (
-                          <div key={cat.id} className="space-y-1.5">
-                            <div className="flex items-center justify-between text-xs font-bold text-foreground">
-                              <Link
-                                href={`/search?category=${cat.slug}`}
-                                className="hover:text-primary transition-colors flex items-center gap-1.5 min-w-0"
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500/60" />
-                                <span className="truncate">{cat.name}</span>
-                              </Link>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {subBizCount > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      setPreviewCategory({ id: cat.id, name: cat.name, slug: cat.slug, level: 2 });
-                                    }}
-                                    className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.2 rounded border border-indigo-200/50 hover:bg-indigo-100 transition-colors"
-                                    title="View businesses in this subcategory"
-                                  >
-                                    {subBizCount} biz
-                                  </button>
-                                )}
-                                {cat.children && cat.children.length > 0 && (
-                                  <span className="text-[10px] font-semibold text-muted-foreground px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800">
-                                    {cat.children.length}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Specialties quick chips */}
-                            {cat.children && cat.children.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5 pl-3">
-                                {cat.children.slice(0, 5).map((sub) => (
-                                  <Link
-                                    key={sub.id}
-                                    href={`/search?category=${sub.slug}`}
-                                    className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-50 dark:bg-slate-900/80 border border-border/70 hover:border-primary/50 hover:bg-primary/5 hover:text-primary transition-all"
-                                  >
-                                    {sub.name}
-                                  </Link>
-                                ))}
-                                {cat.children.length > 5 && (
-                                  <Link
-                                    href={`/category/${cat.slug}`}
-                                    className="px-2 py-1 rounded-lg text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
-                                  >
-                                    +{cat.children.length - 5} more
-                                  </Link>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Expand / Collapse Button */}
-                    {hasMore && (
                       <button
-                        onClick={() => toggleCardExpand(industry.id)}
-                        className="mt-3.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 transition-colors"
+                        type="button"
+                        onClick={() => {
+                          setPreviewCategory({ id: industry.id, name: industry.name, slug: industry.slug, level: 1, icon: industry.icon });
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-primary hover:text-white text-muted-foreground font-bold text-[11px] transition-all flex items-center gap-1.5 shrink-0 shadow-sm"
+                        title="Quick preview recorded businesses"
                       >
-                        <span>
-                          {isExpanded
-                            ? "Show Less"
-                            : `+${(industry.children?.length || 0) - 4} more subcategories`}
-                        </span>
-                        <ChevronDown
-                          className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                            isExpanded ? "rotate-180" : ""
-                          }`}
-                        />
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Quick View ({categoryCounts[industry.id] || 0})</span>
                       </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination Controls Bar */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-border/80">
+                <div className="text-xs sm:text-sm text-muted-foreground font-medium">
+                  Showing <span className="font-bold text-foreground">{(currentPage - 1) * pageSize + 1}</span> to{" "}
+                  <span className="font-bold text-foreground">
+                    {Math.min(currentPage * pageSize, filteredTree.length)}
+                  </span>{" "}
+                  of <span className="font-bold text-foreground">{filteredTree.length}</span> industry sectors
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage(1)}
+                    className="h-8 w-8 p-0 rounded-lg"
+                    title="First Page"
+                  >
+                    <ChevronFirst className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="h-8 px-2.5 rounded-lg text-xs font-semibold gap-1"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span className="hidden xs:inline">Prev</span>
+                  </Button>
+
+                  {/* Page Numbers */}
+                  <div className="flex items-center gap-1">
+                    {pageNumbers.map((p, idx) =>
+                      typeof p === "number" ? (
+                        <button
+                          key={p}
+                          onClick={() => setCurrentPage(p)}
+                          className={`h-8 min-w-[2rem] px-2 rounded-lg text-xs font-bold transition-all ${
+                            currentPage === p
+                              ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                              : "bg-card hover:bg-accent text-muted-foreground hover:text-foreground border border-border"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ) : (
+                        <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground text-xs font-bold">
+                          ...
+                        </span>
+                      )
                     )}
                   </div>
 
-                  {/* Card Footer */}
-                  <div className="mt-6 pt-4 border-t border-border/60 flex items-center justify-between gap-2 text-xs">
-                    <Link
-                      href={`/search?category=${industry.slug}`}
-                      className="font-bold text-primary hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center gap-1 min-w-0 truncate"
-                    >
-                      <span className="truncate">Explore listings</span>
-                      <ArrowRight className="w-3.5 h-3.5 shrink-0 group-hover:translate-x-1 transition-transform" />
-                    </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="h-8 px-2.5 rounded-lg text-xs font-semibold gap-1"
+                  >
+                    <span className="hidden xs:inline">Next</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage(totalPages)}
+                    className="h-8 w-8 p-0 rounded-lg"
+                    title="Last Page"
+                  >
+                    <ChevronLast className="w-4 h-4" />
+                  </Button>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPreviewCategory({ id: industry.id, name: industry.name, slug: industry.slug, level: 1, icon: industry.icon });
+                  {/* Page Size Selector */}
+                  <div className="ml-2 pl-2 border-l border-border flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
+                    <span className="hidden sm:inline">Per page:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
                       }}
-                      className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-primary hover:text-white text-muted-foreground font-bold text-[11px] transition-all flex items-center gap-1.5 shrink-0 shadow-sm"
-                      title="Quick preview recorded businesses"
+                      className="bg-card border border-border rounded-lg px-2 py-1 text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                     >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Quick View ({categoryCounts[industry.id] || 0})</span>
-                    </button>
+                      <option value={12}>12</option>
+                      <option value={24}>24</option>
+                      <option value={48}>48</option>
+                      <option value={9999}>All ({filteredTree.length})</option>
+                    </select>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            )}
           </div>
         ) : viewMode === "list" ? (
           /* ─── 2. Alphabetical A-Z Directory View ─── */
-          <div className="space-y-8">
+          <div className="space-y-6 xs:space-y-8">
             {availableLetters
               .filter(
                 (letter) =>
@@ -940,42 +1088,42 @@ export default function CategoriesDirectoryPage() {
                 return (
                   <div
                     key={letter}
-                    className="rounded-3xl border border-border/80 bg-card p-6 shadow-sm"
+                    className="rounded-2xl xs:rounded-3xl border border-border/80 bg-card p-4 xs:p-5 sm:p-6 shadow-sm"
                   >
                     {/* Letter Header */}
-                    <div className="flex items-center gap-3 pb-4 mb-4 border-b border-border/60">
-                      <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white font-black text-lg flex items-center justify-center shadow-md shadow-indigo-500/20">
+                    <div className="flex items-center gap-2.5 xs:gap-3 pb-3 xs:pb-4 mb-3 xs:mb-4 border-b border-border/60">
+                      <div className="w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 rounded-xl xs:rounded-2xl bg-indigo-600 text-white font-black text-sm xs:text-base sm:text-lg flex items-center justify-center shadow-md shadow-indigo-500/20">
                         {letter}
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold text-foreground">
+                        <h3 className="text-base xs:text-lg font-bold text-foreground">
                           Letter {letter}
                         </h3>
-                        <span className="text-xs text-muted-foreground font-semibold">
+                        <span className="text-[11px] xs:text-xs text-muted-foreground font-semibold">
                           {industriesForLetter.length} Industries
                         </span>
                       </div>
                     </div>
 
                     {/* Alphabetical list */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 xs:gap-4">
                       {industriesForLetter.map((ind) => {
                         const bizCount = categoryCounts[ind.id] || 0;
                         return (
                           <div
                             key={ind.id}
-                            className="p-3.5 rounded-2xl border border-border/60 hover:border-primary/40 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-card transition-all flex flex-col justify-between"
+                            className="p-3 xs:p-3.5 rounded-xl xs:rounded-2xl border border-border/60 hover:border-primary/40 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-card transition-all flex flex-col justify-between"
                           >
                             <div>
                               <div className="flex items-center justify-between mb-1.5">
-                                <div className="flex items-center gap-2 min-w-0">
+                                <div className="flex items-center gap-1.5 xs:gap-2 min-w-0">
                                   <CategoryIcon
                                     name={ind.icon}
-                                    className="w-4 h-4 text-primary shrink-0"
+                                    className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-primary shrink-0"
                                   />
                                   <Link
                                     href={`/search?category=${ind.slug}`}
-                                    className="font-bold text-sm text-foreground hover:text-primary transition-colors truncate"
+                                    className="font-bold text-xs xs:text-sm text-foreground hover:text-primary transition-colors truncate"
                                   >
                                     {ind.name}
                                   </Link>
@@ -986,7 +1134,7 @@ export default function CategoriesDirectoryPage() {
                                     onClick={() => {
                                       setPreviewCategory({ id: ind.id, name: ind.name, slug: ind.slug, level: 1, icon: ind.icon });
                                     }}
-                                    className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] hover:bg-emerald-100 transition-colors flex items-center gap-0.5"
+                                    className="px-1.5 xs:px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-[9px] xs:text-[10px] hover:bg-emerald-100 transition-colors flex items-center gap-0.5"
                                     title="Quick view businesses"
                                   >
                                     <Store className="w-2.5 h-2.5" />
@@ -997,16 +1145,16 @@ export default function CategoriesDirectoryPage() {
                                     className="text-primary hover:text-primary/80"
                                     title="Open search"
                                   >
-                                    <ExternalLink className="w-3.5 h-3.5" />
+                                    <ExternalLink className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
                                   </Link>
                                 </div>
                               </div>
-                              <div className="flex flex-wrap gap-1 mt-2">
+                              <div className="flex flex-wrap gap-1 mt-1.5 xs:mt-2">
                                 {ind.children?.slice(0, 4).map((sub) => (
                                   <Link
                                     key={sub.id}
                                     href={`/search?category=${sub.slug}`}
-                                    className="text-[11px] text-muted-foreground hover:text-primary px-2 py-0.5 rounded-md bg-background border border-border/60"
+                                    className="text-[10px] xs:text-[11px] text-muted-foreground hover:text-primary px-1.5 xs:px-2 py-0.5 rounded-md bg-background border border-border/60"
                                   >
                                     {sub.name}
                                   </Link>
@@ -1023,37 +1171,37 @@ export default function CategoriesDirectoryPage() {
           </div>
         ) : (
           /* ─── 3. Full Deep Hierarchy Tree View ─── */
-          <div className="rounded-3xl border border-border/80 bg-card p-6 sm:p-8 shadow-sm space-y-6">
-            <div className="border-b border-border/60 pb-4">
-              <h3 className="text-lg font-black text-foreground">
+          <div className="rounded-2xl xs:rounded-3xl border border-border/80 bg-card p-4 xs:p-6 sm:p-8 shadow-sm space-y-4 xs:space-y-6">
+            <div className="border-b border-border/60 pb-3 xs:pb-4">
+              <h3 className="text-base xs:text-lg font-black text-foreground">
                 Deep Taxonomy Explorer (4 Levels)
               </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-[11px] xs:text-xs text-muted-foreground mt-0.5">
                 Industry › Subcategory › Service Specialty
               </p>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-4 xs:space-y-6">
               {filteredTree.map((ind) => {
                 const indBizCount = categoryCounts[ind.id] || 0;
                 return (
                   <div
                     key={ind.id}
-                    className="rounded-2xl border border-border/60 p-4 bg-slate-50/40 dark:bg-slate-900/40"
+                    className="rounded-xl xs:rounded-2xl border border-border/60 p-3 xs:p-4 bg-slate-50/40 dark:bg-slate-900/40"
                   >
                     {/* Level 1: Industry */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                          <CategoryIcon name={ind.icon} className="w-4 h-4" />
+                    <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 mb-2.5 xs:mb-3">
+                      <div className="flex items-center gap-2 xs:gap-2.5 flex-wrap">
+                        <div className="w-7 h-7 xs:w-8 xs:h-8 rounded-lg xs:rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                          <CategoryIcon name={ind.icon} className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
                         </div>
                         <Link
                           href={`/search?category=${ind.slug}`}
-                          className="font-bold text-base text-foreground hover:text-primary"
+                          className="font-bold text-sm xs:text-base text-foreground hover:text-primary"
                         >
                           {ind.name}
                         </Link>
-                        <Badge variant="outline" className="text-[10px]">
+                        <Badge variant="outline" className="text-[9px] xs:text-[10px] px-1.5 py-0">
                           Level 1
                         </Badge>
                         <button
@@ -1061,44 +1209,44 @@ export default function CategoriesDirectoryPage() {
                           onClick={() => {
                             setPreviewCategory({ id: ind.id, name: ind.name, slug: ind.slug, level: 1, icon: ind.icon });
                           }}
-                          className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] hover:bg-emerald-100 transition-colors flex items-center gap-1"
+                          className="px-1.5 xs:px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-[9px] xs:text-[10px] hover:bg-emerald-100 transition-colors flex items-center gap-1"
                         >
                           <Store className="w-2.5 h-2.5" />
-                          <span>{indBizCount} Businesses</span>
+                          <span>{indBizCount} Biz</span>
                         </button>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 xs:gap-2 self-end xs:self-auto">
                         <button
                           type="button"
                           onClick={() => {
                             setPreviewCategory({ id: ind.id, name: ind.name, slug: ind.slug, level: 1, icon: ind.icon });
                           }}
-                          className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border bg-background"
+                          className="text-[11px] xs:text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 xs:px-2.5 py-1 rounded-lg border border-border bg-background"
                         >
                           <Eye className="w-3 h-3" />
                           <span>Quick View</span>
                         </button>
                         <Link
                           href={`/search?category=${ind.slug}`}
-                          className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                          className="text-[11px] xs:text-xs font-bold text-primary hover:underline flex items-center gap-1"
                         >
                           <span>Explore</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
+                          <ArrowRight className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
                         </Link>
                       </div>
                     </div>
 
                     {/* Level 2 & 3: Children */}
-                    <div className="pl-6 sm:pl-10 space-y-3 border-l-2 border-indigo-200 dark:border-indigo-900/60 ml-4">
+                    <div className="pl-3 xs:pl-6 sm:pl-10 space-y-2.5 xs:space-y-3 border-l-2 border-indigo-200 dark:border-indigo-900/60 ml-2 xs:ml-4">
                       {ind.children?.map((cat) => {
                         const catBizCount = categoryCounts[cat.id] || 0;
                         return (
                           <div key={cat.id} className="space-y-1">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 xs:gap-2 flex-wrap">
                               <Link
                                 href={`/search?category=${cat.slug}`}
-                                className="font-bold text-xs text-foreground hover:text-primary"
+                                className="font-bold text-[11px] xs:text-xs text-foreground hover:text-primary"
                               >
                                 • {cat.name}
                               </Link>
@@ -1108,23 +1256,23 @@ export default function CategoriesDirectoryPage() {
                                   onClick={() => {
                                     setPreviewCategory({ id: cat.id, name: cat.name, slug: cat.slug, level: 2 });
                                   }}
-                                  className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.2 rounded"
+                                  className="text-[9px] xs:text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-1 xs:px-1.5 py-0.2 rounded"
                                 >
                                   {catBizCount} biz
                                 </button>
                               )}
-                              <span className="text-[10px] text-muted-foreground">
+                              <span className="text-[9px] xs:text-[10px] text-muted-foreground">
                                 ({cat.children?.length || 0} specialties)
                               </span>
                             </div>
 
                             {cat.children && cat.children.length > 0 && (
-                              <div className="pl-4 flex flex-wrap gap-1.5 pt-1">
+                              <div className="pl-3 xs:pl-4 flex flex-wrap gap-1 xs:gap-1.5 pt-0.5 xs:pt-1">
                                 {cat.children.map((sub) => (
                                   <Link
                                     key={sub.id}
                                     href={`/search?category=${sub.slug}`}
-                                    className="px-2 py-0.5 rounded text-[10px] font-medium bg-background border border-border hover:border-primary hover:text-primary transition-colors"
+                                    className="px-1.5 xs:px-2 py-0.5 rounded text-[9px] xs:text-[10px] font-medium bg-background border border-border hover:border-primary hover:text-primary transition-colors"
                                   >
                                     {sub.name}
                                   </Link>
@@ -1146,32 +1294,32 @@ export default function CategoriesDirectoryPage() {
       {/* ─── Category Business Showcase Modal ─── */}
       {previewCategory && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-2.5 xs:p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => {
             setPreviewCategory(null);
             setDrawerSearch("");
           }}
         >
           <div
-            className="relative w-full max-w-3xl max-h-[90vh] rounded-3xl bg-card border border-border shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+            className="relative w-full max-w-3xl max-h-[92vh] sm:max-h-[90vh] rounded-2xl xs:rounded-3xl bg-card border border-border shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="p-6 pb-4 border-b border-border bg-slate-50/50 dark:bg-slate-900/50 flex items-start justify-between gap-4">
+            <div className="p-3.5 xs:p-4 sm:p-6 pb-3 xs:pb-4 border-b border-border bg-slate-50/50 dark:bg-slate-900/50 flex items-start justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs font-bold gap-1 text-primary">
-                    <Store className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-1.5 xs:gap-2 flex-wrap">
+                  <Badge variant="secondary" className="text-[10px] xs:text-xs font-bold gap-1 text-primary">
+                    <Store className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
                     Level {previewCategory.level} Category
                   </Badge>
-                  <span className="text-xs text-muted-foreground font-semibold">
+                  <span className="text-[10px] xs:text-xs text-muted-foreground font-semibold">
                     {allBusinesses.filter((b) => isBusinessInCategory(b, previewCategory.slug || previewCategory.id)).length} Verified Businesses Recorded
                   </span>
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black text-foreground mt-1 tracking-tight">
+                <h3 className="text-base xs:text-lg sm:text-2xl font-black text-foreground mt-1 tracking-tight">
                   {previewCategory.name}
                 </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-[11px] xs:text-xs text-muted-foreground mt-0.5">
                   Click any business to open its complete profile, or explore on the interactive map
                 </p>
               </div>
@@ -1181,69 +1329,69 @@ export default function CategoriesDirectoryPage() {
                   setPreviewCategory(null);
                   setDrawerSearch("");
                 }}
-                className="w-9 h-9 rounded-2xl border border-border bg-background hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-foreground transition-all shrink-0"
+                className="w-7 h-7 xs:w-8 xs:h-8 sm:w-9 sm:h-9 rounded-xl xs:rounded-2xl border border-border bg-background hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-foreground transition-all shrink-0"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
               </button>
             </div>
 
             {/* Modal Controls Bar */}
-            <div className="p-4 border-b border-border/80 flex items-center gap-3 bg-card">
+            <div className="p-2.5 xs:p-3 sm:p-4 border-b border-border/80 flex items-center gap-2 xs:gap-3 bg-card">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-muted-foreground absolute left-2.5 xs:left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <Input
                   value={drawerSearch}
                   onChange={(e) => setDrawerSearch(e.target.value)}
                   placeholder={`Search within ${previewCategory.name}...`}
-                  className="pl-9 h-10 rounded-xl text-xs"
+                  className="pl-8 xs:pl-9 h-8 xs:h-9 sm:h-10 rounded-lg xs:rounded-xl text-[11px] xs:text-xs"
                 />
               </div>
               <Link
                 href={`/search?category=${previewCategory.slug}`}
                 onClick={() => setPreviewCategory(null)}
               >
-                <Button variant="gradient" size="sm" className="font-bold rounded-xl gap-1.5 h-10 shadow-sm shrink-0">
+                <Button variant="gradient" size="sm" className="font-bold rounded-lg xs:rounded-xl gap-1 xs:gap-1.5 h-8 xs:h-9 sm:h-10 text-[11px] xs:text-xs shadow-sm shrink-0 px-2.5 xs:px-3">
                   <span>Open in Map</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
+                  <ExternalLink className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
                 </Button>
               </Link>
             </div>
 
             {/* Modal Businesses List */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-14rem)] space-y-4">
+            <div className="p-3 xs:p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-14rem)] space-y-3 xs:space-y-4">
               {previewBusinesses.length === 0 ? (
-                <div className="py-12 text-center rounded-2xl border border-dashed border-border">
-                  <Store className="w-10 h-10 text-muted-foreground/60 mx-auto mb-2" />
-                  <h4 className="font-bold text-sm text-foreground">
+                <div className="py-8 xs:py-12 text-center rounded-xl xs:rounded-2xl border border-dashed border-border p-4">
+                  <Store className="w-8 h-8 xs:w-10 xs:h-10 text-muted-foreground/60 mx-auto mb-2" />
+                  <h4 className="font-bold text-xs xs:text-sm text-foreground">
                     {drawerSearch ? "No businesses match your search filter" : `No businesses recorded under ${previewCategory.name} yet`}
                   </h4>
-                  <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                  <p className="text-[11px] xs:text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
                     {drawerSearch ? "Try clearing your search keyword." : "Be the first to list and establish your presence in this category!"}
                   </p>
-                  <div className="mt-4 flex items-center justify-center gap-2">
+                  <div className="mt-3 xs:mt-4 flex items-center justify-center gap-2">
                     {drawerSearch && (
-                      <Button size="sm" variant="outline" onClick={() => setDrawerSearch("")}>
+                      <Button size="sm" variant="outline" className="h-7.5 xs:h-8 text-xs" onClick={() => setDrawerSearch("")}>
                         Clear Search
                       </Button>
                     )}
                     <Link href="/dashboard/listings/new">
-                      <Button size="sm" variant="default" className="font-bold">
+                      <Button size="sm" variant="default" className="font-bold h-7.5 xs:h-8 text-xs">
                         List Your Business Now
                       </Button>
                     </Link>
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 xs:gap-3 sm:gap-4">
                   {previewBusinesses.map((biz) => {
                     const liveStatus = getLiveOpeningStatus(biz.openingHours);
                     return (
                       <div
                         key={biz.id}
-                        className="group rounded-2xl border border-border/80 bg-background/80 hover:border-primary/50 hover:shadow-md transition-all p-3.5 flex flex-col justify-between"
+                        className="group rounded-xl xs:rounded-2xl border border-border/80 bg-background/80 hover:border-primary/50 hover:shadow-md transition-all p-2.5 xs:p-3 sm:p-3.5 flex flex-col justify-between"
                       >
-                        <div className="flex gap-3">
-                          <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0">
+                        <div className="flex gap-2.5 xs:gap-3">
+                          <div className="relative w-16 h-16 xs:w-18 xs:h-18 sm:w-20 sm:h-20 rounded-lg xs:rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={getBusinessCoverUrl(biz)}
@@ -1258,48 +1406,48 @@ export default function CategoriesDirectoryPage() {
                           <div className="min-w-0 flex-1">
                             <Link
                               href={`/business/${biz.id}`}
-                              className="font-bold text-sm text-foreground hover:text-primary transition-colors line-clamp-1 block"
+                              className="font-bold text-xs xs:text-sm text-foreground hover:text-primary transition-colors line-clamp-1 block"
                             >
                               {biz.name}
                             </Link>
-                            <div className="flex items-center gap-1.5 mt-1 text-xs">
+                            <div className="flex items-center gap-1 xs:gap-1.5 mt-0.5 xs:mt-1 text-[11px] xs:text-xs">
                               <div className="flex items-center gap-0.5 text-amber-500 font-bold">
-                                <Star className="w-3.5 h-3.5 fill-current" />
+                                <Star className="w-3 h-3 xs:w-3.5 xs:h-3.5 fill-current" />
                                 <span>{biz.ratingAvg?.toFixed(1) || "5.0"}</span>
                               </div>
-                              <span className="text-muted-foreground text-[11px]">
+                              <span className="text-muted-foreground text-[10px] xs:text-[11px]">
                                 ({biz.reviewCount || 0})
                               </span>
                               {biz.isVerified && (
-                                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded">
+                                <span className="text-[9px] xs:text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1 xs:px-1.5 py-0.2 rounded">
                                   Verified
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-1 truncate">
-                              <MapPin className="w-3 h-3 shrink-0 text-primary" />
+                            <div className="flex items-center gap-1 text-[10px] xs:text-[11px] text-muted-foreground mt-0.5 xs:mt-1 truncate">
+                              <MapPin className="w-2.5 h-2.5 xs:w-3 xs:h-3 shrink-0 text-primary" />
                               <span className="truncate">{biz.cityName || biz.addressLine}</span>
                             </div>
                           </div>
                         </div>
 
-                        <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between text-xs">
-                          <span className={`text-[11px] font-semibold ${liveStatus.isOpen ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500"}`}>
+                        <div className="mt-2.5 xs:mt-3 pt-2 xs:pt-2.5 border-t border-border/50 flex items-center justify-between text-[11px] xs:text-xs">
+                          <span className={`text-[10px] xs:text-[11px] font-semibold ${liveStatus.isOpen ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500"}`}>
                             {liveStatus.statusText}
                           </span>
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1 xs:gap-1.5">
                             {biz.telephone && (
                               <a
                                 href={`tel:${biz.telephone}`}
-                                className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent"
+                                className="w-6 h-6 xs:w-7 xs:h-7 rounded-md xs:rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent"
                                 title="Call"
                               >
-                                <Phone className="w-3 h-3" />
+                                <Phone className="w-2.5 h-2.5 xs:w-3 xs:h-3" />
                               </a>
                             )}
                             <Link
                               href={`/business/${biz.id}`}
-                              className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground font-bold text-[11px] hover:bg-primary/90 transition-colors"
+                              className="px-2 xs:px-2.5 py-1 rounded-md xs:rounded-lg bg-primary text-primary-foreground font-bold text-[10px] xs:text-[11px] hover:bg-primary/90 transition-colors"
                             >
                               View Profile
                             </Link>
@@ -1313,11 +1461,11 @@ export default function CategoriesDirectoryPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-border bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-xs">
+            <div className="p-3 xs:p-4 border-t border-border bg-slate-50/50 dark:bg-slate-900/50 flex flex-col xs:flex-row xs:items-center justify-between gap-2 text-[10px] xs:text-xs">
               <span className="text-muted-foreground">
                 Showing {previewBusinesses.length} of {allBusinesses.filter((b) => isBusinessInCategory(b, previewCategory.slug || previewCategory.id)).length} businesses recorded
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 self-end xs:self-auto">
                 <Link
                   href={`/category/${previewCategory.slug}`}
                   className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
@@ -1327,8 +1475,8 @@ export default function CategoriesDirectoryPage() {
                 <Link
                   href={`/search?category=${previewCategory.slug}`}
                 >
-                  <Button size="sm" variant="default" className="font-bold rounded-xl text-xs h-8">
-                    Open Search Results
+                  <Button size="sm" variant="default" className="font-bold rounded-lg xs:rounded-xl text-[10px] xs:text-xs h-7 xs:h-8">
+                    Open Search
                   </Button>
                 </Link>
               </div>

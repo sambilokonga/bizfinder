@@ -1,7 +1,10 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface ISystemSettingDoc extends Document {
-  id: string; // "global_system_settings"
+  id: string; // "global_system_settings", "country_settings_{country}", "city_settings_{country}_{city}"
+  scope: "global" | "country" | "city";
+  country?: string;
+  city?: string;
   
   // 1. General & Platform Profile
   platformName: string;
@@ -25,6 +28,13 @@ export interface ISystemSettingDoc extends Document {
   featuredListingDurationDays: number;
   allowUserClaiming: boolean;
   maxBranchesPerBusiness: number;
+  requirePhysicalStorefrontPhotos: boolean;
+  mandateSubcityDesignation: boolean;
+  tradeLicenseRequiredForClaims: boolean;
+  bureauOfficeName?: string;
+  bureauOfficePhone?: string;
+  bureauOfficeAddress?: string;
+  countryLeadLiaisonEmail?: string;
 
   // 3. Search Engine & Discovery
   defaultRadiusKm: number;
@@ -80,6 +90,9 @@ export interface ISystemSettingDoc extends Document {
 const SystemSettingSchema = new Schema<ISystemSettingDoc>(
   {
     id: { type: String, required: true, unique: true, default: "global_system_settings" },
+    scope: { type: String, enum: ["global", "country", "city"], default: "global" },
+    country: { type: String },
+    city: { type: String },
 
     // 1. General
     platformName: { type: String, default: "BizFinder Directory" },
@@ -94,7 +107,7 @@ const SystemSettingSchema = new Schema<ISystemSettingDoc>(
     defaultLanguage: { type: String, default: "en" },
     supportedLanguages: { type: [String], default: ["en", "am", "om", "ti"] },
 
-    // 2. Business
+    // 2. Business & Municipal Rules
     maxPhotosPerListing: { type: Number, default: 20 },
     autoApproveListings: { type: Boolean, default: false },
     verificationExpiryDays: { type: Number, default: 365 },
@@ -103,6 +116,13 @@ const SystemSettingSchema = new Schema<ISystemSettingDoc>(
     featuredListingDurationDays: { type: Number, default: 30 },
     allowUserClaiming: { type: Boolean, default: true },
     maxBranchesPerBusiness: { type: Number, default: 15 },
+    requirePhysicalStorefrontPhotos: { type: Boolean, default: true },
+    mandateSubcityDesignation: { type: Boolean, default: true },
+    tradeLicenseRequiredForClaims: { type: Boolean, default: true },
+    bureauOfficeName: { type: String, default: "Municipal Administration & Trade Bureau" },
+    bureauOfficePhone: { type: String, default: "+251 11 123 4567" },
+    bureauOfficeAddress: { type: String, default: "Municipal City Hall, 4th Floor" },
+    countryLeadLiaisonEmail: { type: String, default: "countrylead@bizfinder.et" },
 
     // 3. Search
     defaultRadiusKm: { type: Number, default: 25 },

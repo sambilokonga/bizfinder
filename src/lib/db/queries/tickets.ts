@@ -21,6 +21,8 @@ export interface GetTicketsOptions {
   userId?: string;
   businessId?: string;
   assignedAdmin?: string;
+  city?: string;
+  country?: string;
   sort?: "desc" | "asc";
 }
 
@@ -102,6 +104,8 @@ export async function getTickets(
     userId,
     businessId,
     assignedAdmin,
+    city,
+    country,
     sort = "desc",
   } = options;
 
@@ -156,6 +160,14 @@ export async function getTickets(
         filter.assignedAdmin = assignedAdmin;
       }
 
+      if (city && city !== "all") {
+        filter.city = { $regex: new RegExp(`^${city.trim()}$`, "i") };
+      }
+
+      if (country && country !== "all") {
+        filter.country = { $regex: new RegExp(`^${country.trim()}$`, "i") };
+      }
+
       if (search && search.trim()) {
         const regex = new RegExp(search.trim(), "i");
         filter.$or = [
@@ -179,8 +191,21 @@ export async function getTickets(
         .limit(limit)
         .lean();
 
-      // Aggregate global category/status counts
-      const allDocs = await TicketModel.find(userId ? { userId } : {}).lean();
+      // Aggregate category/status counts
+      const statsFilter: Record<string, any> = {};
+      if (userId) {
+        statsFilter.userId = userId;
+      }
+      if (businessId) {
+        statsFilter.businessId = businessId;
+      }
+      if (city && city !== "all") {
+        statsFilter.city = { $regex: new RegExp(`^${city.trim()}$`, "i") };
+      }
+      if (country && country !== "all") {
+        statsFilter.country = { $regex: new RegExp(`^${country.trim()}$`, "i") };
+      }
+      const allDocs = await TicketModel.find(statsFilter).lean();
       const allStats = calculateTicketStats(allDocs as any);
 
       const tickets: ISupportTicket[] = docs.map((d: any) => ({
@@ -264,6 +289,14 @@ export async function getTickets(
     filtered = filtered.filter((t) => t.priority === priority);
   }
 
+  if (city && city !== "all") {
+    filtered = filtered.filter((t) => t.city?.toLowerCase() === city.toLowerCase());
+  }
+
+  if (country && country !== "all") {
+    filtered = filtered.filter((t) => t.country?.toLowerCase() === country.toLowerCase());
+  }
+
   if (search && search.trim()) {
     const q = search.trim().toLowerCase();
     filtered = filtered.filter(
@@ -278,9 +311,12 @@ export async function getTickets(
     );
   }
 
-  const allStats = calculateTicketStats(
-    userId ? inMemoryTickets.filter((t) => t.userId === userId) : inMemoryTickets
-  );
+  let statsBase = [...inMemoryTickets];
+  if (userId) statsBase = statsBase.filter((t) => t.userId === userId);
+  if (businessId) statsBase = statsBase.filter((t) => t.businessId === businessId);
+  if (city && city !== "all") statsBase = statsBase.filter((t) => t.city?.toLowerCase() === city.toLowerCase());
+  if (country && country !== "all") statsBase = statsBase.filter((t) => t.country?.toLowerCase() === country.toLowerCase());
+  const allStats = calculateTicketStats(statsBase);
 
   filtered.sort((a, b) => {
     const timeA = new Date(a.createdAt).getTime();
@@ -373,6 +409,28 @@ export async function createTicket(input: CreateTicketInput): Promise<ISupportTi
     createdAt: now,
   };
 
+  let resolvedCity = input.city;
+  let resolvedCountry = input.country;
+  let resolvedBusinessName = input.businessName;
+  let resolvedBusinessId = input.businessId;
+
+  // Auto-resolve location and business name if businessId is supplied
+  if (resolvedBusinessId && (!resolvedCity || !resolvedCountry || !resolvedBusinessName)) {
+    try {
+      const { getBusinessById } = await import("@/lib/db/queries/businesses");
+      const biz = await getBusinessById(resolvedBusinessId);
+      if (biz) {
+        if (!resolvedBusinessName) resolvedBusinessName = biz.name;
+        if (!resolvedCity && (biz as any).cityName) resolvedCity = (biz as any).cityName;
+        if (!resolvedCity && (biz as any).city) resolvedCity = (biz as any).city;
+        if (!resolvedCountry && (biz as any).countryName) resolvedCountry = (biz as any).countryName;
+        if (!resolvedCountry && (biz as any).country) resolvedCountry = (biz as any).country;
+      }
+    } catch (err) {
+      console.warn("[createTicket] Could not auto-resolve business location:", err);
+    }
+  }
+
   const newTicket: ISupportTicket = {
     id: generatedId,
     subject: input.subject,
@@ -384,16 +442,16 @@ export async function createTicket(input: CreateTicketInput): Promise<ISupportTi
     userEmail: input.userEmail,
     userPhone: input.userPhone,
     userRole: input.userRole || "owner",
-    businessId: input.businessId,
-    businessName: input.businessName,
+    businessId: resolvedBusinessId,
+    businessName: resolvedBusinessName,
     assignedAdmin: input.assignedAdmin || "Unassigned",
     assignedAdminId: input.assignedAdminId,
     tags: input.tags || [],
     messages: [initialMsg],
     lastReply: `${input.userName}: ${input.initialMessage.slice(0, 70)}...`,
     lastReplyAt: now,
-    city: input.city || "Addis Ababa",
-    country: input.country || "Ethiopia",
+    city: resolvedCity || "Addis Ababa",
+    country: resolvedCountry || "Ethiopia",
     createdAt: now,
     updatedAt: now,
   };

@@ -4,6 +4,7 @@ import { getBusinessById, updateBusiness } from "@/lib/db/queries/businesses";
 import { createNotification } from "@/lib/db/queries/notifications";
 import { normalizeRole } from "@/lib/auth/roles";
 import { ApprovalAuditEntry, BusinessApprovalStatus } from "@/types/business";
+import { globalCityRegistry } from "@/lib/data/city-business-registry";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -31,7 +32,13 @@ export async function PATCH(request: Request, { params }: Params) {
       rejectionReason = "",
     } = body;
 
-    const business = await getBusinessById(id);
+    let business = await getBusinessById(id).catch(() => null);
+    if (!business) {
+      const regBiz = (globalCityRegistry as any).businessesById?.get(id);
+      if (regBiz) {
+        business = regBiz;
+      }
+    }
     if (!business) {
       return NextResponse.json({ error: "Business listing not found" }, { status: 404 });
     }
@@ -69,9 +76,13 @@ export async function PATCH(request: Request, { params }: Params) {
           await createNotification({
             title: `[City Approved] "${business.name}" passed City Admin review`,
             body: `Your business listing for "${business.name}" has been approved by ${business.cityName || "City"} Admin and forwarded to Country Lead for Stage 2 review.`,
-            target: "user",
+            target: "business",
+            targetRole: "owner",
             targetUserId: business.ownerId,
             targetBusinessId: business.id,
+            targetCountry: business.countryName,
+            targetCity: business.cityName,
+            actionType: "business_confirmation",
             type: "system",
             priority: "medium",
             status: "Delivered",
@@ -82,8 +93,12 @@ export async function PATCH(request: Request, { params }: Params) {
         await createNotification({
           title: `[Country Queue] "${business.name}" in ${business.cityName} awaiting Country Lead review`,
           body: `${actorName} (${business.cityName} City Admin) approved "${business.name}". It is now waiting for national compliance review.`,
-          target: "admin",
+          target: "country_admin",
+          targetRole: "country_admin",
+          targetCountry: business.countryName,
+          targetCity: business.cityName,
           targetBusinessId: business.id,
+          actionType: "business_confirmation",
           type: "system",
           priority: "medium",
           status: "Delivered",
@@ -109,9 +124,13 @@ export async function PATCH(request: Request, { params }: Params) {
           await createNotification({
             title: `[Country Approved] "${business.name}" passed Country Admin review`,
             body: `National compliance passed! Your listing is now with the Super Admin for final activation and posting.`,
-            target: "user",
+            target: "business",
+            targetRole: "owner",
             targetUserId: business.ownerId,
             targetBusinessId: business.id,
+            targetCountry: business.countryName,
+            targetCity: business.cityName,
+            actionType: "business_confirmation",
             type: "system",
             priority: "medium",
             status: "Delivered",
@@ -122,8 +141,12 @@ export async function PATCH(request: Request, { params }: Params) {
         await createNotification({
           title: `[Super Admin Queue] "${business.name}" ready for final sign-off`,
           body: `"${business.name}" (${business.cityName}, ${business.countryName}) has completed City and Country approvals. Final sign-off required to publish.`,
-          target: "admin",
+          target: "super_admin",
+          targetRole: "super_admin",
+          targetCountry: business.countryName,
+          targetCity: business.cityName,
           targetBusinessId: business.id,
+          actionType: "business_confirmation",
           type: "system",
           priority: "high",
           status: "Delivered",
@@ -152,9 +175,13 @@ export async function PATCH(request: Request, { params }: Params) {
           await createNotification({
             title: `🎉 Listing Published! "${business.name}" is now live!`,
             body: `Congratulations! Super Admin completed the final sign-off. Your business is now publicly searchable, verified, and featured on BizFinder!`,
-            target: "user",
+            target: "business",
+            targetRole: "owner",
             targetUserId: business.ownerId,
             targetBusinessId: business.id,
+            targetCountry: business.countryName,
+            targetCity: business.cityName,
+            actionType: "business_confirmation",
             type: "system",
             priority: "high",
             status: "Delivered",
@@ -205,9 +232,13 @@ export async function PATCH(request: Request, { params }: Params) {
           await createNotification({
             title: `⚡ Fast-Track Approved! "${business.name}" is now live!`,
             body: `Your listing for "${business.name}" was fast-track approved by Super Admin and is immediately live on BizFinder.`,
-            target: "user",
+            target: "business",
+            targetRole: "owner",
             targetUserId: business.ownerId,
             targetBusinessId: business.id,
+            targetCountry: business.countryName,
+            targetCity: business.cityName,
+            actionType: "business_confirmation",
             type: "system",
             priority: "high",
             status: "Delivered",
@@ -230,9 +261,13 @@ export async function PATCH(request: Request, { params }: Params) {
           await createNotification({
             title: `[Listing Rejected] "${business.name}" not approved`,
             body: `Your listing was not approved. Reason: ${auditNotes}. You may edit your submission from your dashboard.`,
-            target: "user",
+            target: "business",
+            targetRole: "owner",
             targetUserId: business.ownerId,
             targetBusinessId: business.id,
+            targetCountry: business.countryName,
+            targetCity: business.cityName,
+            actionType: "business_confirmation",
             type: "system",
             priority: "high",
             status: "Delivered",
@@ -253,9 +288,13 @@ export async function PATCH(request: Request, { params }: Params) {
           await createNotification({
             title: `[Action Required] Revision requested for "${business.name}"`,
             body: `An administrator requested updates to your listing: ${auditNotes}. Please update your profile in the owner dashboard.`,
-            target: "user",
+            target: "business",
+            targetRole: "owner",
             targetUserId: business.ownerId,
             targetBusinessId: business.id,
+            targetCountry: business.countryName,
+            targetCity: business.cityName,
+            actionType: "business_confirmation",
             type: "system",
             priority: "high",
             status: "Delivered",
@@ -288,7 +327,7 @@ export async function PATCH(request: Request, { params }: Params) {
       : [];
     const updatedHistory: ApprovalAuditEntry[] = [...existingHistory, auditEntry];
 
-    const updated = await updateBusiness(id, {
+    const updatePayload = {
       approvalStatus: nextStatus,
       isApproved,
       isPublished,
@@ -301,11 +340,18 @@ export async function PATCH(request: Request, { params }: Params) {
       validationDate,
       nextAuditDate,
       existenceStatus: isApprovedNow ? "confirmed" : business.existenceStatus,
-    } as any);
+    };
+
+    let updated = await updateBusiness(id, updatePayload as any).catch(() => null);
+    // Sync into global city registry
+    const registryUpdated = globalCityRegistry.updateBusinessStatus(id, updatePayload as any);
+    if (!updated) {
+      updated = registryUpdated as any;
+    }
 
     return NextResponse.json({
       success: true,
-      business: updated,
+      business: updated || registryUpdated || business,
       message: `Approval action "${action}" executed successfully. New status: ${nextStatus}.`,
     });
   } catch (error: any) {
@@ -315,4 +361,8 @@ export async function PATCH(request: Request, { params }: Params) {
       { status: 500 }
     );
   }
+}
+
+export async function POST(request: Request, context: Params) {
+  return PATCH(request, context);
 }

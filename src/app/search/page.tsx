@@ -560,14 +560,14 @@ function SearchPageContent() {
               variant="outline"
               size="sm"
               onClick={() => setShowFiltersModal(!showFiltersModal)}
-              className={`h-9 px-2 xs:px-2.5 gap-1 xs:gap-1.5 text-xs font-bold rounded-xl shrink-0 transition-all ${
+              className={`h-8 xs:h-8.5 sm:h-9 px-2 xs:px-2.5 gap-1 xs:gap-1.5 text-[11px] xs:text-xs font-bold rounded-lg xs:rounded-xl shrink-0 transition-all ${
                 showFiltersModal ? "border-primary text-primary bg-primary/5" : ""
               }`}
             >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <SlidersHorizontal className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
               <span className="hidden sm:inline">Filters</span>
               {hasActiveFilters && (
-                <span className="w-2 h-2 rounded-full bg-primary ring-2 ring-primary/20" />
+                <span className="w-1.5 h-1.5 xs:w-2 xs:h-2 rounded-full bg-primary ring-2 ring-primary/20" />
               )}
             </Button>
 
@@ -579,7 +579,7 @@ function SearchPageContent() {
                 setSortBy(val);
                 pushSearchUrl({ sort: val });
               }}
-              className="h-9 shrink-0 rounded-xl border border-input bg-background px-2.5 text-xs font-semibold focus:outline-none hidden sm:block cursor-pointer hover:border-foreground/30 transition-colors"
+              className="h-8 xs:h-8.5 sm:h-9 shrink-0 rounded-lg xs:rounded-xl border border-input bg-background px-2 xs:px-2.5 text-[11px] xs:text-xs font-semibold focus:outline-none hidden sm:block cursor-pointer hover:border-foreground/30 transition-colors"
             >
               <option value="relevance">Recommended</option>
               <option value="newest">Newest Added</option>
@@ -592,30 +592,30 @@ function SearchPageContent() {
             <ThemeToggle variant="button" className="hidden sm:flex shrink-0" />
 
             {/* View Mode Toggle (Mobile / Tablet) */}
-            <div className="flex lg:hidden items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-border shrink-0">
+            <div className="flex lg:hidden items-center p-0.5 rounded-lg xs:rounded-xl bg-slate-100 dark:bg-slate-800 border border-border shrink-0">
               <button
                 onClick={() => setViewMode("list")}
-                className={`p-1.5 rounded-lg text-xs font-bold transition-colors ${
+                className={`p-1 xs:p-1.5 rounded-md xs:rounded-lg text-[11px] xs:text-xs font-bold transition-colors ${
                   viewMode !== "map"
-                    ? "bg-card text-primary shadow-sm"
+                    ? "bg-card text-primary shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
                 title="List View"
                 aria-label="List View"
               >
-                <List className="w-4 h-4" />
+                <List className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
               </button>
               <button
                 onClick={() => setViewMode("map")}
-                className={`p-1.5 rounded-lg text-xs font-bold transition-colors ${
+                className={`p-1 xs:p-1.5 rounded-md xs:rounded-lg text-[11px] xs:text-xs font-bold transition-colors ${
                   viewMode === "map"
-                    ? "bg-card text-primary shadow-sm"
+                    ? "bg-card text-primary shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
                 title="Map View"
                 aria-label="Map View"
               >
-                <MapIcon className="w-4 h-4" />
+                <MapIcon className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
               </button>
             </div>
           </div>
@@ -815,16 +815,16 @@ function SearchPageContent() {
 
         {/* Extended Interactive Filter Drawer */}
         {showFiltersModal && (
-          <div className="max-w-7xl mx-auto mt-4 p-4 sm:p-5 rounded-2xl bg-card border border-border shadow-xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="max-w-7xl mx-auto mt-3 xs:mt-4 p-3.5 xs:p-4 sm:p-5 rounded-xl xs:rounded-2xl bg-card border border-border shadow-xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 xs:gap-4 sm:gap-6 animate-in fade-in slide-in-from-top-2 duration-150">
             {/* Search Scope */}
             <div>
-              <span className="text-xs font-bold text-foreground uppercase tracking-wider block mb-2">
+              <span className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-foreground uppercase tracking-wider block mb-1.5 xs:mb-2">
                 Search Scope
               </span>
               <select
                 value={selectedScope}
                 onChange={(e) => setSelectedScope(e.target.value as any)}
-                className="w-full h-10 rounded-xl border border-input bg-background px-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                className="w-full h-8.5 xs:h-9 sm:h-10 rounded-lg xs:rounded-xl border border-input bg-background px-2.5 xs:px-3 text-[11px] xs:text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
               >
                 {SEARCH_OPTIONS.map((opt) => (
                   <option key={opt.key} value={opt.key}>
@@ -836,32 +836,32 @@ function SearchPageContent() {
 
             {/* Status & Verification */}
             <div>
-              <span className="text-xs font-bold text-foreground uppercase tracking-wider block mb-2">
+              <span className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-foreground uppercase tracking-wider block mb-1.5 xs:mb-2">
                 Status & Verification
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 xs:gap-2">
                 <button
                   type="button"
                   onClick={() => setOpenNowOnly(!openNowOnly)}
-                  className={`flex-1 h-10 px-3 rounded-xl text-xs font-bold border transition-colors flex items-center justify-center gap-1.5 ${
+                  className={`flex-1 h-8.5 xs:h-9 sm:h-10 px-2.5 xs:px-3 rounded-lg xs:rounded-xl text-[11px] xs:text-xs font-bold border transition-colors flex items-center justify-center gap-1 xs:gap-1.5 ${
                     openNowOnly
-                      ? "bg-emerald-600 text-white border-emerald-700 shadow-sm shadow-emerald-600/20"
+                      ? "bg-emerald-600 text-white border-emerald-700 shadow-xs shadow-emerald-600/20"
                       : "bg-background text-muted-foreground border-border hover:bg-accent"
                   }`}
                 >
-                  <Clock className="w-3.5 h-3.5" />
+                  <Clock className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
                   Open Now
                 </button>
                 <button
                   type="button"
                   onClick={() => setVerifiedOnly(!verifiedOnly)}
-                  className={`flex-1 h-10 px-3 rounded-xl text-xs font-bold border transition-colors flex items-center justify-center gap-1.5 ${
+                  className={`flex-1 h-8.5 xs:h-9 sm:h-10 px-2.5 xs:px-3 rounded-lg xs:rounded-xl text-[11px] xs:text-xs font-bold border transition-colors flex items-center justify-center gap-1 xs:gap-1.5 ${
                     verifiedOnly
-                      ? "bg-indigo-600 text-white border-indigo-700 shadow-sm shadow-indigo-600/20"
+                      ? "bg-indigo-600 text-white border-indigo-700 shadow-xs shadow-indigo-600/20"
                       : "bg-background text-muted-foreground border-border hover:bg-accent"
                   }`}
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <CheckCircle2 className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
                   Verified Only
                 </button>
               </div>
@@ -869,16 +869,16 @@ function SearchPageContent() {
 
             {/* Price Tier */}
             <div>
-              <span className="text-xs font-bold text-foreground uppercase tracking-wider block mb-2">
+              <span className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-foreground uppercase tracking-wider block mb-1.5 xs:mb-2">
                 Price Tier
               </span>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 xs:gap-1.5">
                 {(["all", "$", "$$", "$$$", "$$$$"] as (PriceTier | "all")[]).map((tier) => (
                   <button
                     key={tier}
                     type="button"
                     onClick={() => setSelectedPriceTier(tier)}
-                    className={`flex-1 h-10 rounded-xl text-xs font-bold border transition-colors ${
+                    className={`flex-1 h-8.5 xs:h-9 sm:h-10 rounded-lg xs:rounded-xl text-[11px] xs:text-xs font-bold border transition-colors ${
                       selectedPriceTier === tier
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-background text-muted-foreground border-border hover:bg-accent"
@@ -892,18 +892,18 @@ function SearchPageContent() {
 
             {/* Minimum Rating */}
             <div>
-              <span className="text-xs font-bold text-foreground uppercase tracking-wider block mb-2">
+              <span className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-foreground uppercase tracking-wider block mb-1.5 xs:mb-2">
                 Minimum Customer Rating
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 xs:gap-2">
                 {[0, 3.5, 4.0, 4.5].map((r) => (
                   <button
                     key={r}
                     type="button"
                     onClick={() => setMinRating(minRating === r ? 0 : r)}
-                    className={`flex-1 h-10 rounded-xl text-xs font-bold border transition-colors ${
+                    className={`flex-1 h-8.5 xs:h-9 sm:h-10 rounded-lg xs:rounded-xl text-[11px] xs:text-xs font-bold border transition-colors ${
                       minRating === r
-                        ? "bg-amber-500 text-white border-amber-600 shadow-sm shadow-amber-500/20"
+                        ? "bg-amber-500 text-white border-amber-600 shadow-xs shadow-amber-500/20"
                         : "bg-background text-muted-foreground border-border hover:bg-accent"
                     }`}
                   >
@@ -915,8 +915,8 @@ function SearchPageContent() {
 
             {/* Radius & Location */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-foreground uppercase tracking-wider">
+              <div className="flex items-center justify-between mb-1.5 xs:mb-2">
+                <span className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-foreground uppercase tracking-wider">
                   Near-Me Radius
                 </span>
                 <button
@@ -939,7 +939,7 @@ function SearchPageContent() {
                       setUserGpsLng(null);
                     }
                   }}
-                  className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border transition-colors ${
+                  className={`text-[10px] xs:text-[11px] font-bold px-1.5 xs:px-2 py-0.5 rounded-md xs:rounded-lg border transition-colors ${
                     nearMeActive
                       ? "bg-sky-600 text-white border-sky-700"
                       : "bg-muted text-muted-foreground border-border hover:text-foreground"
@@ -954,9 +954,9 @@ function SearchPageContent() {
                 max="50"
                 value={radiusKm}
                 onChange={(e) => setRadiusKm(Number(e.target.value))}
-                className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary"
+                className="w-full h-1.5 xs:h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary"
               />
-              <div className="flex justify-between text-[10px] text-muted-foreground mt-1 font-semibold">
+              <div className="flex justify-between text-[9px] xs:text-[10px] text-muted-foreground mt-0.5 xs:mt-1 font-semibold">
                 <span>1 km</span>
                 <span>25 km</span>
                 <span>50 km</span>
@@ -965,13 +965,13 @@ function SearchPageContent() {
 
             {/* Location / Subcity Selection */}
             <div>
-              <span className="text-xs font-bold text-foreground uppercase tracking-wider block mb-2">
+              <span className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-foreground uppercase tracking-wider block mb-1.5 xs:mb-2">
                 Neighborhood / Subcity
               </span>
               <select
                 value={selectedLocation}
                 onChange={(e) => setSelectedLocation(e.target.value)}
-                className="w-full h-10 rounded-xl border border-input bg-background px-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                className="w-full h-8.5 xs:h-9 sm:h-10 rounded-lg xs:rounded-xl border border-input bg-background px-2.5 xs:px-3 text-[11px] xs:text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
               >
                 <option value="">All Addis Ababa & East Africa</option>
                 {SEED_LOCATIONS.map((loc) => (
@@ -983,22 +983,22 @@ function SearchPageContent() {
             </div>
 
             {/* Drawer Footer Actions */}
-            <div className="col-span-1 sm:col-span-2 lg:col-span-3 pt-3 border-t border-border flex items-center justify-between">
+            <div className="col-span-1 sm:col-span-2 lg:col-span-3 pt-2.5 xs:pt-3 border-t border-border flex items-center justify-between">
               {hasActiveFilters ? (
                 <button
                   type="button"
                   onClick={resetAllFilters}
-                  className="text-xs font-bold text-red-500 hover:text-red-600 transition-colors"
+                  className="text-[11px] xs:text-xs font-bold text-red-500 hover:text-red-600 transition-colors"
                 >
                   Reset All Filters
                 </button>
               ) : (
-                <span className="text-xs text-muted-foreground">Adjust filters to refine results</span>
+                <span className="text-[11px] xs:text-xs text-muted-foreground">Adjust filters to refine results</span>
               )}
               <button
                 type="button"
                 onClick={() => setShowFiltersModal(false)}
-                className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors"
+                className="h-8 xs:h-8.5 sm:h-9 px-3 xs:px-4 rounded-lg xs:rounded-xl bg-primary text-primary-foreground text-[11px] xs:text-xs font-bold hover:bg-primary/90 transition-colors"
               >
                 Apply & Close
               </button>
@@ -1008,37 +1008,37 @@ function SearchPageContent() {
       </div>
 
       {/* Main Split Screen Results Content */}
-      <div className="max-w-7xl mx-auto w-full flex-1 px-2 xs:px-3 sm:px-4 md:px-6 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+      <div className="max-w-7xl mx-auto w-full flex-1 px-2 xs:px-3 sm:px-4 md:px-6 py-3 xs:py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-12 gap-3 xs:gap-4 sm:gap-6">
         {/* Left Column: Business Cards List */}
         <div
-          className={`lg:col-span-8 flex flex-col space-y-3 sm:space-y-5 ${
+          className={`lg:col-span-8 flex flex-col space-y-2.5 xs:space-y-3 sm:space-y-5 ${
             viewMode === "map" ? "hidden lg:flex" : "flex"
           }`}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+          <div className="flex items-center justify-between text-[11px] xs:text-xs">
+            <span className="font-bold text-muted-foreground uppercase tracking-wider">
               Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredBusinesses.length)}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredBusinesses.length)} of {filteredBusinesses.length} results
             </span>
-            <span className="text-xs font-medium text-muted-foreground">
+            <span className="font-medium text-muted-foreground">
               Page {currentPage} of {totalPages}
             </span>
           </div>
 
           {filteredBusinesses.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-border p-12 text-center bg-card shadow-sm">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary mx-auto flex items-center justify-center mb-3">
-                <Search className="w-6 h-6" />
+            <div className="rounded-2xl sm:rounded-3xl border border-dashed border-border p-8 xs:p-10 sm:p-12 text-center bg-card shadow-xs">
+              <div className="w-10 h-10 xs:w-12 xs:h-12 rounded-xl xs:rounded-2xl bg-primary/10 text-primary mx-auto flex items-center justify-center mb-2.5 xs:mb-3">
+                <Search className="w-5 h-5 xs:w-6 xs:h-6" />
               </div>
-              <h3 className="font-bold text-lg text-foreground">
+              <h3 className="font-bold text-base xs:text-lg text-foreground">
                 No matching listings found
               </h3>
-              <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
                 Try widening your search keywords, increasing your distance radius, or clearing some active filters.
               </p>
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-4 font-semibold"
+                className="mt-3 xs:mt-4 font-semibold text-xs h-8 xs:h-8.5 rounded-lg xs:rounded-xl"
                 onClick={resetAllFilters}
               >
                 Reset All Filters
@@ -1061,7 +1061,7 @@ function SearchPageContent() {
                   key={biz.id}
                   id={`business-card-${biz.id}`}
                   onMouseEnter={() => setSelectedBusiness(biz)}
-                  className={`group rounded-2xl sm:rounded-3xl bg-card border p-3.5 sm:p-5 md:p-6 transition-all duration-200 flex flex-col sm:flex-row gap-3.5 sm:gap-5 md:gap-6 shadow-sm hover:shadow-2xl ${
+                  className={`group rounded-xl xs:rounded-2xl sm:rounded-3xl bg-card border p-3 xs:p-3.5 sm:p-5 md:p-6 transition-all duration-200 flex flex-col sm:flex-row gap-3 xs:gap-3.5 sm:gap-5 md:gap-6 shadow-xs hover:shadow-xl ${
                     isSelected
                       ? "border-primary ring-2 ring-primary/20 shadow-indigo-500/10 -translate-y-0.5"
                       : "border-border/80 hover:border-primary/40"
@@ -1070,7 +1070,7 @@ function SearchPageContent() {
                   {/* Photo Thumbnail — clean responsive frame */}
                   <Link
                     href={`/business/${biz.id}`}
-                    className="relative w-full sm:w-52 md:w-60 h-44 xs:h-52 sm:h-auto sm:min-h-[190px] rounded-xl sm:rounded-2xl overflow-hidden shrink-0 bg-slate-100 dark:bg-slate-800"
+                    className="relative w-full sm:w-48 md:w-56 lg:w-60 h-36 xs:h-44 sm:h-auto sm:min-h-[175px] md:min-h-[190px] rounded-lg xs:rounded-xl sm:rounded-2xl overflow-hidden shrink-0 bg-slate-100 dark:bg-slate-800"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -1081,36 +1081,36 @@ function SearchPageContent() {
                       }}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+                    <div className="absolute top-2.5 left-2.5 xs:top-3 xs:left-3 flex flex-col gap-1 xs:gap-1.5">
                       <Badge
                         variant={liveStatus.isOpen ? "success" : "destructive"}
-                        className="text-xs font-bold backdrop-blur-md shadow-sm px-2.5 py-0.5"
+                        className="text-[10px] xs:text-[11px] sm:text-xs font-bold backdrop-blur-md shadow-xs px-2 xs:px-2.5 py-0.5"
                       >
                         {liveStatus.isOpen ? "● Open" : "● Closed"}
                       </Badge>
                       {(biz.isFeatured || index === 0) && (
                         <Badge
                           variant="warning"
-                          className="text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-md bg-amber-500 text-white border-amber-400 gap-1"
+                          className="text-[9px] xs:text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-xs bg-amber-500 text-white border-amber-400 gap-1 px-1.5 xs:px-2 py-0.5"
                         >
                           <Crown className="w-2.5 h-2.5 fill-current" /> Promoted
                         </Badge>
                       )}
                     </div>
                     {/* Gradient overlay at bottom for label readability */}
-                    <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 h-14 xs:h-16 bg-gradient-to-t from-black/40 to-transparent" />
                   </Link>
 
                   {/* Details */}
                   <div className="flex-1 flex flex-col justify-between min-w-0">
                     <div>
-                      <div className="flex items-start justify-between gap-3">
-                        <Link href={`/business/${biz.id}`} className="flex items-center gap-2 min-w-0 flex-1">
-                          <h3 className="font-extrabold text-lg sm:text-xl text-foreground group-hover:text-primary transition-colors line-clamp-2 break-words leading-snug">
+                      <div className="flex items-start justify-between gap-2 xs:gap-3">
+                        <Link href={`/business/${biz.id}`} className="flex items-center gap-1.5 xs:gap-2 min-w-0 flex-1">
+                          <h3 className="font-extrabold text-sm xs:text-base sm:text-lg md:text-xl text-foreground group-hover:text-primary transition-colors line-clamp-2 break-words leading-snug">
                             {biz.name}
                           </h3>
                           {(biz.isFeatured || index === 0) && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0">
+                            <span className="text-[9px] xs:text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0">
                               Sponsored
                             </span>
                           )}
@@ -1126,7 +1126,7 @@ function SearchPageContent() {
                       </div>
 
                       {/* Category • Rating • Price • Distance */}
-                      <div className="flex items-center gap-2 mt-1.5 text-sm text-muted-foreground flex-wrap">
+                      <div className="flex items-center gap-1.5 xs:gap-2 mt-1 xs:mt-1.5 text-[11px] xs:text-xs sm:text-sm text-muted-foreground flex-wrap">
                         <span className="font-semibold text-indigo-600 dark:text-indigo-400">
                           {biz.categoryName}
                         </span>
@@ -1138,10 +1138,10 @@ function SearchPageContent() {
                         )}
                         <span className="text-border">•</span>
                         <div className="flex items-center gap-1 font-bold text-foreground">
-                          <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                          <Star className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 text-amber-500 fill-amber-500 shrink-0" />
                           <span>{biz.ratingAvg.toFixed(1)}</span>
-                          <span className="font-normal text-muted-foreground text-xs">
-                            ({biz.reviewCount} reviews)
+                          <span className="font-normal text-muted-foreground text-[10px] xs:text-[11px] sm:text-xs">
+                            ({biz.reviewCount})
                           </span>
                         </div>
                         <span className="text-border">•</span>
@@ -1156,20 +1156,20 @@ function SearchPageContent() {
 
                       {/* Verified badge */}
                       {biz.isVerified && (
-                        <span className="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Verified Listing
+                        <span className="inline-flex items-center gap-1 mt-1.5 xs:mt-2 text-[10px] xs:text-[11px] sm:text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                          <CheckCircle2 className="w-3 h-3 xs:w-3.5 xs:h-3.5" /> Verified Listing
                         </span>
                       )}
 
-                      <p className="text-sm text-muted-foreground mt-3 line-clamp-3 leading-relaxed">
+                      <p className="text-[11px] xs:text-xs sm:text-sm text-muted-foreground mt-2 xs:mt-2.5 sm:mt-3 line-clamp-2 sm:line-clamp-3 leading-relaxed">
                         {biz.shortDescription || biz.description}
                       </p>
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="pt-3 xs:pt-4 mt-3 xs:mt-4 border-t border-border/60 flex items-center justify-between gap-2 xs:gap-3 flex-wrap">
-                      <div className="flex items-center gap-1.5 text-xs xs:text-sm text-muted-foreground min-w-0 flex-1 truncate">
-                        <MapPin className="w-4 h-4 text-indigo-500 shrink-0" />
+                    <div className="pt-2.5 xs:pt-3 sm:pt-4 mt-2.5 xs:mt-3 sm:mt-4 border-t border-border/60 flex items-center justify-between gap-2 xs:gap-3 flex-wrap">
+                      <div className="flex items-center gap-1 xs:gap-1.5 text-[10px] xs:text-[11px] sm:text-xs text-muted-foreground min-w-0 flex-1 truncate">
+                        <MapPin className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-indigo-500 shrink-0" />
                         <span className="truncate">{biz.addressLine}</span>
                       </div>
 
@@ -1177,26 +1177,26 @@ function SearchPageContent() {
                         {biz.telephone && (
                           <a
                             href={`tel:${biz.telephone}`}
-                            className="h-9 w-9 flex items-center justify-center rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors border border-border/60 shrink-0"
+                            className="h-7.5 w-7.5 xs:h-8 xs:w-8 sm:h-9 sm:w-9 flex items-center justify-center rounded-lg xs:rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors border border-border/60 shrink-0"
                             title="Call Business"
                           >
-                            <Phone className="w-4 h-4" />
+                            <Phone className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
                           </a>
                         )}
                         <a
                           href={`https://www.google.com/maps/dir/?api=1&destination=${biz.latitude},${biz.longitude}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="h-9 w-9 flex items-center justify-center rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors border border-border/60 shrink-0"
+                          className="h-7.5 w-7.5 xs:h-8 xs:w-8 sm:h-9 sm:w-9 flex items-center justify-center rounded-lg xs:rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors border border-border/60 shrink-0"
                           title="Get Directions"
                         >
-                          <Navigation className="w-4 h-4" />
+                          <Navigation className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
                         </a>
                         <Link href={`/business/${biz.id}`}>
                           <Button
                             size="default"
                             variant="gradient"
-                            className="h-9 text-xs xs:text-sm font-bold px-3.5 xs:px-5 rounded-xl shadow-sm"
+                            className="h-7.5 xs:h-8 sm:h-9 text-[11px] xs:text-xs sm:text-sm font-bold px-2.5 xs:px-3.5 sm:px-5 rounded-lg xs:rounded-xl shadow-xs"
                           >
                             View Details
                           </Button>
@@ -1211,21 +1211,21 @@ function SearchPageContent() {
 
           {/* ── Pagination Controls ── */}
           {filteredBusinesses.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 pb-4 border-t border-border/60">
-              <span className="text-xs font-semibold text-muted-foreground order-2 sm:order-1">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 xs:gap-4 pt-4 xs:pt-5 sm:pt-6 pb-3 xs:pb-4 border-t border-border/60">
+              <span className="text-[10px] xs:text-[11px] sm:text-xs font-semibold text-muted-foreground order-2 sm:order-1">
                 Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredBusinesses.length)}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredBusinesses.length)} of {filteredBusinesses.length} results
               </span>
 
-              <div className="flex items-center gap-1.5 sm:gap-2 order-1 sm:order-2 flex-wrap justify-center">
+              <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 order-1 sm:order-2 flex-wrap justify-center">
                 {/* Previous */}
                 <button
                   onClick={() => goToPage(currentPage - 1)}
                   disabled={currentPage <= 1}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-border bg-card text-xs sm:text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm active:scale-95"
+                  className="flex items-center gap-1 xs:gap-1.5 h-7.5 xs:h-8 sm:h-9 px-2.5 xs:px-3 sm:px-3.5 rounded-lg xs:rounded-xl border border-border bg-card text-[11px] xs:text-xs sm:text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs active:scale-95"
                   aria-label="Previous Page"
                 >
-                  <ChevronLeft className="w-4 h-4" />
-                  Previous
+                  <ChevronLeft className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
+                  <span>Prev</span>
                 </button>
 
                 {/* Page number pills */}
@@ -1242,12 +1242,12 @@ function SearchPageContent() {
                     }, [])
                     .map((item, idx) =>
                       item === 'ellipsis' ? (
-                        <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground text-xs sm:text-sm font-medium">…</span>
+                        <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground text-[11px] xs:text-xs font-medium">…</span>
                       ) : (
                         <button
                           key={item}
                           onClick={() => goToPage(item as number)}
-                          className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-xs sm:text-sm font-bold transition-all border ${
+                          className={`w-7 h-7 xs:w-8 xs:h-8 sm:w-9 sm:h-9 rounded-lg xs:rounded-xl text-[11px] xs:text-xs sm:text-sm font-bold transition-all border ${
                             currentPage === item
                               ? 'bg-indigo-600 text-white border-indigo-700 shadow-md shadow-indigo-500/20 scale-105'
                               : 'bg-card text-muted-foreground border-border hover:bg-accent hover:text-foreground'
@@ -1264,11 +1264,11 @@ function SearchPageContent() {
                 <button
                   onClick={() => goToPage(currentPage + 1)}
                   disabled={currentPage >= totalPages}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-border bg-card text-xs sm:text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm active:scale-95"
+                  className="flex items-center gap-1 xs:gap-1.5 h-7.5 xs:h-8 sm:h-9 px-2.5 xs:px-3 sm:px-3.5 rounded-lg xs:rounded-xl border border-border bg-card text-[11px] xs:text-xs sm:text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs active:scale-95"
                   aria-label="Next Page"
                 >
-                  Next
-                  <ChevronRight className="w-4 h-4" />
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
                 </button>
               </div>
             </div>
