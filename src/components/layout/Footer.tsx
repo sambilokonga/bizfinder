@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   MapPin,
   Shield,
@@ -246,11 +247,17 @@ export function Footer() {
           {/* Brand Info & Mission */}
           <div className="space-y-3">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-                <MapPin className="w-4 h-4" />
+              <div className="relative w-8 h-8 shrink-0">
+                <Image
+                  src="/logo.png"
+                  alt="BizGlobe Logo"
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-contain drop-shadow-sm"
+                />
               </div>
               <span className="text-lg font-black tracking-tight text-foreground">
-                Biz<span className="text-indigo-600 dark:text-indigo-400">Finder</span>
+                Biz<span className="bg-gradient-to-r from-sky-500 to-indigo-600 bg-clip-text text-transparent">Globe</span>
               </span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
@@ -324,7 +331,7 @@ export function Footer() {
 
         {/* ─── Bottom Copyright Bar ─── */}
         <div className="pt-5 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-          <p>© {new Date().getFullYear()} BizFinder Engine. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} BizGlobe Engine. All rights reserved.</p>
           <div className="flex items-center gap-3">
             <span className="hidden sm:inline font-semibold">Theme:</span>
             <ThemeToggle variant="pill" />

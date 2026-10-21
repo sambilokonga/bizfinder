@@ -38,11 +38,11 @@ export default async function SignUpPage() {
 
           {/* Logo */}
           <Link href="/" className="auth-logo-link">
-            <div className="auth-logo-icon auth-logo-icon-purple">
-              <MapPin size={22} />
+            <div className="relative w-9 h-9 shrink-0">
+              <img src="/logo.png" alt="BizGlobe" className="w-full h-full object-contain" />
             </div>
             <span className="auth-logo-text">
-              Biz<span className="auth-logo-accent-purple">Finder</span>
+              Biz<span className="auth-logo-accent-purple">Globe</span>
             </span>
             <Sparkles size={14} className="auth-logo-sparkle" />
           </Link>

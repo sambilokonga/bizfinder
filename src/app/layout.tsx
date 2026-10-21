@@ -10,9 +10,13 @@ import { Toaster } from "sonner";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "BizFinder — Local Business Search Engine & Directory",
+  title: "BizGlobe — Global Business Search Engine & Directory",
   description:
     "Discover verified local restaurants, pharmacies, hotels, auto repair, and top service providers with live hours, photos, reviews, and interactive map navigation.",
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({

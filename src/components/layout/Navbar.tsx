@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Search,
@@ -56,17 +57,24 @@ export function Navbar() {
       <div className="max-w-[1600px] w-full mx-auto flex h-16 items-center justify-between px-2 sm:px-4 lg:px-6 gap-1.5">
         {/* Brand Logo */}
         <div className="flex items-center gap-1.5 lg:gap-3 xl:gap-4 shrink-0">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform shrink-0">
-              <MapPin className="w-4 h-4" />
+          <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group">
+            <div className="relative w-9 h-9 sm:w-10 sm:h-10 shrink-0 group-hover:scale-105 transition-transform duration-200">
+              <Image
+                src="/logo.png"
+                alt="BizGlobe Logo"
+                width={40}
+                height={40}
+                className="w-full h-full object-contain drop-shadow-sm"
+                priority
+              />
             </div>
             <div className="flex flex-col">
               <span className="text-lg xl:text-xl font-black tracking-tight text-foreground flex items-center gap-1">
-                Biz<span className="text-indigo-600 dark:text-indigo-400">Finder</span>
+                Biz<span className="bg-gradient-to-r from-sky-500 to-indigo-600 bg-clip-text text-transparent">Globe</span>
                 <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500 animate-pulse" />
               </span>
               <span className="text-[9px] -mt-1 font-medium text-muted-foreground tracking-wider uppercase hidden sm:inline">
-                Search & Directory
+                Global Business Directory
               </span>
             </div>
           </Link>

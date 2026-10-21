@@ -2631,8 +2631,12 @@ export default function OwnerDashboardPage() {
           >
             <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-foreground" />
           </button>
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
-            <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />
+          <div className="relative w-8 h-8 sm:w-10 sm:h-10 shrink-0">
+            <img
+              src="/logo.png"
+              alt="BizGlobe Logo"
+              className="w-full h-full object-contain drop-shadow-sm"
+            />
           </div>
           <div>
             <div className="flex items-center gap-1.5 sm:gap-2">
