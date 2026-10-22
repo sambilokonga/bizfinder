@@ -75,7 +75,7 @@ export async function GET(request: Request) {
   // Strict territorial isolation fallback & shared global city registry
   let results: any[] = [];
   if (city && city !== "all") {
-    results = globalCityRegistry.getBusinessesForCity(city, country || "Ethiopia");
+    results = globalCityRegistry.getBusinessesForCity(city, country);
   } else if (country && country !== "all") {
     results = globalCityRegistry.getBusinessesForCountry(country, city);
   } else {

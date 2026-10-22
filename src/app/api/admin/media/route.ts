@@ -125,8 +125,15 @@ function getInitialSeedMedia() {
 
 // In-memory fallback if MongoDB is unavailable
 let memoryMediaStore: any[] = [];
+let lastMediaSyncTime = 0;
+const MEDIA_SYNC_INTERVAL = 15 * 60 * 1000; // 15 minutes
 
 async function syncMediaFromDatabase() {
+  const now = Date.now();
+  if (now - lastMediaSyncTime < MEDIA_SYNC_INTERVAL) {
+    return;
+  }
+
   const db = await connectToDatabase();
   if (!db) {
     if (memoryMediaStore.length === 0) {
@@ -136,6 +143,7 @@ async function syncMediaFromDatabase() {
   }
 
   try {
+    lastMediaSyncTime = now;
     const count = await MediaModel.countDocuments();
     if (count === 0) {
       // Seed initial media

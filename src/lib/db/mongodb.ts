@@ -33,23 +33,23 @@ export async function connectToDatabase(): Promise<typeof mongoose | null> {
     resetCache();
   }
 
-  const MONGODB_URI = process.env.MONGODB_URI;
+  let MONGODB_URI = process.env.MONGODB_URI;
   if (!MONGODB_URI) {
     return null;
+  }
+  if (!MONGODB_URI.includes("readPreference")) {
+    MONGODB_URI += (MONGODB_URI.includes("?") ? "&" : "?") + "readPreference=primaryPreferred";
   }
 
   if (!cached.promise) {
     const opts: mongoose.ConnectOptions = {
       bufferCommands: false,
-      // How long the driver waits to find a suitable server — fail fast
-      serverSelectionTimeoutMS: 3000,
-      // How long an individual socket operation may take
-      socketTimeoutMS: 4000,
-      // TCP connection timeout
-      connectTimeoutMS: 3000,
-      // Heartbeat every 10 s so dropped connections are detected quickly
+      serverSelectionTimeoutMS: 20000,
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 20000,
+      readPreference: "primaryPreferred" as any,
       heartbeatFrequencyMS: 10_000,
-      family: 4,
+      maxPoolSize: 10,
     };
 
     cached.promise = mongoose
@@ -79,12 +79,12 @@ export async function connectToDatabase(): Promise<typeof mongoose | null> {
  * If the query doesn't resolve in `ms` milliseconds, resolves to `fallback` instead.
  *
  * Usage:
- *   const docs = await withDbTimeout(BusinessModel.find({}).lean(), [], 4000);
+ *   const docs = await withDbTimeout(BusinessModel.find({}).lean(), [], 15000);
  */
 export async function withDbTimeout<T>(
   queryPromise: Promise<T>,
   fallback: T,
-  ms = 4000
+  ms = 15000
 ): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   const timeout = new Promise<T>((resolve) => {

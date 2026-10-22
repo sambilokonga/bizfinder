@@ -108,39 +108,25 @@ export async function GET(request: Request) {
       country,
     });
 
-    const fallback = getRegistryFallbackResponse(searchParams);
     const dbReviews = result && Array.isArray(result.reviews) ? result.reviews : [];
+    const hasDbData = dbReviews.length > 0 || (result?.total ?? 0) > 0;
 
-    // Merge fallback registry reviews and live DB reviews (live DB reviews take precedence)
-    const reviewMap = new Map<string, any>();
-    (fallback.reviews || []).forEach((r: any) => reviewMap.set(r.id, r));
-    dbReviews.forEach((r: any) => reviewMap.set(r.id, r));
+    // ── DB has live data: return it directly (already paginated by the query)
+    if (hasDbData) {
+      return NextResponse.json({
+        success: true,
+        reviews: dbReviews,
+        total: result!.total,
+        page: result!.page,
+        totalPages: result!.totalPages,
+        limit: result!.limit,
+        counts: result!.counts,
+      });
+    }
 
-    const combinedList = Array.from(reviewMap.values());
-    const total = Math.max(result?.total || 0, fallback.total, combinedList.length);
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-    const skip = (page - 1) * limit;
-    const paginated = combinedList.slice(skip, skip + limit);
-
-    return NextResponse.json({
-      success: true,
-      reviews: paginated,
-      total,
-      page,
-      totalPages,
-      limit,
-      counts: {
-        all: Math.max(result?.counts?.all || 0, fallback.counts.all),
-        published: Math.max(result?.counts?.published || 0, fallback.counts.published),
-        pending: Math.max(result?.counts?.pending || 0, fallback.counts.pending),
-        reported: Math.max(result?.counts?.reported || 0, fallback.counts.reported),
-        removed: Math.max(result?.counts?.removed || 0, fallback.counts.removed),
-        replies: Math.max(result?.counts?.replies || 0, fallback.counts.replies),
-        historical: fallback.counts.historical,
-        recent: Math.max(result?.counts?.published || 0, fallback.counts.recent),
-        future_scheduled: fallback.counts.future_scheduled,
-      },
-    });
+    // ── DB has no matching reviews: fall back to the in-memory registry
+    const fallback = getRegistryFallbackResponse(searchParams);
+    return NextResponse.json(fallback);
   } catch (error: any) {
     console.error("[API /api/reviews GET]", error);
     const fallback = getRegistryFallbackResponse(searchParams);

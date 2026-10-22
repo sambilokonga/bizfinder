@@ -653,6 +653,8 @@ export default function CityAdminDashboard() {
   const [paySearch, setPaySearch] = useState<string>("");
   const [payPage, setPayPage] = useState<number>(1);
   const [payTotal, setPayTotal] = useState<number>(0);
+  const [payTotalPages, setPayTotalPages] = useState<number>(1);
+  const PAY_PAGE_LIMIT = 20;
   const [isRegisterPaymentModalOpen, setIsRegisterPaymentModalOpen] = useState(false);
   const [inspectReceiptPayment, setInspectReceiptPayment] = useState<IPayment | null>(null);
 
@@ -662,8 +664,9 @@ export default function CityAdminDashboard() {
   const [isUsersLoading, setIsUsersLoading] = useState<boolean>(false);
   const [userSearch, setUserSearch] = useState<string>("");
   const [userRoleFilter, setUserRoleFilter] = useState<"all" | "customers" | "owners" | "admins">("all");
-  const [userFilterCountry, setUserFilterCountry] = useState<string>("Ethiopia");
-  const [userFilterCity, setUserFilterCity] = useState<string>("Addis Ababa");
+  const [userPage, setUserPage] = useState<number>(1);
+  const [userTotalPages, setUserTotalPages] = useState<number>(1);
+  const USER_PAGE_LIMIT = 20;
   const [isExportingUsers, setIsExportingUsers] = useState<boolean>(false);
 
   // ── Data State ────────────────────────────────────────────────────────────
@@ -687,15 +690,57 @@ export default function CityAdminDashboard() {
   const [isLoadingBiz, setIsLoadingBiz] = useState(false);
   const [businessSearch, setBusinessSearch] = useState("");
   const [isExportingBiz, setIsExportingBiz] = useState(false);
+  const [bizPage, setBizPage] = useState(1);
+  const [bizTotalPages, setBizTotalPages] = useState(1);
+  const [bizTotal, setBizTotal] = useState(0);
+  const BIZ_PAGE_LIMIT = 20;
+
+  // Categories State
+  const [categoriesList, setCategoriesList] = useState<any[]>([]);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
+  const [categoryPage, setCategoryPage] = useState(1);
+  const [categoryTotalPages, setCategoryTotalPages] = useState(1);
+  const [categoryTotal, setCategoryTotal] = useState(0);
+  const CATEGORY_PAGE_LIMIT = 12;
+
+  // Locations State
+  const [locationsList, setLocationsList] = useState<any[]>([]);
+  const [isLocationsLoading, setIsLocationsLoading] = useState(false);
+  const [locPage, setLocPage] = useState(1);
+  const [locTotalPages, setLocTotalPages] = useState(1);
+  const [locTotal, setLocTotal] = useState(0);
+  const LOC_PAGE_LIMIT = 12;
 
   // Claims & Reports & Reviews & Notices State
   const [claimsList, setClaimsList] = useState<ClaimItem[]>(INITIAL_CITY_CLAIMS);
   const [reportsList, setReportsList] = useState<CityReportItem[]>(INITIAL_CITY_REPORTS);
+  const [isReportsLoading, setIsReportsLoading] = useState(false);
+  const [repPage, setRepPage] = useState(1);
+  const [repTotalPages, setRepTotalPages] = useState(1);
+  const [repTotal, setRepTotal] = useState(0);
+  const REP_PAGE_LIMIT = 10;
+
   const [reviewsList, setReviewsList] = useState<ReviewModerationItem[]>(INITIAL_CITY_REVIEWS);
+  const [isReviewsLoading, setIsReviewsLoading] = useState(false);
+  const [revPage, setRevPage] = useState(1);
+  const [revTotalPages, setRevTotalPages] = useState(1);
+  const [revTotal, setRevTotal] = useState(0);
+  const REV_PAGE_LIMIT = 10;
+
   const [noticesList, setNoticesList] = useState<CityNotice[]>(INITIAL_CITY_NOTICES);
+  const [isNoticesLoading, setIsNoticesLoading] = useState(false);
+  const [notPage, setNotPage] = useState(1);
+  const [notTotalPages, setNotTotalPages] = useState(1);
+  const [notTotal, setNotTotal] = useState(0);
+  const NOT_PAGE_LIMIT = 10;
 
   // Media Library State
   const [mediaList, setMediaList] = useState<LightboxMediaItem[]>(INITIAL_CITY_MEDIA);
+  const [isMediaLoading, setIsMediaLoading] = useState(false);
+  const [mediaPage, setMediaPage] = useState(1);
+  const [mediaTotalPages, setMediaTotalPages] = useState(1);
+  const [mediaTotal, setMediaTotal] = useState(0);
+  const MEDIA_PAGE_LIMIT = 12;
   const [lightboxMedia, setLightboxMedia] = useState<LightboxMediaItem | null>(null);
   const [mediaTypeFilter, setMediaTypeFilter] = useState<string>("all");
   const [mediaSearch, setMediaSearch] = useState<string>("");
@@ -707,11 +752,21 @@ export default function CityAdminDashboard() {
 
   // Advertisements State
   const [campaignsList, setCampaignsList] = useState<AdminAdCampaign[]>(INITIAL_CITY_CAMPAIGNS);
+  const [isCampaignsLoading, setIsCampaignsLoading] = useState(false);
+  const [campPage, setCampPage] = useState(1);
+  const [campTotalPages, setCampTotalPages] = useState(1);
+  const [campTotal, setCampTotal] = useState(0);
+  const CAMP_PAGE_LIMIT = 10;
   const [isAddCampaignModalOpen, setIsAddCampaignModalOpen] = useState(false);
   const [campaignSearch, setCampaignSearch] = useState("");
 
   // Support Desk State
   const [supportTickets, setSupportTickets] = useState<MunicipalSupportTicket[]>(INITIAL_CITY_SUPPORT_TICKETS);
+  const [isSupportLoading, setIsSupportLoading] = useState(false);
+  const [supPage, setSupPage] = useState(1);
+  const [supTotalPages, setSupTotalPages] = useState(1);
+  const [supTotal, setSupTotal] = useState(0);
+  const SUP_PAGE_LIMIT = 10;
   const [inspectTicket, setInspectTicket] = useState<MunicipalSupportTicket | null>(null);
   const [supportSearch, setSupportSearch] = useState("");
   const [supportStatusFilter, setSupportStatusFilter] = useState("all");
@@ -719,6 +774,11 @@ export default function CityAdminDashboard() {
 
   // Audit Logs State
   const [auditLogs, setAuditLogs] = useState<MunicipalAuditLog[]>(INITIAL_CITY_AUDIT_LOGS);
+  const [isSecurityLoading, setIsSecurityLoading] = useState(false);
+  const [secPage, setSecPage] = useState(1);
+  const [secTotalPages, setSecTotalPages] = useState(1);
+  const [secTotal, setSecTotal] = useState(0);
+  const SEC_PAGE_LIMIT = 15;
 
   // Modals & Drawers
   const [inspectBusiness, setInspectBusiness] = useState<Business | null>(null);
@@ -794,7 +854,7 @@ export default function CityAdminDashboard() {
   }, [fetchTerritoryAdmins]);
 
   // ── Fetch City Stats ──────────────────────────────────────────────────────
-  const fetchCityStats = async () => {
+  const fetchCityStats = useCallback(async () => {
     try {
       const res = await fetch(`/api/city-admin/stats?country=${encodeURIComponent(selectedCountry)}&city=${encodeURIComponent(selectedCity)}`);
       const data = await res.json();
@@ -807,31 +867,44 @@ export default function CityAdminDashboard() {
     } catch (e) {
       console.warn("Using local fallback stats for City Admin:", e);
     }
-  };
+  }, [selectedCountry, selectedCity]);
 
   // ── Fetch City Businesses ─────────────────────────────────────────────────
-  const fetchBusinesses = async () => {
+  const fetchBusinesses = useCallback(async (page = 1, status = "all") => {
     setIsLoadingBiz(true);
     try {
-      const res = await fetch(`/api/businesses?country=${encodeURIComponent(selectedCountry)}&city=${encodeURIComponent(selectedCity)}&limit=100`);
+      const q = businessSearch.trim() ? `&q=${encodeURIComponent(businessSearch.trim())}` : "";
+      const statusParam = status && status !== "all" && status !== "overview" ? status : "all";
+      const res = await fetch(
+        `/api/businesses?country=${encodeURIComponent(selectedCountry)}&city=${encodeURIComponent(selectedCity)}&status=${statusParam}&page=${page}&limit=${BIZ_PAGE_LIMIT}${q}`
+      );
       const data = await res.json();
-      if (data.businesses && data.businesses.length > 0) {
+      if (data.businesses && Array.isArray(data.businesses)) {
         setBusinesses(data.businesses);
+        setBizPage(data.page ?? page);
+        setBizTotalPages(data.totalPages ?? Math.max(1, Math.ceil((data.total ?? data.businesses.length) / BIZ_PAGE_LIMIT)));
+        setBizTotal(data.total ?? data.businesses.length);
       } else {
         const filtered = SEED_BUSINESSES.filter(
           (b) =>
             b.cityName?.toLowerCase() === selectedCity.toLowerCase() ||
-            (b.countryName?.toLowerCase() === selectedCountry.toLowerCase() && selectedCity.toLowerCase().includes("addis"))
+            b.countryName?.toLowerCase() === selectedCountry.toLowerCase()
         );
-        setBusinesses(filtered.length > 0 ? filtered : SEED_BUSINESSES.slice(0, 15));
+        const fallback = filtered.length > 0 ? filtered : SEED_BUSINESSES.slice(0, 15);
+        setBusinesses(fallback.slice((page - 1) * BIZ_PAGE_LIMIT, page * BIZ_PAGE_LIMIT));
+        setBizTotalPages(Math.max(1, Math.ceil(fallback.length / BIZ_PAGE_LIMIT)));
+        setBizTotal(fallback.length);
+        setBizPage(page);
       }
     } catch (e) {
       console.warn("Failed to fetch city businesses, falling back to seed:", e);
-      setBusinesses(SEED_BUSINESSES.slice(0, 15));
+      setBusinesses(SEED_BUSINESSES.slice(0, BIZ_PAGE_LIMIT));
+      setBizTotalPages(1);
+      setBizTotal(SEED_BUSINESSES.length);
     } finally {
       setIsLoadingBiz(false);
     }
-  };
+  }, [selectedCountry, selectedCity, businessSearch]);
 
   const handleExportCityBusinesses = async (format: "csv" | "json") => {
     setIsExportingBiz(true);
@@ -864,47 +937,48 @@ export default function CityAdminDashboard() {
   };
 
   // ── Fetch Municipal Users ─────────────────────────────────────────────────
-  const fetchCityUsers = async () => {
+  const fetchCityUsers = useCallback(async (page = 1) => {
     setIsUsersLoading(true);
     try {
-      const countryParam = userFilterCountry && userFilterCountry !== "all"
-        ? `&country=${encodeURIComponent(userFilterCountry)}`
-        : "";
-      const cityParam = userFilterCity && userFilterCity !== "all"
-        ? `&city=${encodeURIComponent(userFilterCity)}`
-        : "";
-      const roleParam = userRoleFilter !== "all" ? `&role=${userRoleFilter}` : "";
-      const qParam = userSearch.trim() ? `&search=${encodeURIComponent(userSearch.trim())}` : "";
-      const res = await fetch(`/api/admin/users?limit=50${countryParam}${cityParam}${roleParam}${qParam}`);
+      const params = new URLSearchParams();
+      params.set("page", String(page));
+      params.set("limit", String(USER_PAGE_LIMIT));
+      params.set("callerRole", "city_admin");
+      if (selectedCountry && selectedCountry !== "all") params.set("country", selectedCountry);
+      if (selectedCity && selectedCity !== "all") params.set("city", selectedCity);
+      if (userRoleFilter !== "all") params.set("role", userRoleFilter);
+      if (userSearch.trim()) params.set("search", userSearch.trim());
+      const res = await fetch(`/api/admin/users?${params.toString()}`);
       const data = await res.json();
       if (data?.users && Array.isArray(data.users)) {
         setCityUsers(data.users);
         setCityUsersTotal(data.total ?? data.users.length);
+        setUserPage(data.page ?? page);
+        setUserTotalPages(data.totalPages ?? Math.max(1, Math.ceil((data.total ?? data.users.length) / USER_PAGE_LIMIT)));
       }
     } catch (err) {
       console.error("Failed to fetch city users:", err);
     } finally {
       setIsUsersLoading(false);
     }
-  };
+  }, [selectedCountry, selectedCity, userRoleFilter, userSearch]);
 
   const handleExportCityUsers = async (format: "csv" | "json") => {
     setIsExportingUsers(true);
     try {
-      const countryParam = userFilterCountry && userFilterCountry !== "all"
-        ? `&country=${encodeURIComponent(userFilterCountry)}`
-        : "";
-      const cityParam = userFilterCity && userFilterCity !== "all"
-        ? `&city=${encodeURIComponent(userFilterCity)}`
-        : "";
-      const roleParam = userRoleFilter !== "all" ? `&role=${userRoleFilter}` : "";
-      const qParam = userSearch.trim() ? `&search=${encodeURIComponent(userSearch.trim())}` : "";
-      const res = await fetch(`/api/admin/users?export=true${countryParam}${cityParam}${roleParam}${qParam}`);
+      const params = new URLSearchParams();
+      params.set("export", "true");
+      params.set("callerRole", "city_admin");
+      if (selectedCountry && selectedCountry !== "all") params.set("country", selectedCountry);
+      if (selectedCity && selectedCity !== "all") params.set("city", selectedCity);
+      if (userRoleFilter !== "all") params.set("role", userRoleFilter);
+      if (userSearch.trim()) params.set("search", userSearch.trim());
+      const res = await fetch(`/api/admin/users?${params.toString()}`);
       const data = await res.json();
       const exportList = data?.users && Array.isArray(data.users) && data.users.length > 0
         ? data.users
         : cityUsers;
-      const fileLabel = `city_users_${(userFilterCity || "city").toLowerCase().replace(/\s+/g, "_")}_${(userFilterCountry || "country").toLowerCase().replace(/\s+/g, "_")}`;
+      const fileLabel = `city_users_${(selectedCity || "city").toLowerCase().replace(/\s+/g, "_")}_${(selectedCountry || "country").toLowerCase().replace(/\s+/g, "_")}`;
       if (format === "csv") {
         exportUsersToCSV(exportList, fileLabel);
         toast.success(`Downloaded ${exportList.length} municipal users in CSV format!`);
@@ -914,7 +988,7 @@ export default function CityAdminDashboard() {
       }
     } catch (err) {
       console.error("Export city users error:", err);
-      const fileLabel = `city_users_${(userFilterCity || "city").toLowerCase().replace(/\s+/g, "_")}`;
+      const fileLabel = `city_users_${(selectedCity || "city").toLowerCase().replace(/\s+/g, "_")}`;
       if (format === "csv") exportUsersToCSV(cityUsers, fileLabel);
       else exportUsersToJSON(cityUsers, fileLabel);
       toast.success(`Downloaded ${cityUsers.length} users!`);
@@ -923,52 +997,26 @@ export default function CityAdminDashboard() {
     }
   };
 
-  // ── City Payments Fetch ────────────────────────────────────────────────────
-  const fetchCityPayments = useCallback(async () => {
-    setIsPaymentsLoading(true);
+  // ── Fetch Categories (Live DB) ───────────────────────────────────────────
+  const fetchCityCategories = useCallback(async (page = 1) => {
+    setIsCategoriesLoading(true);
     try {
-      const params = new URLSearchParams();
-      params.set("limit", "200");
-      params.set("sort", "desc");
-      if (selectedCity && selectedCity !== "all") params.set("city", selectedCity);
-      if (selectedCountry && selectedCountry !== "all") params.set("country", selectedCountry);
-      if (payStatusFilter && payStatusFilter !== "all") params.set("status", payStatusFilter);
-      if (paySearch.trim()) params.set("search", paySearch.trim());
-      const res = await fetch(`/api/payments?${params.toString()}`);
-      if (!res.ok) return;
+      const res = await fetch(`/api/categories?city=${encodeURIComponent(selectedCity)}&country=${encodeURIComponent(selectedCountry)}`);
       const data = await res.json();
-      if (data.success && Array.isArray(data.payments)) {
-        setCityPayments(data.payments);
-        setPayTotal(data.pagination?.total ?? data.payments.length);
-        if (data.geoBreakdown) setCityPayGeoBreakdown(data.geoBreakdown);
-      }
-    } catch (err) {
-      console.warn("[CityAdmin] Failed to load city payments:", err);
+      const list = Array.isArray(data.categories) && data.categories.length > 0 ? data.categories : SEED_CATEGORIES;
+      setCategoriesList(list);
+      setCategoryTotal(list.length);
+      setCategoryTotalPages(Math.max(1, Math.ceil(list.length / CATEGORY_PAGE_LIMIT)));
+      setCategoryPage(page);
+    } catch (e) {
+      console.warn("Failed to fetch categories:", e);
+      setCategoriesList(SEED_CATEGORIES);
+      setCategoryTotal(SEED_CATEGORIES.length);
+      setCategoryTotalPages(Math.max(1, Math.ceil(SEED_CATEGORIES.length / CATEGORY_PAGE_LIMIT)));
     } finally {
-      setIsPaymentsLoading(false);
+      setIsCategoriesLoading(false);
     }
-  }, [selectedCity, selectedCountry, payStatusFilter, paySearch]);
-
-  useEffect(() => {
-    fetchCityStats();
-    fetchBusinesses();
   }, [selectedCountry, selectedCity]);
-
-  useEffect(() => {
-    if (activeNav === "users") {
-      const handler = setTimeout(() => {
-        fetchCityUsers();
-      }, 200);
-      return () => clearTimeout(handler);
-    }
-  }, [activeNav, userFilterCountry, userFilterCity, userRoleFilter, userSearch]);
-
-  useEffect(() => {
-    if (activeNav === "payments") {
-      const handler = setTimeout(() => fetchCityPayments(), 200);
-      return () => clearTimeout(handler);
-    }
-  }, [activeNav, fetchCityPayments]);
 
   // ── Sub-Cities & Districts list ───────────────────────────────────────────
   const activeSubcitiesList = useMemo(() => {
@@ -983,6 +1031,369 @@ export default function CityAdminDashboard() {
       densityIndex: "High",
     }));
   }, [subcities, selectedCountry, selectedCity]);
+
+  // ── Fetch Locations (Live DB) ────────────────────────────────────────────
+  const fetchCityLocations = useCallback(async (page = 1) => {
+    setIsLocationsLoading(true);
+    try {
+      const res = await fetch(`/api/locations`);
+      const data = await res.json();
+      const allLocs = Array.isArray(data.locations) ? data.locations : [];
+      const matched = allLocs.filter((l: any) =>
+        (l.name && l.name.toLowerCase().includes(selectedCity.toLowerCase())) ||
+        (l.countryCode && selectedCountry.toLowerCase().includes(l.countryCode.toLowerCase()))
+      );
+      const combined = matched.length > 0 ? matched : activeSubcitiesList;
+      setLocationsList(combined);
+      setLocTotal(combined.length);
+      setLocTotalPages(Math.max(1, Math.ceil(combined.length / LOC_PAGE_LIMIT)));
+      setLocPage(page);
+    } catch (e) {
+      console.warn("Failed to fetch locations:", e);
+      setLocationsList(activeSubcitiesList);
+      setLocTotal(activeSubcitiesList.length);
+      setLocTotalPages(Math.max(1, Math.ceil(activeSubcitiesList.length / LOC_PAGE_LIMIT)));
+    } finally {
+      setIsLocationsLoading(false);
+    }
+  }, [selectedCountry, selectedCity, activeSubcitiesList]);
+
+  // ── Fetch Reviews (Live DB) ──────────────────────────────────────────────
+  const fetchCityReviews = useCallback(async (page = 1, status = "all") => {
+    setIsReviewsLoading(true);
+    try {
+      const statusParam = status && status !== "all" && status !== "overview" ? status : "all";
+      const res = await fetch(
+        `/api/reviews?city=${encodeURIComponent(selectedCity)}&country=${encodeURIComponent(selectedCountry)}&page=${page}&limit=${REV_PAGE_LIMIT}&status=${statusParam}`
+      );
+      const data = await res.json();
+      if (data.reviews && Array.isArray(data.reviews)) {
+        setReviewsList(data.reviews);
+        setRevTotal(data.total ?? data.reviews.length);
+        setRevTotalPages(data.totalPages ?? Math.max(1, Math.ceil((data.total ?? data.reviews.length) / REV_PAGE_LIMIT)));
+        setRevPage(data.page ?? page);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch reviews:", e);
+    } finally {
+      setIsReviewsLoading(false);
+    }
+  }, [selectedCountry, selectedCity]);
+
+  // ── Fetch Media (Live DB) ────────────────────────────────────────────────
+  const fetchCityMedia = useCallback(async (page = 1) => {
+    setIsMediaLoading(true);
+    try {
+      const typeParam = mediaTypeFilter !== "all" ? `&type=${mediaTypeFilter}` : "";
+      const searchParam = mediaSearch.trim() ? `&search=${encodeURIComponent(mediaSearch.trim())}` : "";
+      const res = await fetch(
+        `/api/media?city=${encodeURIComponent(selectedCity)}&country=${encodeURIComponent(selectedCountry)}&page=${page}&limit=${MEDIA_PAGE_LIMIT}${typeParam}${searchParam}`
+      );
+      const data = await res.json();
+      if (data.media && Array.isArray(data.media)) {
+        setMediaList(data.media);
+        setMediaTotal(data.total ?? data.media.length);
+        setMediaTotalPages(data.totalPages ?? Math.max(1, Math.ceil((data.total ?? data.media.length) / MEDIA_PAGE_LIMIT)));
+        setMediaPage(data.page ?? page);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch media:", e);
+    } finally {
+      setIsMediaLoading(false);
+    }
+  }, [selectedCountry, selectedCity, mediaTypeFilter, mediaSearch]);
+
+  // ── Fetch Campaigns (Live DB) ────────────────────────────────────────────
+  const fetchCityCampaigns = useCallback(async (page = 1, status = "all") => {
+    setIsCampaignsLoading(true);
+    try {
+      const statusParam = status && status !== "all" && status !== "overview" ? status : "all";
+      const res = await fetch(
+        `/api/admin/ads/campaigns?city=${encodeURIComponent(selectedCity)}&country=${encodeURIComponent(selectedCountry)}&page=${page}&limit=${CAMP_PAGE_LIMIT}&status=${statusParam}`
+      );
+      const data = await res.json();
+      const list = data.campaigns || data.ads || [];
+      if (Array.isArray(list)) {
+        setCampaignsList(list);
+        setCampTotal(data.total ?? list.length);
+        setCampTotalPages(data.totalPages ?? Math.max(1, Math.ceil((data.total ?? list.length) / CAMP_PAGE_LIMIT)));
+        setCampPage(data.page ?? page);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch campaigns:", e);
+    } finally {
+      setIsCampaignsLoading(false);
+    }
+  }, [selectedCountry, selectedCity]);
+
+  // ── City Payments Fetch (Live DB) ─────────────────────────────────────────
+  const fetchCityPayments = useCallback(async (page = 1) => {
+    setIsPaymentsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("page", String(page));
+      params.set("limit", String(PAY_PAGE_LIMIT));
+      params.set("sort", "desc");
+      if (selectedCity && selectedCity !== "all") params.set("city", selectedCity);
+      if (selectedCountry && selectedCountry !== "all") params.set("country", selectedCountry);
+      if (payStatusFilter && payStatusFilter !== "all") params.set("status", payStatusFilter);
+      if (paySearch.trim()) params.set("search", paySearch.trim());
+      const res = await fetch(`/api/payments?${params.toString()}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.success && Array.isArray(data.payments)) {
+        setCityPayments(data.payments);
+        setPayTotal(data.pagination?.total ?? data.payments.length);
+        setPayPage(data.pagination?.page ?? data.page ?? page);
+        setPayTotalPages(data.pagination?.totalPages ?? Math.max(1, Math.ceil((data.pagination?.total ?? data.payments.length) / PAY_PAGE_LIMIT)));
+        if (data.geoBreakdown) setCityPayGeoBreakdown(data.geoBreakdown);
+      }
+    } catch (err) {
+      console.warn("[CityAdmin] Failed to load city payments:", err);
+    } finally {
+      setIsPaymentsLoading(false);
+    }
+  }, [selectedCity, selectedCountry, payStatusFilter, paySearch]);
+
+  // ── Fetch Reports (Live DB) ──────────────────────────────────────────────
+  const fetchCityReports = useCallback(async (page = 1, status = "all") => {
+    setIsReportsLoading(true);
+    try {
+      const statusParam = status && status !== "all" && status !== "overview" ? `&status=${status}` : "";
+      const res = await fetch(
+        `/api/reports?city=${encodeURIComponent(selectedCity)}&country=${encodeURIComponent(selectedCountry)}&page=${page}&limit=${REP_PAGE_LIMIT}${statusParam}`
+      );
+      const data = await res.json();
+      // API returns { data: IReport[], total, page, totalPages, stats }
+      const reportItems = data.data || data.reports;
+      if (reportItems && Array.isArray(reportItems)) {
+        setReportsList(reportItems);
+        const total = data.total ?? data.stats?.totalReports ?? reportItems.length;
+        setRepTotal(total);
+        setRepTotalPages(data.totalPages ?? Math.max(1, Math.ceil(total / REP_PAGE_LIMIT)));
+        setRepPage(data.page ?? page);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch reports:", e);
+    } finally {
+      setIsReportsLoading(false);
+    }
+  }, [selectedCountry, selectedCity]);
+
+  // ── Fetch Notifications (Live DB) ────────────────────────────────────────
+  const fetchCityNotices = useCallback(async (page = 1) => {
+    setIsNoticesLoading(true);
+    try {
+      const res = await fetch(
+        `/api/notifications?city=${encodeURIComponent(selectedCity)}&country=${encodeURIComponent(selectedCountry)}&role=city_admin&page=${page}&limit=${NOT_PAGE_LIMIT}`
+      );
+      const data = await res.json();
+      if (data.notifications && Array.isArray(data.notifications)) {
+        setNoticesList(data.notifications);
+        setNotTotal(data.total ?? data.notifications.length);
+        setNotTotalPages(data.totalPages ?? Math.max(1, Math.ceil((data.total ?? data.notifications.length) / NOT_PAGE_LIMIT)));
+        setNotPage(data.page ?? page);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch notices:", e);
+    } finally {
+      setIsNoticesLoading(false);
+    }
+  }, [selectedCountry, selectedCity]);
+
+  // ── Fetch Support Tickets (Live DB) ───────────────────────────────────────
+  const fetchCitySupport = useCallback(async (page = 1) => {
+    setIsSupportLoading(true);
+    try {
+      const statusParam = supportStatusFilter !== "all" ? `&status=${supportStatusFilter}` : "";
+      const searchParam = supportSearch.trim() ? `&search=${encodeURIComponent(supportSearch.trim())}` : "";
+      const res = await fetch(
+        `/api/support/tickets?city=${encodeURIComponent(selectedCity)}&country=${encodeURIComponent(selectedCountry)}&page=${page}&limit=${SUP_PAGE_LIMIT}${statusParam}${searchParam}`
+      );
+      const data = await res.json();
+      if (data.tickets && Array.isArray(data.tickets)) {
+        setSupportTickets(data.tickets);
+        setSupTotal(data.total ?? data.tickets.length);
+        setSupTotalPages(data.totalPages ?? Math.max(1, Math.ceil((data.total ?? data.tickets.length) / SUP_PAGE_LIMIT)));
+        setSupPage(data.page ?? page);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch support tickets:", e);
+    } finally {
+      setIsSupportLoading(false);
+    }
+  }, [selectedCountry, selectedCity, supportStatusFilter, supportSearch]);
+
+  // ── Fetch Security / Audit Events (Live DB) ──────────────────────────────
+  const fetchCitySecurity = useCallback(async (page = 1) => {
+    setIsSecurityLoading(true);
+    try {
+      const res = await fetch(
+        `/api/security/events?city=${encodeURIComponent(selectedCity)}&country=${encodeURIComponent(selectedCountry)}&page=${page}&limit=${SEC_PAGE_LIMIT}`
+      );
+      const data = await res.json();
+      const events = data.events || data.logs || [];
+      if (Array.isArray(events)) {
+        setAuditLogs(events);
+        setSecTotal(data.total ?? events.length);
+        setSecTotalPages(data.totalPages ?? Math.max(1, Math.ceil((data.total ?? events.length) / SEC_PAGE_LIMIT)));
+        setSecPage(data.page ?? page);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch security events:", e);
+    } finally {
+      setIsSecurityLoading(false);
+    }
+  }, [selectedCountry, selectedCity]);
+
+  // ── Reusable Polished Pagination Component ────────────────────────────────
+  const renderPaginationBar = (
+    currentPage: number,
+    totalPages: number,
+    totalItems: number,
+    limit: number,
+    onPageChange: (newPage: number) => void,
+    isLoading: boolean,
+    label: string
+  ) => {
+    const startItem = totalItems === 0 ? 0 : (currentPage - 1) * limit + 1;
+    const endItem = Math.min(currentPage * limit, totalItems);
+
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-card border border-border shadow-sm">
+        <span className="text-xs text-muted-foreground font-medium">
+          Showing <strong className="text-foreground">{startItem}–{endItem}</strong> of{" "}
+          <strong className="text-foreground">{totalItems}</strong> {label}
+        </span>
+        <div className="flex items-center gap-1.5">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={currentPage <= 1 || isLoading}
+            onClick={() => onPageChange(currentPage - 1)}
+            className="h-8 px-3 text-xs font-bold rounded-xl"
+          >
+            ← Prev
+          </Button>
+
+          {Array.from({ length: Math.min(Math.max(1, totalPages), 5) }, (_, i) => {
+            const startPage = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+            const p = startPage + i;
+            if (p > totalPages) return null;
+            return (
+              <Button
+                key={p}
+                size="sm"
+                variant={p === currentPage ? "default" : "outline"}
+                disabled={isLoading}
+                onClick={() => onPageChange(p)}
+                className={`h-8 w-8 text-xs font-bold rounded-xl ${
+                  p === currentPage ? "bg-primary text-primary-foreground font-black" : ""
+                }`}
+              >
+                {p}
+              </Button>
+            );
+          })}
+
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={currentPage >= totalPages || isLoading}
+            onClick={() => onPageChange(currentPage + 1)}
+            className="h-8 px-3 text-xs font-bold rounded-xl"
+          >
+            Next →
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Stable refs so the master effect can call latest fetchers without
+  //    including them in its dep array (which caused page-reset on every click)
+  const fetchersRef = React.useRef({
+    fetchCityStats,
+    fetchBusinesses,
+    fetchCityUsers,
+    fetchCityCategories,
+    fetchCityLocations,
+    fetchCityReviews,
+    fetchCityMedia,
+    fetchCityCampaigns,
+    fetchCityPayments,
+    fetchCityReports,
+    fetchCityNotices,
+    fetchCitySupport,
+    fetchCitySecurity,
+    fetchTerritoryAdmins,
+  });
+  // Keep the ref up-to-date on every render (no effect needed, no deps)
+  fetchersRef.current = {
+    fetchCityStats,
+    fetchBusinesses,
+    fetchCityUsers,
+    fetchCityCategories,
+    fetchCityLocations,
+    fetchCityReviews,
+    fetchCityMedia,
+    fetchCityCampaigns,
+    fetchCityPayments,
+    fetchCityReports,
+    fetchCityNotices,
+    fetchCitySupport,
+    fetchCitySecurity,
+    fetchTerritoryAdmins,
+  };
+
+  // ── Unified Master Tab & Filter Trigger ──────────────────────────────────
+  // Depends ONLY on real navigation/filter primitives — NOT on the fetch
+  // function refs. This prevents page resets when the user clicks Next/Prev.
+  useEffect(() => {
+    const f = fetchersRef.current;
+    f.fetchCityStats();
+    if (activeNav === "dashboard" || activeNav === "businesses") {
+      f.fetchBusinesses(1, activeSubnav);
+    } else if (activeNav === "users") {
+      f.fetchCityUsers(1);
+    } else if (activeNav === "categories") {
+      f.fetchCityCategories(1);
+    } else if (activeNav === "locations") {
+      f.fetchCityLocations(1);
+    } else if (activeNav === "reviews") {
+      f.fetchCityReviews(1, activeSubnav);
+    } else if (activeNav === "media") {
+      f.fetchCityMedia(1);
+    } else if (activeNav === "advertisements") {
+      f.fetchCityCampaigns(1, activeSubnav);
+    } else if (activeNav === "payments") {
+      f.fetchCityPayments(1);
+    } else if (activeNav === "moderation") {
+      f.fetchCityReports(1, activeSubnav);
+    } else if (activeNav === "notifications") {
+      f.fetchCityNotices(1);
+    } else if (activeNav === "support") {
+      f.fetchCitySupport(1);
+    } else if (activeNav === "security") {
+      f.fetchCitySecurity(1);
+    } else if (activeNav === "territory") {
+      f.fetchTerritoryAdmins();
+    }
+  }, [
+    // Only primitive/stable values here — adding function refs was the bug
+    activeNav,
+    activeSubnav,
+    selectedCountry,
+    selectedCity,
+    userRoleFilter,
+    userSearch,
+    payStatusFilter,
+    paySearch,
+    mediaTypeFilter,
+    mediaSearch,
+    supportStatusFilter,
+    supportSearch,
+  ]);
 
   // ── Filtered Businesses in this City ──────────────────────────────────────
   const filteredBusinesses = useMemo(() => {
@@ -1015,6 +1426,11 @@ export default function CityAdminDashboard() {
       return true;
     });
   }, [businesses, selectedSubcityFilter, activeNav, activeSubnav, businessSearch]);
+
+  // Reset to page 1 when sub-tab or search filter changes
+  useEffect(() => {
+    setBizPage(1);
+  }, [activeSubnav, businessSearch, selectedSubcityFilter]);
 
   // ── Approval & Verification Handlers ─────────────────────────────────────
   const handleApproveBusiness = async (biz: Business) => {
@@ -1655,9 +2071,9 @@ export default function CityAdminDashboard() {
               </div>
 
               {renderSidebarItem("reviews", "Reviews", <Star className="w-4 h-4 text-amber-500" />, false, [
-                { key: "all", label: "All City Reviews", count: reviewsList.length },
+                { key: "all", label: "All City Reviews", count: revTotal || reviewsList.length },
                 { key: "published", label: "Published" },
-                { key: "reported", label: "Flagged for Review", count: reviewsList.filter((r) => r.status === "reported").length },
+                { key: "reported", label: "Flagged for Review", count: reviewsList.filter((r) => (r.status || "").toLowerCase() === "reported").length },
                 { key: "removed", label: "Removed" },
               ])}
 
@@ -2250,7 +2666,7 @@ export default function CityAdminDashboard() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={fetchCityUsers}
+                    onClick={() => fetchCityUsers(userPage)}
                     disabled={isUsersLoading}
                     className="text-xs font-bold gap-1.5 h-10 rounded-2xl"
                   >
@@ -2322,6 +2738,20 @@ export default function CityAdminDashboard() {
                   </table>
                 </div>
               </div>
+
+              {/* Users Pagination */}
+              {renderPaginationBar(
+                userPage,
+                userTotalPages,
+                cityUsersTotal,
+                USER_PAGE_LIMIT,
+                (p) => {
+                  setUserPage(p);
+                  fetchCityUsers(p);
+                },
+                isUsersLoading,
+                "municipal users"
+              )}
             </div>
           )}
 
@@ -2364,7 +2794,7 @@ export default function CityAdminDashboard() {
               </div>
 
               {renderSubnavTabs([
-                { key: "all", label: "All City Listings", count: businesses.length },
+                { key: "all", label: "All City Listings", count: bizTotal || businesses.length },
                 { key: "confirmations", label: "🔔 Confirmations", count: stats.pendingVerification },
                 { key: "pending", label: "Pending Verification", count: stats.pendingVerification },
                 { key: "verified", label: "Verified", count: stats.verifiedBusinesses },
@@ -2514,7 +2944,7 @@ export default function CityAdminDashboard() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={fetchBusinesses}
+                        onClick={() => fetchBusinesses(bizPage)}
                         disabled={isLoadingBiz}
                         className="text-xs font-bold gap-1.5 h-10 rounded-2xl"
                       >
@@ -2625,6 +3055,20 @@ export default function CityAdminDashboard() {
                       </table>
                     </div>
                   </div>
+
+                  {/* Pagination Controls */}
+                  {renderPaginationBar(
+                    bizPage,
+                    bizTotalPages,
+                    bizTotal,
+                    BIZ_PAGE_LIMIT,
+                    (p) => {
+                      setBizPage(p);
+                      fetchBusinesses(p, activeSubnav);
+                    },
+                    isLoadingBiz,
+                    "businesses"
+                  )}
                 </div>
               )}
             </div>
@@ -2668,51 +3112,68 @@ export default function CityAdminDashboard() {
 
               {/* Category Grid Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {SEED_CATEGORIES.slice(0, 12).map((cat, idx) => {
-                  const matchCount = businesses.filter(
-                    (b) => b.categoryName?.toLowerCase() === cat.name.toLowerCase()
-                  ).length || [14, 11, 8, 7, 5, 4, 3, 3, 2, 2, 1, 1][idx % 12];
+                {(categoriesList.length > 0 ? categoriesList : SEED_CATEGORIES)
+                  .slice((categoryPage - 1) * CATEGORY_PAGE_LIMIT, categoryPage * CATEGORY_PAGE_LIMIT)
+                  .map((cat, idx) => {
+                    const matchCount = cat.businessCount !== undefined ? cat.businessCount : (
+                      businesses.filter(
+                        (b) => b.categoryName?.toLowerCase() === cat.name?.toLowerCase() || b.categoryId === cat.id
+                      ).length || [14, 11, 8, 7, 5, 4, 3, 3, 2, 2, 1, 1][idx % 12]
+                    );
 
-                  return (
-                    <div
-                      key={cat.id}
-                      className="p-5 rounded-3xl bg-card border border-border space-y-3 hover:border-purple-500/40 transition-colors shadow-sm"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-600 flex items-center justify-center font-bold text-base">
-                          {cat.icon || "📂"}
+                    return (
+                      <div
+                        key={cat.id || idx}
+                        className="p-5 rounded-3xl bg-card border border-border space-y-3 hover:border-purple-500/40 transition-colors shadow-sm"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-600 flex items-center justify-center font-bold text-base">
+                            {cat.icon || "📂"}
+                          </div>
+                          <Badge variant="outline" className="text-[10px] font-bold border-purple-500/30 text-purple-600 bg-purple-500/10">
+                            {matchCount > 8 ? "Core Sector" : "Emerging"}
+                          </Badge>
                         </div>
-                        <Badge variant="outline" className="text-[10px] font-bold border-purple-500/30 text-purple-600 bg-purple-500/10">
-                          {matchCount > 8 ? "Core Sector" : "Emerging"}
-                        </Badge>
-                      </div>
 
-                      <div>
-                        <h3 className="font-bold text-foreground text-sm">{cat.name}</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                          {cat.description || `Commercial establishments registered under ${cat.name} in ${selectedCity}.`}
-                        </p>
-                      </div>
+                        <div>
+                          <h3 className="font-bold text-foreground text-sm">{cat.name}</h3>
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                            {cat.description || `Commercial establishments registered under ${cat.name} in ${selectedCity}.`}
+                          </p>
+                        </div>
 
-                      <div className="pt-2 border-t border-border flex items-center justify-between text-xs">
-                        <span className="font-mono font-bold text-foreground">{matchCount} Businesses</span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setBusinessSearch(cat.name);
-                            setActiveNav("businesses");
-                            setActiveSubnav("all");
-                          }}
-                          className="h-6 text-[11px] font-bold text-purple-600 hover:text-purple-700"
-                        >
-                          View Listings →
-                        </Button>
+                        <div className="pt-2 border-t border-border flex items-center justify-between text-xs">
+                          <span className="font-mono font-bold text-foreground">{matchCount} Businesses</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setBusinessSearch(cat.name);
+                              setActiveNav("businesses");
+                              setActiveSubnav("all");
+                            }}
+                            className="h-6 text-[11px] font-bold text-purple-600 hover:text-purple-700"
+                          >
+                            View Listings →
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
+
+              {renderPaginationBar(
+                categoryPage,
+                categoryTotalPages,
+                categoryTotal || categoriesList.length || SEED_CATEGORIES.length,
+                CATEGORY_PAGE_LIMIT,
+                (p) => {
+                  setCategoryPage(p);
+                  fetchCityCategories(p);
+                },
+                isCategoriesLoading,
+                "commercial categories"
+              )}
             </div>
           )}
 
@@ -2750,56 +3211,76 @@ export default function CityAdminDashboard() {
 
               {/* Sub-Cities Grid Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {activeSubcitiesList.map((sc, idx) => (
-                  <div
-                    key={sc.name}
-                    className="p-5 rounded-3xl bg-card border border-border space-y-3 shadow-sm hover:border-rose-500/40 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-rose-500" />
-                        <h3 className="font-bold text-foreground text-sm">{sc.name}</h3>
-                      </div>
-                      <Badge variant="outline" className="text-[10px] font-bold border-rose-500/30 text-rose-600 bg-rose-500/10">
-                        {sc.densityIndex || "Active Zone"}
-                      </Badge>
-                    </div>
+                {(locationsList.length > 0 ? locationsList : activeSubcitiesList)
+                  .slice((locPage - 1) * LOC_PAGE_LIMIT, locPage * LOC_PAGE_LIMIT)
+                  .map((sc: any, idx: number) => {
+                    const locName = sc.name || `Zone ${idx + 1}`;
+                    const locCount = sc.count ?? 5;
+                    const focus = sc.commercialFocus || sc.type || "Primary commercial corridor and municipal market center.";
+                    const density = sc.densityIndex || (sc.type ? sc.type.toUpperCase() : "Active Zone");
 
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {sc.commercialFocus || "Primary commercial corridor and municipal market center."}
-                    </p>
-
-                    <div className="space-y-1.5 pt-2 border-t border-border">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">Establishments:</span>
-                        <span className="font-bold font-mono text-foreground">{sc.count} Listed</span>
-                      </div>
-                      <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-rose-500 to-sky-500 rounded-full"
-                          style={{ width: `${Math.min(100, Math.max(15, sc.count * 7))}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="pt-2 flex items-center justify-between">
-                      <span className="text-[10px] text-emerald-500 font-semibold">✓ Municipal Certified</span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setSelectedSubcityFilter(sc.name);
-                          setActiveNav("businesses");
-                          setActiveSubnav("all");
-                        }}
-                        className="h-7 text-xs font-bold text-sky-600 hover:text-sky-700"
+                    return (
+                      <div
+                        key={sc.id || sc.name || idx}
+                        className="p-5 rounded-3xl bg-card border border-border space-y-3 shadow-sm hover:border-rose-500/40 transition-colors"
                       >
-                        Inspect Zone →
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4 text-rose-500" />
+                            <h3 className="font-bold text-foreground text-sm">{locName}</h3>
+                          </div>
+                          <Badge variant="outline" className="text-[10px] font-bold border-rose-500/30 text-rose-600 bg-rose-500/10">
+                            {density}
+                          </Badge>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground leading-relaxed">{focus}</p>
+
+                        <div className="space-y-1.5 pt-2 border-t border-border">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">Establishments:</span>
+                            <span className="font-bold font-mono text-foreground">{locCount} Listed</span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-rose-500 to-sky-500 rounded-full"
+                              style={{ width: `${Math.min(100, Math.max(15, locCount * 7))}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="pt-2 flex items-center justify-between">
+                          <span className="text-[10px] text-emerald-500 font-semibold">✓ Municipal Certified</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedSubcityFilter(locName);
+                              setActiveNav("businesses");
+                              setActiveSubnav("all");
+                            }}
+                            className="h-7 text-xs font-bold text-sky-600 hover:text-sky-700"
+                          >
+                            Inspect Zone →
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
+
+              {renderPaginationBar(
+                locPage,
+                locTotalPages,
+                locTotal || locationsList.length || activeSubcitiesList.length,
+                LOC_PAGE_LIMIT,
+                (p) => {
+                  setLocPage(p);
+                  fetchCityLocations(p);
+                },
+                isLocationsLoading,
+                "sub-cities & districts"
+              )}
             </div>
           )}
 
@@ -2821,98 +3302,132 @@ export default function CityAdminDashboard() {
               </div>
 
               {renderSubnavTabs([
-                { key: "all", label: "All City Reviews", count: reviewsList.length },
+                { key: "all", label: "All City Reviews", count: revTotal || reviewsList.length },
                 { key: "published", label: "Published" },
-                { key: "reported", label: "Flagged for Review", count: reviewsList.filter((r) => r.status === "reported").length },
+                { key: "reported", label: "Flagged for Review", count: reviewsList.filter((r) => (r.status || "").toLowerCase() === "reported").length },
                 { key: "removed", label: "Removed" },
               ])}
 
               {/* Reviews List */}
               <div className="space-y-3">
-                {reviewsList
-                  .filter((r) => {
-                    if (activeSubnav === "published") return r.status === "published";
-                    if (activeSubnav === "reported") return r.status === "reported";
-                    if (activeSubnav === "removed") return r.status === "removed";
-                    return true;
-                  })
-                  .map((rev) => (
+                {isReviewsLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
                     <div
-                      key={rev.id}
-                      className="p-5 rounded-3xl bg-card border border-border flex flex-wrap items-center justify-between gap-4 shadow-sm hover:border-amber-500/40 transition-colors"
+                      key={i}
+                      className="p-5 rounded-3xl bg-card border border-border animate-pulse flex items-center justify-between gap-4"
                     >
-                      <div className="space-y-1.5 max-w-2xl">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-foreground text-sm">{rev.businessName}</span>
-                          <span className="text-xs text-muted-foreground">• by {rev.userName}</span>
-                          <span className="text-amber-500 font-bold text-xs flex items-center">
-                            ★ {rev.rating}
-                          </span>
-                          <Badge
-                            variant="outline"
-                            className={
-                              rev.status === "reported"
-                                ? "bg-rose-500/10 text-rose-600 border-rose-500/30 text-[10px]"
-                                : rev.status === "removed"
-                                ? "bg-slate-500/10 text-slate-600 border-slate-500/30 text-[10px]"
-                                : "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px]"
-                            }
-                          >
-                            {rev.status.toUpperCase()}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground">"{rev.comment}"</p>
-                        <div className="text-[10px] text-muted-foreground">Posted: {rev.date}</div>
+                      <div className="space-y-2.5 w-3/4">
+                        <div className="h-4 bg-muted/80 rounded-lg w-1/3" />
+                        <div className="h-3 bg-muted/60 rounded-lg w-2/3" />
+                        <div className="h-2.5 bg-muted/40 rounded-lg w-1/4" />
                       </div>
-
-                      <div className="flex items-center gap-2">
-                        {rev.status === "reported" ? (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                setReviewsList((prev) =>
-                                  prev.map((r) => (r.id === rev.id ? { ...r, status: "published" } : r))
-                                );
-                                toast.success("Review approved and restored.");
-                              }}
-                              className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => {
-                                setReviewsList((prev) =>
-                                  prev.map((r) => (r.id === rev.id ? { ...r, status: "removed" } : r))
-                                );
-                                toast.error("Review removed for policy violation.");
-                              }}
-                              className="h-8 text-xs font-bold"
-                            >
-                              Remove
-                            </Button>
-                          </>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setReviewsList((prev) =>
-                                prev.map((r) => (r.id === rev.id ? { ...r, status: "reported" } : r))
-                              );
-                              toast.warning("Flagged review for moderation.");
-                            }}
-                            className="h-8 text-xs text-muted-foreground hover:text-rose-600"
-                          >
-                            Flag Review
-                          </Button>
-                        )}
-                      </div>
+                      <div className="h-8 w-20 bg-muted/60 rounded-xl shrink-0" />
                     </div>
-                  ))}
+                  ))
+                ) : reviewsList.length === 0 ? (
+                  <div className="p-8 text-center rounded-3xl bg-card border border-dashed border-border text-muted-foreground text-xs font-medium">
+                    No reviews found for this selection in {selectedCity}.
+                  </div>
+                ) : (
+                  reviewsList
+                    .filter((r) => {
+                      const st = (r.status || "").toLowerCase();
+                      if (activeSubnav === "published") return st === "published";
+                      if (activeSubnav === "reported") return st === "reported";
+                      if (activeSubnav === "removed") return st === "removed";
+                      return true;
+                    })
+                    .map((rev) => (
+                      <div
+                        key={rev.id}
+                        className="p-5 rounded-3xl bg-card border border-border flex flex-wrap items-center justify-between gap-4 shadow-sm hover:border-amber-500/40 transition-colors"
+                      >
+                        <div className="space-y-1.5 max-w-2xl">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-foreground text-sm">{rev.businessName}</span>
+                            <span className="text-xs text-muted-foreground">• by {rev.userName}</span>
+                            <span className="text-amber-500 font-bold text-xs flex items-center">
+                              ★ {rev.rating}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className={
+                                rev.status === "reported"
+                                  ? "bg-rose-500/10 text-rose-600 border-rose-500/30 text-[10px]"
+                                  : rev.status === "removed"
+                                  ? "bg-slate-500/10 text-slate-600 border-slate-500/30 text-[10px]"
+                                  : "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px]"
+                              }
+                            >
+                              {(rev.status || "published").toUpperCase()}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground">"{rev.comment}"</p>
+                          <div className="text-[10px] text-muted-foreground">Posted: {rev.date}</div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {rev.status === "reported" ? (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setReviewsList((prev) =>
+                                    prev.map((r) => (r.id === rev.id ? { ...r, status: "published" } : r))
+                                  );
+                                  toast.success("Review approved and restored.");
+                                }}
+                                className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => {
+                                  setReviewsList((prev) =>
+                                    prev.map((r) => (r.id === rev.id ? { ...r, status: "removed" } : r))
+                                  );
+                                  toast.error("Review removed for policy violation.");
+                                }}
+                                className="h-8 text-xs font-bold"
+                              >
+                                Remove
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setReviewsList((prev) =>
+                                  prev.map((r) => (r.id === rev.id ? { ...r, status: "reported" } : r))
+                                );
+                                toast.warning("Flagged review for moderation.");
+                              }}
+                              className="h-8 text-xs text-muted-foreground hover:text-rose-600"
+                            >
+                              Flag Review
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                )}
               </div>
+
+              {renderPaginationBar(
+                revPage,
+                revTotalPages,
+                revTotal || reviewsList.length,
+                REV_PAGE_LIMIT,
+                (p) => {
+                  setRevPage(p);
+                  fetchCityReviews(p, activeSubnav);
+                },
+                isReviewsLoading,
+                "citizen reviews"
+              )}
             </div>
           )}
 
@@ -3004,6 +3519,19 @@ export default function CityAdminDashboard() {
                     </div>
                   ))}
               </div>
+
+              {renderPaginationBar(
+                mediaPage,
+                mediaTotalPages,
+                mediaTotal || mediaList.length,
+                MEDIA_PAGE_LIMIT,
+                (p) => {
+                  setMediaPage(p);
+                  fetchCityMedia(p);
+                },
+                isMediaLoading,
+                "media assets"
+              )}
             </div>
           )}
 
@@ -3133,6 +3661,19 @@ export default function CityAdminDashboard() {
                   </table>
                 </div>
               </div>
+
+              {renderPaginationBar(
+                campPage,
+                campTotalPages,
+                campTotal || campaignsList.length,
+                CAMP_PAGE_LIMIT,
+                (p) => {
+                  setCampPage(p);
+                  fetchCityCampaigns(p, activeSubnav);
+                },
+                isCampaignsLoading,
+                "local campaigns"
+              )}
             </div>
           )}
 
@@ -3238,7 +3779,7 @@ export default function CityAdminDashboard() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={fetchCityPayments}
+                        onClick={() => fetchCityPayments(payPage)}
                         disabled={isPaymentsLoading}
                         className="text-xs font-bold gap-1.5 h-10 rounded-2xl"
                       >
@@ -3310,6 +3851,20 @@ export default function CityAdminDashboard() {
                       </table>
                     </div>
                   </div>
+
+                  {/* Payments Pagination */}
+                  {renderPaginationBar(
+                    payPage,
+                    payTotalPages,
+                    payTotal || cityPayments.length,
+                    PAY_PAGE_LIMIT,
+                    (p) => {
+                      setPayPage(p);
+                      fetchCityPayments(p);
+                    },
+                    isPaymentsLoading,
+                    "city transactions"
+                  )}
                 </div>
               )}
             </div>
@@ -3495,6 +4050,19 @@ export default function CityAdminDashboard() {
                   </div>
                 ))}
               </div>
+
+              {renderPaginationBar(
+                repPage,
+                repTotalPages,
+                repTotal || reportsList.length,
+                REP_PAGE_LIMIT,
+                (p) => {
+                  setRepPage(p);
+                  fetchCityReports(p, activeSubnav);
+                },
+                isReportsLoading,
+                "citizen reports"
+              )}
             </div>
           )}
 
@@ -3561,6 +4129,19 @@ export default function CityAdminDashboard() {
                   </div>
                 ))}
               </div>
+
+              {renderPaginationBar(
+                notPage,
+                notTotalPages,
+                notTotal || noticesList.length,
+                NOT_PAGE_LIMIT,
+                (p) => {
+                  setNotPage(p);
+                  fetchCityNotices(p);
+                },
+                isNoticesLoading,
+                "bulletins & notifications"
+              )}
             </div>
           )}
 
@@ -3657,6 +4238,18 @@ export default function CityAdminDashboard() {
                     </tbody>
                   </table>
                 </div>
+                {renderPaginationBar(
+                  supPage,
+                  supTotalPages,
+                  supTotal || supportTickets.length,
+                  SUP_PAGE_LIMIT,
+                  (p) => {
+                    setSupPage(p);
+                    fetchCitySupport(p);
+                  },
+                  isSupportLoading,
+                  "support tickets"
+                )}
               </div>
             </div>
           )}

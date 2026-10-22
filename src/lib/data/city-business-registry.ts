@@ -1745,10 +1745,10 @@ class GlobalCityBusinessStore {
   }
 
   // ── Query Businesses Strictly Scoped to City ──────────────────────────────
-  public getBusinessesForCity(cityName: string, countryName: string): Business[] {
-    this.ensureCityInitialized(cityName, countryName);
+  public getBusinessesForCity(cityName: string, countryName?: string): Business[] {
+    this.ensureCityInitialized(cityName, countryName || "");
     const targetCity = cityName.trim().toLowerCase();
-    const targetCountry = countryName.trim().toLowerCase();
+    const targetCountry = countryName ? countryName.trim().toLowerCase() : "";
 
     return Array.from(this.businessesById.values()).filter((b) => {
       const matchCity = (b.cityName || (b as any).city || "").trim().toLowerCase() === targetCity;

@@ -242,17 +242,36 @@ export async function GET(request: Request) {
       .limit(effectiveLimit)
       .lean();
 
-    // If database returned 0 users and no filters applied yet (or fresh dev DB), seed with SEED_USERS
-    if (total === 0 && (!countryParam || countryParam === "all") && (!cityParam || cityParam === "all") && !searchQuery) {
-      let filteredSeed = [...SEED_USERS] as any[];
-      if (roleFilter === "customers") filteredSeed = filteredSeed.filter((u) => u.role === "user");
-      else if (roleFilter === "owners") filteredSeed = filteredSeed.filter((u) => u.role === "owner");
-      else if (roleFilter === "admins") filteredSeed = filteredSeed.filter((u) => ["admin", "super_admin", "country_admin", "city_admin"].includes(u.role));
-      else if (roleFilter === "city_admins") filteredSeed = filteredSeed.filter((u) => u.role === "city_admin");
-      else if (roleFilter === "suspended") filteredSeed = filteredSeed.filter((u) => u.status === "suspended" || u.isActive === false);
+    // If database returned 0 users, check if the whole DB is empty (fresh dev DB) and seed with SEED_USERS
+    if (total === 0) {
+      const dbTotalCount = await UserModel.countDocuments({});
+      if (dbTotalCount === 0) {
+        // Empty DB: use SEED_USERS filtered by any active params
+        let filteredSeed = [...SEED_USERS] as any[];
+        if (countryParam && countryParam !== "all") {
+          const c = countryParam.toLowerCase();
+          filteredSeed = filteredSeed.filter((u) => (u.country || u.assignedCountry || "").toLowerCase() === c);
+        }
+        if (cityParam && cityParam !== "all") {
+          const ci = cityParam.toLowerCase();
+          filteredSeed = filteredSeed.filter((u) => (u.city || u.assignedCity || "").toLowerCase() === ci);
+        }
+        if (searchQuery) {
+          const sq = searchQuery.toLowerCase();
+          filteredSeed = filteredSeed.filter((u) =>
+            (u.name || "").toLowerCase().includes(sq) ||
+            (u.email || "").toLowerCase().includes(sq)
+          );
+        }
+        if (roleFilter === "customers") filteredSeed = filteredSeed.filter((u) => u.role === "user");
+        else if (roleFilter === "owners") filteredSeed = filteredSeed.filter((u) => u.role === "owner");
+        else if (roleFilter === "admins") filteredSeed = filteredSeed.filter((u) => ["admin", "super_admin", "country_admin", "city_admin"].includes(u.role));
+        else if (roleFilter === "city_admins") filteredSeed = filteredSeed.filter((u) => u.role === "city_admin");
+        else if (roleFilter === "suspended") filteredSeed = filteredSeed.filter((u) => u.status === "suspended" || u.isActive === false);
 
-      total = filteredSeed.length;
-      docs = exportMode ? filteredSeed : filteredSeed.slice(skip, skip + effectiveLimit);
+        total = filteredSeed.length;
+        docs = exportMode ? filteredSeed : filteredSeed.slice(skip, skip + effectiveLimit);
+      }
     }
 
     const totalPages = Math.max(1, Math.ceil(total / effectiveLimit));
