@@ -68,12 +68,12 @@ export function Navbar() {
                 priority
               />
             </div>
-            <div className="flex flex-col">
+            <div className="hidden md:flex flex-col">
               <span className="text-lg xl:text-xl font-black tracking-tight text-foreground flex items-center gap-1">
                 Biz<span className="bg-gradient-to-r from-sky-500 to-indigo-600 bg-clip-text text-transparent">Globe</span>
                 <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500 animate-pulse" />
               </span>
-              <span className="text-[9px] -mt-1 font-medium text-muted-foreground tracking-wider uppercase hidden sm:inline">
+              <span className="text-[9px] -mt-1 font-medium text-muted-foreground tracking-wider uppercase">
                 Global Business Directory
               </span>
             </div>
