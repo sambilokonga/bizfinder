@@ -476,7 +476,7 @@ export function UnifiedSearchAutocomplete({
             onKeyDown={handleKeyDown}
             placeholder={activePlaceholder}
             autoFocus={autoFocus}
-            className="flex-1 min-w-0 bg-transparent border-0 px-1 xs:px-1.5 sm:px-2 py-1 xs:py-1.5 text-[10px] xs:text-[10.5px] sm:text-xs md:text-sm font-medium placeholder:text-muted-foreground/60 placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs focus:outline-none text-foreground truncate"
+            className="flex-1 min-w-0 bg-transparent border-0 px-1 xs:px-1.5 sm:px-2 py-1 xs:py-1.5 text-base sm:text-xs md:text-sm font-medium placeholder:text-muted-foreground/60 placeholder:text-base sm:placeholder:text-xs md:placeholder:text-sm focus:outline-none text-foreground truncate"
           />
 
           {/* Clear Button */}
