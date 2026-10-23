@@ -19,10 +19,49 @@ export async function GET(request: Request) {
   try {
     await connectToDatabase();
 
-    // 1. Sync actual Clerk users into MongoDB when requested or during first load
+    // 0. Seed initial SEED_USERS into MongoDB if not present
+    try {
+      const seedCheck = await UserModel.countDocuments({ id: "user-owner-1" });
+      if (seedCheck === 0) {
+        const seedOps = SEED_USERS.map((u) => ({
+          updateOne: {
+            filter: { email: u.email.toLowerCase() },
+            update: {
+              $setOnInsert: {
+                id: u.id,
+                createdAt: u.createdAt ? new Date(u.createdAt) : new Date(),
+              },
+              $set: {
+                name: u.name,
+                email: u.email.toLowerCase(),
+                role: u.role,
+                phone: u.phone,
+                avatarUrl: u.avatarUrl,
+                country: u.country,
+                city: u.city,
+                assignedCountry: u.assignedCountry || u.country,
+                assignedCity: u.assignedCity || u.city,
+                status: u.status || (u.isActive === false ? "suspended" : "active"),
+                isActive: u.isActive !== false && u.status !== "suspended",
+                claimedBusinessIds: u.claimedBusinessIds || [],
+                updatedAt: new Date(),
+              },
+            },
+            upsert: true,
+          },
+        }));
+        if (seedOps.length > 0) {
+          await UserModel.bulkWrite(seedOps, { ordered: false }).catch(() => {});
+        }
+      }
+    } catch (seedErr) {
+      console.warn("[API /admin/users] SEED_USERS sync warning:", seedErr);
+    }
+
+    // 1. Sync actual Clerk users into MongoDB when requested (sync=true)
     let clerkSyncedCount = 0;
     const clerkSecret = process.env.CLERK_SECRET_KEY;
-    if (clerkSecret && !clerkSecret.includes("placeholder")) {
+    if (doSync && clerkSecret && !clerkSecret.includes("placeholder")) {
       try {
         const client = await clerkClient();
         const clerkUsersResponse = await client.users.getUserList({
@@ -84,29 +123,40 @@ export async function GET(request: Request) {
     // 2. Build MongoDB query
     const andClauses: any[] = [];
 
-    // Role filtering
-    if (callerRole === "country_admin") {
-      if (roleFilter === "admins" || roleFilter === "city_admins") {
-        andClauses.push({ role: "city_admin" });
-      } else if (roleFilter === "customers") {
-        andClauses.push({ role: "user" });
-      } else if (roleFilter === "owners") {
-        andClauses.push({ role: "owner" });
-      } else if (roleFilter === "suspended") {
-        andClauses.push({ isActive: false });
-      }
-    } else {
-      if (roleFilter === "customers") {
-        andClauses.push({ role: "user" });
-      } else if (roleFilter === "owners") {
-        andClauses.push({ role: "owner" });
-      } else if (roleFilter === "city_admins") {
-        andClauses.push({ role: "city_admin" });
-      } else if (roleFilter === "admins") {
-        andClauses.push({ role: { $in: ["admin", "super_admin", "country_admin", "city_admin"] } });
-      } else if (roleFilter === "suspended") {
-        andClauses.push({ isActive: false });
-      }
+    // Role filtering (support all roles, synonyms, and suspended accounts)
+    const normRole = (roleFilter || "").toLowerCase().trim();
+    if (normRole === "customers" || normRole === "citizens" || normRole === "users") {
+      andClauses.push({
+        role: { $in: ["user", "customer", "citizen", "member"] },
+        isActive: { $ne: false },
+        status: { $ne: "suspended" },
+      });
+    } else if (normRole === "owners" || normRole === "business_owners") {
+      andClauses.push({
+        role: { $in: ["owner", "business owner", "business_owner"] },
+        isActive: { $ne: false },
+        status: { $ne: "suspended" },
+      });
+    } else if (normRole === "city_admins") {
+      andClauses.push({ role: { $in: ["city_admin", "city admin"] } });
+    } else if (normRole === "admins") {
+      andClauses.push({
+        role: {
+          $in: [
+            "admin",
+            "super_admin",
+            "super admin",
+            "country_admin",
+            "country admin",
+            "city_admin",
+            "city admin",
+          ],
+        },
+      });
+    } else if (normRole === "suspended") {
+      andClauses.push({
+        $or: [{ isActive: false }, { status: "suspended" }],
+      });
     }
 
     // 2b. Resolve ownerIds of businesses in the target territory so business owners
@@ -337,21 +387,70 @@ export async function GET(request: Request) {
     const [allCount, customersCount, ownersCount, adminsCount, cityAdminsCount, suspendedCount] =
       await Promise.all([
         UserModel.countDocuments(geoBase),
-        UserModel.countDocuments({ ...geoBase, role: "user" }),
-        UserModel.countDocuments({ ...geoBase, role: "owner" }),
         UserModel.countDocuments({
-          ...(geoAndClauses.length > 0 ? { $and: [...geoAndClauses, { role: { $in: ["admin", "super_admin", "country_admin", "city_admin"] } }] } : { role: { $in: ["admin", "super_admin", "country_admin", "city_admin"] } }),
+          ...geoBase,
+          role: { $in: ["user", "customer", "citizen", "member"] },
+          isActive: { $ne: false },
+          status: { $ne: "suspended" },
         }),
-        UserModel.countDocuments({ ...(geoAndClauses.length > 0 ? { $and: [...geoAndClauses, { role: "city_admin" }] } : { role: "city_admin" }) }),
-        UserModel.countDocuments({ ...(geoAndClauses.length > 0 ? { $and: [...geoAndClauses, { isActive: false }] } : { isActive: false }) }),
+        UserModel.countDocuments({
+          ...geoBase,
+          role: { $in: ["owner", "business owner", "business_owner"] },
+          isActive: { $ne: false },
+          status: { $ne: "suspended" },
+        }),
+        UserModel.countDocuments({
+          ...(geoAndClauses.length > 0
+            ? {
+                $and: [
+                  ...geoAndClauses,
+                  {
+                    role: {
+                      $in: [
+                        "admin",
+                        "super_admin",
+                        "super admin",
+                        "country_admin",
+                        "country admin",
+                        "city_admin",
+                        "city admin",
+                      ],
+                    },
+                  },
+                ],
+              }
+            : {
+                role: {
+                  $in: [
+                    "admin",
+                    "super_admin",
+                    "super admin",
+                    "country_admin",
+                    "country admin",
+                    "city_admin",
+                    "city admin",
+                  ],
+                },
+              }),
+        }),
+        UserModel.countDocuments({
+          ...(geoAndClauses.length > 0
+            ? { $and: [...geoAndClauses, { role: { $in: ["city_admin", "city admin"] } }] }
+            : { role: { $in: ["city_admin", "city admin"] } }),
+        }),
+        UserModel.countDocuments({
+          ...(geoAndClauses.length > 0
+            ? { $and: [...geoAndClauses, { $or: [{ isActive: false }, { status: "suspended" }] }] }
+            : { $or: [{ isActive: false }, { status: "suspended" }] }),
+        }),
       ]);
 
     const finalAllCount = allCount > 0 ? allCount : (total > 0 ? total : 0);
-    const finalCustomersCount = customersCount > 0 ? customersCount : (total > 0 ? users.filter((u) => u.role === "user").length : 0);
-    const finalOwnersCount = ownersCount > 0 ? ownersCount : (total > 0 ? users.filter((u) => u.role === "owner").length : 0);
-    const finalAdminsCount = adminsCount > 0 ? adminsCount : (total > 0 ? users.filter((u) => ["admin", "super_admin", "country_admin", "city_admin"].includes(u.role)).length : 0);
-    const finalCityAdminsCount = cityAdminsCount > 0 ? cityAdminsCount : (total > 0 ? users.filter((u) => u.role === "city_admin").length : 0);
-    const finalSuspendedCount = suspendedCount > 0 ? suspendedCount : (total > 0 ? users.filter((u) => !u.isActive || u.status === "suspended").length : 0);
+    const finalCustomersCount = customersCount;
+    const finalOwnersCount = ownersCount;
+    const finalAdminsCount = adminsCount;
+    const finalCityAdminsCount = cityAdminsCount;
+    const finalSuspendedCount = suspendedCount;
 
     return NextResponse.json({
       success: true,

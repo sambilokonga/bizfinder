@@ -668,6 +668,13 @@ export default function CityAdminDashboard() {
   const [userTotalPages, setUserTotalPages] = useState<number>(1);
   const USER_PAGE_LIMIT = 20;
   const [isExportingUsers, setIsExportingUsers] = useState<boolean>(false);
+  const [userCounts, setUserCounts] = useState<{
+    all: number;
+    customers: number;
+    owners: number;
+    admins: number;
+    suspended: number;
+  }>({ all: 0, customers: 0, owners: 0, admins: 0, suspended: 0 });
 
   // ── Data State ────────────────────────────────────────────────────────────
   const [stats, setStats] = useState<CityStats>({
@@ -937,16 +944,23 @@ export default function CityAdminDashboard() {
   };
 
   // ── Fetch Municipal Users ─────────────────────────────────────────────────
-  const fetchCityUsers = useCallback(async (page = 1) => {
+  const fetchCityUsers = useCallback(async (page = 1, subnav = "all") => {
     setIsUsersLoading(true);
     try {
+      const effectiveRole =
+        userRoleFilter !== "all"
+          ? userRoleFilter
+          : subnav !== "all" && subnav !== "overview"
+          ? subnav
+          : "all";
+
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("limit", String(USER_PAGE_LIMIT));
       params.set("callerRole", "city_admin");
       if (selectedCountry && selectedCountry !== "all") params.set("country", selectedCountry);
       if (selectedCity && selectedCity !== "all") params.set("city", selectedCity);
-      if (userRoleFilter !== "all") params.set("role", userRoleFilter);
+      if (effectiveRole !== "all") params.set("role", effectiveRole);
       if (userSearch.trim()) params.set("search", userSearch.trim());
       const res = await fetch(`/api/admin/users?${params.toString()}`);
       const data = await res.json();
@@ -955,6 +969,9 @@ export default function CityAdminDashboard() {
         setCityUsersTotal(data.total ?? data.users.length);
         setUserPage(data.page ?? page);
         setUserTotalPages(data.totalPages ?? Math.max(1, Math.ceil((data.total ?? data.users.length) / USER_PAGE_LIMIT)));
+        if (data.counts) {
+          setUserCounts(data.counts);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch city users:", err);
@@ -1355,7 +1372,7 @@ export default function CityAdminDashboard() {
     if (activeNav === "dashboard" || activeNav === "businesses") {
       f.fetchBusinesses(1, activeSubnav);
     } else if (activeNav === "users") {
-      f.fetchCityUsers(1);
+      f.fetchCityUsers(1, activeSubnav);
     } else if (activeNav === "categories") {
       f.fetchCityCategories(1);
     } else if (activeNav === "locations") {
@@ -2032,10 +2049,10 @@ export default function CityAdminDashboard() {
               ])}
 
               {renderSidebarItem("users", "Municipal Users", <Users className="w-4 h-4 text-sky-500" />, false, [
-                { key: "all", label: "All Municipal Users", count: cityUsersTotal || cityUsers.length },
-                { key: "customers", label: "Citizens & Customers" },
-                { key: "owners", label: "Business Owners" },
-                { key: "suspended", label: "Suspended Accounts" },
+                { key: "all", label: "All Municipal Users", count: userCounts.all || cityUsersTotal || cityUsers.length },
+                { key: "customers", label: "Citizens & Customers", count: userCounts.customers },
+                { key: "owners", label: "Business Owners", count: userCounts.owners },
+                { key: "suspended", label: "Suspended Accounts", count: userCounts.suspended },
               ])}
 
               {renderSidebarItem("businesses", `Businesses (${selectedCity})`, <Building2 className="w-4 h-4 text-emerald-500" />, false, [
@@ -2634,10 +2651,10 @@ export default function CityAdminDashboard() {
               </div>
 
               {renderSubnavTabs([
-                { key: "all", label: "All Municipal Users", count: cityUsersTotal || cityUsers.length },
-                { key: "customers", label: "Citizens & Customers" },
-                { key: "owners", label: "Business Owners" },
-                { key: "suspended", label: "Suspended Accounts" },
+                { key: "all", label: "All Municipal Users", count: userCounts.all || cityUsersTotal || cityUsers.length },
+                { key: "customers", label: "Citizens & Customers", count: userCounts.customers },
+                { key: "owners", label: "Business Owners", count: userCounts.owners },
+                { key: "suspended", label: "Suspended Accounts", count: userCounts.suspended },
               ])}
 
               {/* Filter & Search Bar */}
@@ -2666,7 +2683,7 @@ export default function CityAdminDashboard() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => fetchCityUsers(userPage)}
+                    onClick={() => fetchCityUsers(userPage, activeSubnav)}
                     disabled={isUsersLoading}
                     className="text-xs font-bold gap-1.5 h-10 rounded-2xl"
                   >
@@ -2691,10 +2708,24 @@ export default function CityAdminDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50 font-medium">
-                      {cityUsers.length === 0 ? (
+                      {isUsersLoading ? (
+                        Array.from({ length: 4 }).map((_, i) => (
+                          <tr key={i} className="animate-pulse">
+                            <td colSpan={6} className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-muted shrink-0" />
+                                <div className="space-y-1.5 flex-1">
+                                  <div className="h-3.5 bg-muted rounded w-1/4" />
+                                  <div className="h-2.5 bg-muted rounded w-1/3" />
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : cityUsers.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
-                            {isUsersLoading ? "Loading users…" : "No municipal users found matching current filters."}
+                            No municipal users found matching current filters in {selectedCity}.
                           </td>
                         </tr>
                       ) : (
@@ -2714,7 +2745,15 @@ export default function CityAdminDashboard() {
                             <td className="px-6 py-3.5 text-muted-foreground font-mono">{u.email || "—"}</td>
                             <td className="px-6 py-3.5">
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-sky-500/10 text-sky-600 border-sky-500/30">
-                                {u.role === "owner" ? "Business Owner" : u.role === "city_admin" ? "City Admin" : "Citizen / Customer"}
+                                {u.role === "owner" || u.role === "business owner" || u.role === "business_owner"
+                                  ? "Business Owner"
+                                  : u.role === "city_admin" || u.role === "city admin"
+                                  ? "City Admin"
+                                  : u.role === "country_admin" || u.role === "country admin"
+                                  ? "Country Admin"
+                                  : u.role === "super_admin" || u.role === "super admin" || u.role === "admin"
+                                  ? "Admin"
+                                  : "Citizen / Customer"}
                               </span>
                             </td>
                             <td className="px-6 py-3.5">
@@ -2724,8 +2763,8 @@ export default function CityAdminDashboard() {
                               </div>
                             </td>
                             <td className="px-6 py-3.5">
-                              <Badge className={u.status === "active" || u.isActive !== false ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[10px] font-bold" : "bg-red-500/10 text-red-600 border border-red-500/20 text-[10px] font-bold"}>
-                                {u.status === "active" || u.isActive !== false ? "🟢 Active" : "🔴 Suspended"}
+                              <Badge className={u.isActive !== false && u.status !== "suspended" ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[10px] font-bold" : "bg-red-500/10 text-red-600 border border-red-500/20 text-[10px] font-bold"}>
+                                {u.isActive !== false && u.status !== "suspended" ? "🟢 Active" : "🔴 Suspended"}
                               </Badge>
                             </td>
                             <td className="px-6 py-3.5 text-muted-foreground font-mono text-[11px]">
@@ -2747,7 +2786,7 @@ export default function CityAdminDashboard() {
                 USER_PAGE_LIMIT,
                 (p) => {
                   setUserPage(p);
-                  fetchCityUsers(p);
+                  fetchCityUsers(p, activeSubnav);
                 },
                 isUsersLoading,
                 "municipal users"
