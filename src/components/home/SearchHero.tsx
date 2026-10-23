@@ -341,7 +341,7 @@ export function SearchHero() {
                 }
               }}
               placeholder={activePlaceholder}
-              className="w-full bg-transparent border-0 px-1 xs:px-1.5 sm:px-3 text-base sm:text-sm md:text-base font-medium placeholder:text-muted-foreground/60 placeholder:text-base sm:placeholder:text-sm focus:outline-none text-foreground truncate"
+              className="w-full bg-transparent border-0 px-1 xs:px-1.5 sm:px-3 text-xs xs:text-xs sm:text-sm md:text-base font-medium placeholder:text-muted-foreground/60 placeholder:text-xs xs:placeholder:text-xs sm:placeholder:text-sm md:placeholder:text-base focus:outline-none text-foreground truncate"
             />
             {query && (
               <button
@@ -372,7 +372,7 @@ export function SearchHero() {
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="City, area, district..."
-                className="w-full bg-transparent border-0 px-1 xs:px-1.5 sm:px-2 text-base sm:text-sm font-medium placeholder:text-muted-foreground/60 placeholder:text-base sm:placeholder:text-sm focus:outline-none text-foreground truncate"
+                className="w-full bg-transparent border-0 px-1 xs:px-1.5 sm:px-2 text-xs xs:text-xs sm:text-sm font-medium placeholder:text-muted-foreground/60 placeholder:text-xs xs:placeholder:text-xs sm:placeholder:text-sm focus:outline-none text-foreground truncate"
               />
               <button
                 type="button"

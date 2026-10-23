@@ -286,7 +286,7 @@ export function WriteReviewModal({
                   }}
                   placeholder="Share your experience in detail — what did you love, or what could be better?"
                   rows={4}
-                  className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-base md:text-sm text-foreground placeholder:text-muted-foreground placeholder:text-base md:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 />
                 <div className="flex items-center justify-between mt-0.5">
                   {errors.body ? (

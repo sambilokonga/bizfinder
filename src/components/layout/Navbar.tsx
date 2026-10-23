@@ -79,42 +79,47 @@ export function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop Navigation Links (Large & XL screens) */}
-          <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1">
+          {/* Desktop Navigation Links (Medium, Large & Extra Large screens) - Icons Only, Hidden Text */}
+          <nav className="hidden md:flex items-center gap-1 xl:gap-1.5">
             <Link
               href="/search"
-              className={`px-2.5 py-1.5 rounded-lg text-xs xl:text-sm font-medium transition-colors ${
+              className={`relative p-2 rounded-xl transition-all flex items-center justify-center hover:scale-105 active:scale-95 ${
                 pathname === "/search"
-                  ? "bg-accent text-primary font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  ? "bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-semibold shadow-sm"
+                  : "text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
               }`}
+              title="Explore Map"
+              aria-label="Explore Map"
             >
-              Explore Map
+              <MapPin className="w-4 h-4" />
             </Link>
 
             <Link
               href="/categories"
-              className={`px-2.5 py-1.5 rounded-lg text-xs xl:text-sm font-medium transition-colors ${
+              className={`relative p-2 rounded-xl transition-all flex items-center justify-center hover:scale-105 active:scale-95 ${
                 pathname.startsWith("/categories") || pathname.startsWith("/category")
-                  ? "bg-accent text-primary font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  ? "bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 font-semibold shadow-sm"
+                  : "text-muted-foreground hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30"
               }`}
+              title="All Categories"
+              aria-label="All Categories"
             >
-              All Categories
+              <Building2 className="w-4 h-4" />
             </Link>
 
             <Link
               href="/saved"
-              className={`relative p-2 rounded-xl text-xs font-medium transition-colors flex items-center justify-center ${
+              className={`relative p-2 rounded-xl transition-all flex items-center justify-center hover:scale-105 active:scale-95 ${
                 pathname === "/saved"
-                  ? "bg-accent text-primary font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  ? "bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 font-semibold shadow-sm"
+                  : "text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30"
               }`}
-              title="Saved Favorites"
+              title="Favorites"
+              aria-label="Favorites"
             >
-              <Heart className={`w-4 h-4 ${totalSaved > 0 ? "text-red-500 fill-red-500" : ""}`} />
+              <Heart className={`w-4 h-4 ${totalSaved > 0 ? "text-rose-500 fill-rose-500" : ""}`} />
               {totalSaved > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-sm pointer-events-none ring-2 ring-background animate-in zoom-in-50">
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center shadow-sm pointer-events-none ring-2 ring-background animate-in zoom-in-50">
                   {totalSaved}
                 </span>
               )}
@@ -122,22 +127,25 @@ export function Navbar() {
 
             <Link
               href="/profile"
-              className={`px-2.5 py-1.5 rounded-lg text-xs xl:text-sm font-medium transition-colors ${
+              className={`relative p-2 rounded-xl transition-all flex items-center justify-center hover:scale-105 active:scale-95 ${
                 pathname === "/profile"
-                  ? "bg-accent text-primary font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  ? "bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 font-semibold shadow-sm"
+                  : "text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
               }`}
+              title="Preferences"
+              aria-label="Preferences"
             >
-              Preferences
+              <Sparkles className="w-4 h-4" />
             </Link>
 
             {/* Quick Search Icon Button */}
             <Link
               href="/search"
-              className="flex items-center justify-center w-7 h-7 rounded-lg text-muted-foreground bg-muted/60 hover:bg-muted border border-border/60 transition-colors ml-0.5"
+              className="flex items-center justify-center w-8 h-8 rounded-xl text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-muted/80 transition-all hover:scale-105 active:scale-95"
               title="Search directory"
+              aria-label="Search directory"
             >
-              <Search className="w-3.5 h-3.5 text-indigo-500" />
+              <Search className="w-4 h-4" />
             </Link>
           </nav>
         </div>
@@ -283,7 +291,7 @@ export function Navbar() {
           {/* Quick Search Shortcut */}
           <Link
             href="/search"
-            className="w-8 h-8 rounded-xl bg-muted/60 hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground border border-border/60 transition-colors"
+            className="md:hidden w-8 h-8 rounded-xl bg-muted/60 hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground border border-border/60 transition-colors"
             title="Search directory"
             aria-label="Search directory"
           >
@@ -293,7 +301,7 @@ export function Navbar() {
           {/* Saved Favorites Icon */}
           <Link
             href="/saved"
-            className="relative w-8 h-8 rounded-xl bg-muted/60 hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground border border-border/60 transition-colors"
+            className="md:hidden relative w-8 h-8 rounded-xl bg-muted/60 hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground border border-border/60 transition-colors"
             title="Saved Favorites"
             aria-label="Saved Favorites"
           >

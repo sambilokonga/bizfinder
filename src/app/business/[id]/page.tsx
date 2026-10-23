@@ -389,25 +389,29 @@ export default function BusinessProfilePage({
             )}
 
             {/* Media Toggle Switch (Photos vs Video Tour) */}
-            <div className="absolute bottom-2.5 xs:bottom-3 right-2.5 xs:right-3 flex items-center gap-1 bg-black/70 backdrop-blur-md p-1 xs:p-1.5 rounded-xl xs:rounded-2xl border border-white/20 z-10">
+            <div className="absolute bottom-2 xs:bottom-2.5 sm:bottom-3 right-2 xs:right-2.5 sm:right-3 flex items-center gap-0.5 xs:gap-1 bg-black/75 backdrop-blur-md p-0.5 xs:p-1 sm:p-1.5 rounded-lg xs:rounded-xl sm:rounded-2xl border border-white/20 shadow-md shadow-black/40 z-10">
               <button
                 onClick={() => setActiveMediaTab("photos")}
-                className={`px-2.5 xs:px-3 py-1 xs:py-1.5 rounded-lg xs:rounded-xl text-[10px] xs:text-xs font-bold transition-all flex items-center gap-1 xs:gap-1.5 ${
+                className={`px-1.5 xs:px-2 sm:px-3 py-0.5 xs:py-1 sm:py-1.5 rounded-md xs:rounded-lg sm:rounded-xl text-[9px] xs:text-[10.5px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-1.5 active:scale-95 ${
                   activeMediaTab === "photos"
-                    ? "bg-white text-slate-900 shadow-md"
-                    : "text-white/80 hover:text-white"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-white/80 hover:text-white hover:bg-white/10"
                 }`}
               >
-                <ImageIcon className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
-                Photos ({allPhotos.length})
+                <ImageIcon className="w-2.5 h-2.5 xs:w-3 xs:h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                <span>Photos ({allPhotos.length})</span>
               </button>
               {effectiveYoutubeVideoId && (
                 <button
                   onClick={() => setActiveMediaTab("video")}
-                  className="px-2.5 xs:px-3 py-1 xs:py-1.5 rounded-lg xs:rounded-xl text-[10px] xs:text-xs font-bold flex items-center gap-1 xs:gap-1.5 transition-all bg-red-600 hover:bg-red-700 text-white shadow-md"
+                  className={`px-1.5 xs:px-2 sm:px-3 py-0.5 xs:py-1 sm:py-1.5 rounded-md xs:rounded-lg sm:rounded-xl text-[9px] xs:text-[10.5px] sm:text-xs font-bold flex items-center gap-1 sm:gap-1.5 transition-all active:scale-95 shadow-sm ${
+                    activeMediaTab === "video"
+                      ? "bg-red-600 text-white shadow-red-600/30 ring-1 ring-white/20"
+                      : "bg-red-600/85 hover:bg-red-600 text-white"
+                  }`}
                 >
-                  <Play className="w-3 h-3 xs:w-3.5 xs:h-3.5 fill-current" />
-                  Video Tour
+                  <Play className="w-2.5 h-2.5 xs:w-3 xs:h-3 sm:w-3.5 sm:h-3.5 fill-current shrink-0" />
+                  <span>Video<span className="hidden xs:inline"> Tour</span></span>
                 </button>
               )}
             </div>
@@ -801,7 +805,7 @@ export default function BusinessProfilePage({
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Write a helpful review (food quality, service, ambiance, pricing, parking)..."
                 rows={3}
-                className="w-full rounded-xl border border-input bg-background p-2.5 xs:p-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary leading-relaxed"
+                className="w-full rounded-xl border border-input bg-background p-2.5 xs:p-3 text-xs sm:text-sm placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-primary leading-relaxed"
               />
 
               <div className="flex justify-end">
