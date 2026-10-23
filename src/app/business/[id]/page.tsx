@@ -389,10 +389,10 @@ export default function BusinessProfilePage({
             )}
 
             {/* Media Toggle Switch (Photos vs Video Tour) */}
-            <div className="absolute bottom-2 xs:bottom-2.5 sm:bottom-3 right-2 xs:right-2.5 sm:right-3 flex items-center gap-0.5 xs:gap-1 bg-black/75 backdrop-blur-md p-0.5 xs:p-1 sm:p-1.5 rounded-lg xs:rounded-xl sm:rounded-2xl border border-white/20 shadow-md shadow-black/40 z-10">
+            <div className="absolute bottom-2 xs:bottom-2.5 sm:bottom-3 right-2 xs:right-2.5 sm:right-3 flex items-center gap-1 bg-black/70 backdrop-blur-md p-0.5 sm:p-1 rounded-full border border-white/25 shadow-lg shadow-black/40 z-10">
               <button
                 onClick={() => setActiveMediaTab("photos")}
-                className={`px-1.5 xs:px-2 sm:px-3 py-0.5 xs:py-1 sm:py-1.5 rounded-md xs:rounded-lg sm:rounded-xl text-[9px] xs:text-[10.5px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-1.5 active:scale-95 ${
+                className={`h-5 xs:h-5.5 sm:h-6 px-2 xs:px-2.5 rounded-full text-[9.5px] xs:text-[10px] sm:text-xs font-bold leading-none transition-all flex items-center gap-1 active:scale-95 ${
                   activeMediaTab === "photos"
                     ? "bg-white text-slate-900 shadow-sm"
                     : "text-white/80 hover:text-white hover:bg-white/10"
@@ -404,7 +404,7 @@ export default function BusinessProfilePage({
               {effectiveYoutubeVideoId && (
                 <button
                   onClick={() => setActiveMediaTab("video")}
-                  className={`px-1.5 xs:px-2 sm:px-3 py-0.5 xs:py-1 sm:py-1.5 rounded-md xs:rounded-lg sm:rounded-xl text-[9px] xs:text-[10.5px] sm:text-xs font-bold flex items-center gap-1 sm:gap-1.5 transition-all active:scale-95 shadow-sm ${
+                  className={`h-5 xs:h-5.5 sm:h-6 px-2 xs:px-2.5 rounded-full text-[9.5px] xs:text-[10px] sm:text-xs font-bold leading-none flex items-center gap-1 transition-all active:scale-95 shadow-sm ${
                     activeMediaTab === "video"
                       ? "bg-red-600 text-white shadow-red-600/30 ring-1 ring-white/20"
                       : "bg-red-600/85 hover:bg-red-600 text-white"
