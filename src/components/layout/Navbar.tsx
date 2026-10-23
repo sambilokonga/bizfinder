@@ -80,67 +80,55 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Navigation Links (Large & XL screens) */}
-          <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5">
+          <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1">
             <Link
               href="/search"
-              className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-all text-xs font-bold ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs xl:text-sm font-medium transition-colors ${
                 pathname === "/search"
-                  ? "bg-indigo-100 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300"
-                  : "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-100 dark:border-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 hover:border-indigo-300 dark:hover:border-indigo-700"
+                  ? "bg-accent text-primary font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               }`}
             >
-              <div className="w-5 h-5 rounded-md bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition-transform">
-                <MapPin className="w-3 h-3 text-white" />
-              </div>
-              <span className="hidden xl:inline">Explore Map</span>
+              Explore Map
             </Link>
 
             <Link
               href="/categories"
-              className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-all text-xs font-bold ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs xl:text-sm font-medium transition-colors ${
                 pathname.startsWith("/categories") || pathname.startsWith("/category")
-                  ? "bg-purple-100 dark:bg-purple-950/60 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300"
-                  : "bg-purple-50 dark:bg-purple-950/30 border-purple-100 dark:border-purple-900/50 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-950/60 hover:border-purple-300 dark:hover:border-purple-700"
+                  ? "bg-accent text-primary font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               }`}
             >
-              <div className="w-5 h-5 rounded-md bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition-transform">
-                <Building2 className="w-3 h-3 text-white" />
-              </div>
-              <span className="hidden xl:inline">All Categories</span>
+              All Categories
             </Link>
 
             <Link
               href="/saved"
-              className={`group relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-all text-xs font-bold ${
+              className={`relative p-2 rounded-xl text-xs font-medium transition-colors flex items-center justify-center ${
                 pathname === "/saved"
-                  ? "bg-rose-100 dark:bg-rose-950/60 border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300"
-                  : "bg-rose-50 dark:bg-rose-950/30 border-rose-100 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:border-rose-300 dark:hover:border-rose-700"
+                  ? "bg-accent text-primary font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               }`}
               title="Saved Favorites"
             >
-              <div className="relative w-5 h-5 rounded-md bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition-transform">
-                <Heart className="w-3 h-3 text-white" />
-                {totalSaved > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-red-600 border border-background text-white text-[8px] font-black flex items-center justify-center shadow-sm pointer-events-none">
-                    {totalSaved > 9 ? "9+" : totalSaved}
-                  </span>
-                )}
-              </div>
-              <span className="hidden xl:inline">Favorites</span>
+              <Heart className={`w-4 h-4 ${totalSaved > 0 ? "text-red-500 fill-red-500" : ""}`} />
+              {totalSaved > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-sm pointer-events-none ring-2 ring-background animate-in zoom-in-50">
+                  {totalSaved}
+                </span>
+              )}
             </Link>
 
             <Link
               href="/profile"
-              className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-all text-xs font-bold ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs xl:text-sm font-medium transition-colors ${
                 pathname === "/profile"
-                  ? "bg-amber-100 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300"
-                  : "bg-amber-50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900/50 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/60 hover:border-amber-300 dark:hover:border-amber-700"
+                  ? "bg-accent text-primary font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               }`}
             >
-              <div className="w-5 h-5 rounded-md bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition-transform">
-                <Sparkles className="w-3 h-3 text-white" />
-              </div>
-              <span className="hidden xl:inline">Preferences</span>
+              Preferences
             </Link>
 
             {/* Quick Search Icon Button */}
