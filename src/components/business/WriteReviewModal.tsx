@@ -265,7 +265,7 @@ export function WriteReviewModal({
                     if (errors.title) setErrors((p) => ({ ...p, title: "" }));
                   }}
                   placeholder="e.g. Best injera in Bole!"
-                  className="text-sm"
+                  className="md:text-sm"
                 />
                 {errors.title && (
                   <p className="text-[11px] text-red-500 mt-1 flex items-center gap-1">
@@ -286,7 +286,7 @@ export function WriteReviewModal({
                   }}
                   placeholder="Share your experience in detail — what did you love, or what could be better?"
                   rows={4}
-                  className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-base md:text-sm text-foreground placeholder:text-muted-foreground placeholder:text-base md:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 />
                 <div className="flex items-center justify-between mt-0.5">
                   {errors.body ? (
@@ -315,7 +315,7 @@ export function WriteReviewModal({
                         setErrors((p) => ({ ...p, authorName: "" }));
                     }}
                     placeholder="Abebe T."
-                    className="text-sm"
+                    className="md:text-sm"
                   />
                   {errors.authorName && (
                     <p className="text-[11px] text-red-500 mt-1">
@@ -331,7 +331,7 @@ export function WriteReviewModal({
                     type="date"
                     value={visitedAt}
                     onChange={(e) => setVisitedAt(e.target.value)}
-                    className="text-sm"
+                    className="md:text-sm"
                     max={new Date().toISOString().split("T")[0]}
                   />
                 </div>
