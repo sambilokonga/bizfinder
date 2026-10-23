@@ -332,172 +332,185 @@ export function Navbar() {
 
       {/* Mobile & Tablet Full Navigation Drawer (XS, S, M screens) */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden border-b border-border bg-card/95 backdrop-blur-2xl p-4 xs:p-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-150 shadow-2xl max-h-[calc(100vh-4.5rem)] overflow-y-auto">
-          {/* Perspective & Role Switcher Header Box */}
-          <div className="p-3 rounded-2xl bg-muted/50 border border-border/80 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                <Crown className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Active Role</div>
-                <div className="text-xs font-bold text-foreground truncate">
-                  {currentUser?.name || "Guest Explorer"}
+        <div className="lg:hidden border-b border-border bg-background/98 backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 duration-200 shadow-2xl max-h-[calc(100vh-4.5rem)] overflow-y-auto">
+          <div className="p-3 xs:p-4 space-y-3">
+
+            {/* Brand header strip */}
+            <div className="flex items-center justify-between px-1 pb-1 border-b border-border/50">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                  <Crown className="w-3.5 h-3.5 text-white" />
+                </div>
+                <div>
+                  <div className="text-[11px] font-black text-foreground tracking-tight leading-none">
+                    {currentUser?.name || "Guest Explorer"}
+                  </div>
+                  <div className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider leading-none mt-0.5">Active Role</div>
                 </div>
               </div>
+              <RoleSwitcher />
             </div>
-            <RoleSwitcher />
-          </div>
 
-          {/* Primary Navigation Links */}
-          <nav className="grid grid-cols-2 gap-2 text-xs font-semibold">
-            <Link
-              href="/search"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="p-3 rounded-xl border border-border/80 bg-background hover:bg-accent hover:border-primary/40 flex items-center gap-2.5 transition-colors"
-            >
-              <MapPin className="w-4 h-4 text-indigo-500 shrink-0" />
-              <span>Explore Map</span>
-            </Link>
-            <Link
-              href="/categories"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="p-3 rounded-xl border border-border/80 bg-background hover:bg-accent hover:border-primary/40 flex items-center gap-2.5 transition-colors"
-            >
-              <Building2 className="w-4 h-4 text-purple-500 shrink-0" />
-              <span>All Categories</span>
-            </Link>
-            <Link
-              href="/saved"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="p-3 rounded-xl border border-border/80 bg-background hover:bg-accent hover:border-primary/40 flex items-center justify-between transition-colors"
-            >
-              <span className="flex items-center gap-2.5">
-                <Heart className={`w-4 h-4 ${totalSaved > 0 ? "text-red-500 fill-red-500" : "text-red-400"} shrink-0`} />
-                <span>Favorites</span>
-              </span>
-              {totalSaved > 0 && (
-                <Badge className="text-[10px] bg-red-500 text-white rounded-full px-1.5 py-0">
-                  {totalSaved}
-                </Badge>
-              )}
-            </Link>
-            <Link
-              href="/profile"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="p-3 rounded-xl border border-border/80 bg-background hover:bg-accent hover:border-primary/40 flex items-center gap-2.5 transition-colors"
-            >
-              <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-              <span>Preferences</span>
-            </Link>
-          </nav>
+            {/* Primary Navigation — 2-col icon cards */}
+            <div>
+              <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-widest px-0.5 mb-1.5">Navigation</p>
+              <nav className="grid grid-cols-2 gap-1.5">
+                <Link
+                  href="/search"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="group flex items-center gap-2 px-3 py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 hover:border-indigo-400/60 hover:bg-indigo-100 dark:hover:bg-indigo-950/70 transition-all"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                    <MapPin className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 leading-tight">Explore Map</span>
+                </Link>
 
-          {/* Role-Specific Portals (if available) */}
-          {(isCityAdmin || isCountryAdmin || isSuperAdmin || isAdmin || isOwner) && (
-            <div className="pt-2 border-t border-border/60 space-y-1.5">
-              <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider px-1 mb-1">
-                Management Portals
+                <Link
+                  href="/categories"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="group flex items-center gap-2 px-3 py-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-900/60 hover:border-purple-400/60 hover:bg-purple-100 dark:hover:bg-purple-950/70 transition-all"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                    <Building2 className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <span className="text-[11px] font-bold text-purple-700 dark:text-purple-300 leading-tight">Categories</span>
+                </Link>
+
+                <Link
+                  href="/saved"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="group flex items-center gap-2 px-3 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/60 hover:border-rose-400/60 hover:bg-rose-100 dark:hover:bg-rose-950/70 transition-all"
+                >
+                  <div className="relative w-7 h-7 rounded-lg bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                    <Heart className="w-3.5 h-3.5 text-white" />
+                    {totalSaved > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-600 border border-white text-white text-[7px] font-black flex items-center justify-center leading-none">
+                        {totalSaved > 9 ? "9+" : totalSaved}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300 leading-tight">Favorites</span>
+                </Link>
+
+                <Link
+                  href="/profile"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="group flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/60 hover:border-amber-400/60 hover:bg-amber-100 dark:hover:bg-amber-950/70 transition-all"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                    <Sparkles className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 leading-tight">Preferences</span>
+                </Link>
+              </nav>
+            </div>
+
+            {/* Role-Specific Portals */}
+            {(isCityAdmin || isCountryAdmin || isSuperAdmin || isAdmin || isOwner) && (
+              <div>
+                <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-widest px-0.5 mb-1.5">Management</p>
+                <div className="space-y-1.5">
+                  {isCityAdmin && (
+                    <Link
+                      href="/city-admin"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/30 border border-sky-200/80 dark:border-sky-900/60 hover:bg-sky-100 dark:hover:bg-sky-950/60 transition-all"
+                    >
+                      <span className="text-base leading-none">🏙️</span>
+                      <span className="text-[11px] font-bold">City Admin Portal</span>
+                    </Link>
+                  )}
+                  {isCountryAdmin && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/60 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 transition-all"
+                    >
+                      <span className="text-base leading-none">🌍</span>
+                      <span className="text-[11px] font-bold">Country Admin Portal</span>
+                    </Link>
+                  )}
+                  {isSuperAdmin && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/60 hover:bg-purple-100 dark:hover:bg-purple-950/60 transition-all"
+                    >
+                      <Crown className="w-4 h-4 shrink-0" />
+                      <span className="text-[11px] font-bold">Super Admin Portal</span>
+                    </Link>
+                  )}
+                  {isAdmin && !isSuperAdmin && !isCountryAdmin && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/60 hover:bg-amber-100 dark:hover:bg-amber-950/60 transition-all"
+                    >
+                      <Shield className="w-4 h-4 shrink-0" />
+                      <span className="text-[11px] font-bold">Admin Control Panel</span>
+                    </Link>
+                  )}
+                  {isOwner && (
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/60 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 transition-all"
+                    >
+                      <LayoutDashboard className="w-4 h-4 shrink-0" />
+                      <span className="text-[11px] font-bold">Owner Dashboard</span>
+                    </Link>
+                  )}
+                </div>
               </div>
-              {isCityAdmin && (
-                <Link
-                  href="/city-admin"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold text-sky-600 dark:text-sky-400 bg-sky-50/60 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900 flex items-center gap-2"
-                >
-                  <span>🏙️</span>
-                  <span>City Admin Portal</span>
-                </Link>
-              )}
-              {isCountryAdmin && (
-                <Link
-                  href="/admin"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900 flex items-center gap-2"
-                >
-                  <span>🌍</span>
-                  <span>Country Admin Portal</span>
-                </Link>
-              )}
-              {isSuperAdmin && (
-                <Link
-                  href="/admin"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold text-purple-600 dark:text-purple-400 bg-purple-50/60 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900 flex items-center gap-2"
-                >
-                  <Crown className="w-3.5 h-3.5" />
-                  <span>Super Admin Portal</span>
-                </Link>
-              )}
-              {isAdmin && !isSuperAdmin && !isCountryAdmin && (
-                <Link
-                  href="/admin"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 flex items-center gap-2"
-                >
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>Admin Control Panel</span>
-                </Link>
-              )}
-              {isOwner && (
-                <Link
-                  href="/dashboard"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 flex items-center gap-2"
-                >
-                  <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span>Owner Dashboard</span>
-                </Link>
-              )}
-            </div>
-          )}
-
-          {/* Primary Action Buttons — cleanly proportioned */}
-          <div className="pt-2 border-t border-border/60 flex flex-wrap items-center justify-between gap-2.5">
-            {canUpload && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  setIsUploadModalOpen(true);
-                }}
-                className="flex-1 min-w-[130px] h-9 text-xs font-bold gap-1.5 rounded-xl border-border hover:border-indigo-500/40 text-foreground"
-              >
-                <Upload className="w-3.5 h-3.5 text-indigo-500" />
-                <span>Bulk Upload</span>
-              </Button>
             )}
 
-            <Link
-              href="/dashboard/listings/new"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className={canUpload ? "flex-1 min-w-[130px]" : "w-full"}
-            >
-              <Button size="sm" variant="gradient" className="w-full h-9 text-xs font-bold gap-1.5 rounded-xl shadow-sm">
-                <PlusCircle className="w-3.5 h-3.5" />
-                <span>List Business</span>
-              </Button>
-            </Link>
-          </div>
-
-          {/* Signed Out Auth Actions */}
-          <SignedOut>
-            <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-2">
-              <Link href="/sign-in" onClick={() => setIsMobileMenuOpen(false)} className="flex-1">
-                <Button variant="outline" size="sm" className="w-full h-9 text-xs font-bold gap-1.5 rounded-xl">
-                  <LogIn className="w-3.5 h-3.5" />
-                  Sign In
-                </Button>
-              </Link>
-              <Link href="/sign-up" onClick={() => setIsMobileMenuOpen(false)} className="flex-1">
-                <Button variant="gradient" size="sm" className="w-full h-9 text-xs font-bold gap-1.5 rounded-xl">
-                  <UserPlus className="w-3.5 h-3.5" />
-                  Register
-                </Button>
+            {/* Primary Action Buttons */}
+            <div className="flex items-center gap-2 pt-0.5">
+              {canUpload && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setIsUploadModalOpen(true);
+                  }}
+                  className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl border border-border bg-card hover:bg-accent hover:border-indigo-400/40 text-[11px] font-bold text-foreground transition-all shadow-sm"
+                >
+                  <Upload className="w-3.5 h-3.5 text-indigo-500" />
+                  Bulk Upload
+                </button>
+              )}
+              <Link
+                href="/dashboard/listings/new"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={canUpload ? "flex-1" : "w-full"}
+              >
+                <button className="w-full h-9 flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white text-[11px] font-bold shadow-md hover:shadow-indigo-500/30 transition-all active:scale-95">
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  List Business
+                </button>
               </Link>
             </div>
-          </SignedOut>
+
+            {/* Signed Out Auth Actions */}
+            <SignedOut>
+              <div className="flex items-center gap-2">
+                <Link href="/sign-in" onClick={() => setIsMobileMenuOpen(false)} className="flex-1">
+                  <button className="w-full h-9 flex items-center justify-center gap-1.5 rounded-xl border border-border bg-card hover:bg-accent text-[11px] font-bold text-foreground transition-all shadow-sm">
+                    <LogIn className="w-3.5 h-3.5 text-indigo-500" />
+                    Sign In
+                  </button>
+                </Link>
+                <Link href="/sign-up" onClick={() => setIsMobileMenuOpen(false)} className="flex-1">
+                  <button className="w-full h-9 flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white text-[11px] font-bold shadow-md hover:shadow-indigo-500/30 transition-all active:scale-95">
+                    <UserPlus className="w-3.5 h-3.5" />
+                    Register
+                  </button>
+                </Link>
+              </div>
+            </SignedOut>
+
+          </div>
         </div>
       )}
 
