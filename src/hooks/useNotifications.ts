@@ -17,6 +17,8 @@ export interface UserNotification {
   targetCountry?: string;
   targetCity?: string;
   actionType?: string;
+  channels?: string[];
+  channelStatus?: Record<string, string>;
   metadata?: Record<string, any>;
   status: string;
   priority?: NotificationPriority;

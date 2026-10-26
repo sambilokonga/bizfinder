@@ -18,8 +18,10 @@ export interface INotificationDoc extends Document {
   targetCountry?: string;
   targetCity?: string;
   actionType?: string;
+  channels?: string[];
+  channelStatus?: Record<string, string>;
   metadata?: Record<string, any>;
-  status: "Delivered" | "Pending" | "Scheduled" | "Failed";
+  status: string;
   priority: "critical" | "high" | "medium" | "low";
   sentBy?: string;
   type?: string;
@@ -54,11 +56,12 @@ const NotificationSchema = new Schema<INotificationDoc>(
     targetCountry: { type: String, index: true },
     targetCity: { type: String, index: true },
     actionType: { type: String, index: true },
+    channels: [{ type: String, enum: ["in_app", "email", "push"], default: ["in_app"] }],
+    channelStatus: { type: Schema.Types.Mixed },
     metadata: { type: Schema.Types.Mixed },
     status: {
       type: String,
-      enum: ["Delivered", "Pending", "Scheduled", "Failed"],
-      default: "Delivered",
+      default: "delivered",
       index: true,
     },
     priority: {

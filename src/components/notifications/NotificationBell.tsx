@@ -453,16 +453,47 @@ export function NotificationBell() {
                                 Confirmation Alert
                               </Badge>
                             )}
-                          {notif.metadata?.cityName && (
-                            <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                              📍 {notif.metadata.cityName}
+
+                          {/* Priority Indicator */}
+                          {notif.priority === "critical" && (
+                            <Badge className="bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 text-[9px] font-bold px-1.5 py-0 flex items-center gap-0.5 animate-pulse">
+                              <span>🚨</span>
+                              <span>Critical</span>
                             </Badge>
                           )}
-                          {notif.targetCity && !notif.metadata?.cityName && (
-                            <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                              📍 {notif.targetCity}
+                          {notif.priority === "high" && (
+                            <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[9px] font-bold px-1.5 py-0">
+                              High
                             </Badge>
                           )}
+
+                          {/* Geographic Territory Badges */}
+                          {notif.targetCity && (
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-cyan-500/5 text-cyan-600 dark:text-cyan-400 border-cyan-500/20">
+                              🏙️ {notif.targetCity}
+                            </Badge>
+                          )}
+                          {notif.targetCountry && !notif.targetCity && (
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-indigo-500/5 text-indigo-600 dark:text-indigo-400 border-indigo-500/20">
+                              🌍 {notif.targetCountry}
+                            </Badge>
+                          )}
+
+                          {/* Delivery Channels */}
+                          {Array.isArray(notif.channels) && notif.channels.length > 0 && (
+                            <div className="flex items-center gap-0.5 opacity-70 ml-0.5">
+                              {notif.channels.includes("in_app") && (
+                                <span title="Delivered via In-App" className="text-[9px]">📱</span>
+                              )}
+                              {notif.channels.includes("email") && (
+                                <span title="Delivered via Email" className="text-[9px]">✉️</span>
+                              )}
+                              {notif.channels.includes("push") && (
+                                <span title="Delivered via Push" className="text-[9px]">🔔</span>
+                              )}
+                            </div>
+                          )}
+
                           {isNewUser && (
                             <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[9px] font-bold px-1.5 py-0">
                               ✨ New User

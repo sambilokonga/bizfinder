@@ -20,7 +20,49 @@ export type NotificationType =
 
 export type NotificationPriority = "critical" | "high" | "medium" | "low";
 
-export type NotificationStatus = "Delivered" | "Pending" | "Scheduled" | "Failed";
+export type NotificationStatus =
+  | "pending"
+  | "scheduled"
+  | "processing"
+  | "delivered"
+  | "failed"
+  | "cancelled"
+  | "Delivered"
+  | "Pending"
+  | "Scheduled"
+  | "Failed";
+
+export type NotificationChannel = "in_app" | "email" | "push";
+
+export type NotificationActionType =
+  | "business_confirmation"
+  | "business_upload"
+  | "business_existence_confirmation"
+  | "business_status_changed"
+  | "document_required"
+  | "subscription_due"
+  | "subscription_expired"
+  | "payment"
+  | "ad_campaign"
+  | "review"
+  | "review_escalation"
+  | "message_received"
+  | "support_ticket"
+  | "security_alert"
+  | "dispute_opened"
+  | "dispute_updated"
+  | "broadcast"
+  | "system"
+  | "audit_due"
+  | "role_changed"
+  | "report_generated"
+  | "listing_performance";
+
+export interface NotificationChannelStatus {
+  in_app?: "delivered" | "failed" | "skipped";
+  email?: "delivered" | "failed" | "queued" | "skipped";
+  push?: "delivered" | "failed" | "queued" | "skipped";
+}
 
 export interface INotification {
   id: string;
@@ -39,16 +81,9 @@ export interface INotification {
     | "all";
   targetCountry?: string;
   targetCity?: string;
-  actionType?:
-    | "business_confirmation"
-    | "business_upload"
-    | "business_existence_confirmation"
-    | "subscription_due"
-    | "subscription_expired"
-    | "payment"
-    | "system"
-    | "review"
-    | "ad_campaign";
+  actionType?: NotificationActionType | string;
+  channels?: NotificationChannel[];
+  channelStatus?: NotificationChannelStatus;
   metadata?: Record<string, any>;
   status: NotificationStatus;
   priority: NotificationPriority;

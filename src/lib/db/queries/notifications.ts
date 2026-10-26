@@ -46,16 +46,9 @@ export interface CreateNotificationInput {
     | "all";
   targetCountry?: string;
   targetCity?: string;
-  actionType?:
-    | "business_confirmation"
-    | "business_upload"
-    | "business_existence_confirmation"
-    | "subscription_due"
-    | "subscription_expired"
-    | "payment"
-    | "system"
-    | "review"
-    | "ad_campaign";
+  actionType?: import("@/types/notification").NotificationActionType | string;
+  channels?: import("@/types/notification").NotificationChannel[];
+  channelStatus?: import("@/types/notification").NotificationChannelStatus;
   metadata?: Record<string, any>;
   status?: NotificationStatus;
   priority?: NotificationPriority;
@@ -76,7 +69,7 @@ function calculateNotificationStats(items: INotification[]): NotificationStats {
   let criticalCount = 0;
 
   for (const n of items) {
-    if (n.status === "Delivered") delivered++;
+    if (String(n.status).toLowerCase() === "delivered") delivered++;
     if (!n.isRead && (!n.readBy || n.readBy.length === 0)) unread++;
     if (n.target === "global") globalCount++;
     else if (n.target === "business") businessCount++;
@@ -111,8 +104,10 @@ function formatNotification(n: any, currentUserId?: string): INotification {
     targetCountry: n.targetCountry,
     targetCity: n.targetCity,
     actionType: n.actionType,
+    channels: Array.isArray(n.channels) ? n.channels : ["in_app"],
+    channelStatus: n.channelStatus,
     metadata: n.metadata,
-    status: (n.status as NotificationStatus) || "Delivered",
+    status: (n.status as NotificationStatus) || "delivered",
     priority: (n.priority as NotificationPriority) || "medium",
     sentBy: n.sentBy || "Super Admin",
     type: (n.type as NotificationType) || "system",
@@ -169,17 +164,16 @@ export async function getNotifications(
         console.warn("[Notifications] Auto-seed failed or partial:", seedErr);
       }
     } else {
-      // Sync targetRole for legacy records that may not have targetRole set
+      // Upsert fresh seed notifications to keep all environments synchronized
       try {
-        await Promise.all([
-          NotificationModel.updateMany({ target: "global", targetRole: { $exists: false } }, { $set: { targetRole: "all" } }),
-          NotificationModel.updateMany({ target: "business", targetRole: { $exists: false } }, { $set: { targetRole: "owner" } }),
-          NotificationModel.updateMany({ target: "user", targetRole: { $exists: false } }, { $set: { targetRole: "user" } }),
-          NotificationModel.updateMany({ target: "admin", targetRole: { $exists: false } }, { $set: { targetRole: "admin" } }),
-          NotificationModel.updateMany({ target: "city_admin", targetRole: { $exists: false } }, { $set: { targetRole: "city_admin" } }),
-          NotificationModel.updateMany({ target: "country_admin", targetRole: { $exists: false } }, { $set: { targetRole: "country_admin" } }),
-          NotificationModel.updateMany({ target: "super_admin", targetRole: { $exists: false } }, { $set: { targetRole: "super_admin" } }),
-        ]);
+        const seedOps = SEED_NOTIFICATIONS.map((s) => ({
+          updateOne: {
+            filter: { id: s.id },
+            update: { $set: s },
+            upsert: true,
+          },
+        }));
+        await NotificationModel.bulkWrite(seedOps);
       } catch {}
     }
 
@@ -208,12 +202,12 @@ export async function getNotifications(
         { targetRole: "super_admin" },
         { target: { $in: ["admin", "country_admin", "city_admin", "business", "global"] } },
         { targetRole: { $in: ["super_admin", "country_admin", "city_admin", "admin", "all"] } },
-        { actionType: { $in: ["business_confirmation", "business_upload", "ad_campaign", "system", "review", "dispute", "payment"] } },
         ...(userId ? [{ targetUserId: userId }] : []),
       ];
       query.$or = superAdminClauses;
     } else if (role === "country_admin") {
-      // Country Admin: sees national jurisdiction alerts, city escalations within country, plus common notices
+      // Country Admin: oversees national operations, cross-city escalations, city verification backlogs, national broadcasts
+      // Does not receive super admin root private operations or routine customer notifications
       const countryFilter = country && country !== "all" ? country : undefined;
       const countryClauses: any[] = [
         commonCondition,
@@ -223,29 +217,41 @@ export async function getNotifications(
           target: { $in: ["admin", "city_admin"] },
           targetRole: { $in: ["country_admin", "admin", "city_admin", "all", null, ""] },
         },
-        { actionType: { $in: ["business_confirmation", "business_upload", "ad_campaign", "system", "review", "dispute"] } },
         ...(userId ? [{ targetUserId: userId }] : []),
       ];
 
       const conditions: any[] = [{ $or: countryClauses }];
-      // Do not show super_admin private root alerts
-      conditions.push({ targetRole: { $ne: "super_admin" }, target: { $ne: "super_admin" } });
+      // Do not show super_admin root private alerts or private customer accounts
+      conditions.push({
+        targetRole: { $nin: ["super_admin", "user"] },
+        target: { $nin: ["super_admin", "user"] },
+      });
 
       if (countryFilter) {
+        // Strict country isolation: notification must match countryFilter or be a global broadcast without conflicting country
         conditions.push({
           $or: [
-            { targetCountry: { $exists: false } },
-            { targetCountry: null },
-            { targetCountry: "" },
             { targetCountry: new RegExp(`^${countryFilter}$`, "i") },
             { "metadata.countryName": new RegExp(`^${countryFilter}$`, "i") },
-            { title: new RegExp(countryFilter, "i") },
+            {
+              $and: [
+                {
+                  $or: [
+                    { targetCountry: { $exists: false } },
+                    { targetCountry: null },
+                    { targetCountry: "" },
+                  ],
+                },
+                { targetRole: { $in: ["all", "global"] } },
+              ],
+            },
           ],
         });
       }
       query.$and = conditions;
     } else if (role === "city_admin") {
-      // City Admin: sees municipal verification queue, local reviews/ads for their city, plus common notices
+      // City Admin: manages business verification and directory quality within assigned city or municipal jurisdiction
+      // Strict city isolation: City Admins do NOT receive notifications from other cities
       const cityFilter = city && city !== "all" ? city : undefined;
       const countryFilter = country && country !== "all" ? country : undefined;
 
@@ -257,26 +263,34 @@ export async function getNotifications(
           target: "admin",
           targetRole: { $in: ["city_admin", "admin", "all", null, ""] },
         },
-        { actionType: { $in: ["business_confirmation", "business_upload", "ad_campaign", "system", "review"] } },
         ...(userId ? [{ targetUserId: userId }] : []),
       ];
 
       const conditions: any[] = [{ $or: cityClauses }];
-      // Exclude super_admin and country_admin private alerts
+      // Exclude super_admin, country_admin, and customer private alerts
       conditions.push({
-        targetRole: { $nin: ["super_admin", "country_admin"] },
-        target: { $nin: ["super_admin", "country_admin"] },
+        targetRole: { $nin: ["super_admin", "country_admin", "user"] },
+        target: { $nin: ["super_admin", "country_admin", "user"] },
       });
 
       if (cityFilter) {
+        // Strict city isolation: Notification must match assigned city OR be a common broadcast with no specific targetCity
         conditions.push({
           $or: [
-            { targetCity: { $exists: false } },
-            { targetCity: null },
-            { targetCity: "" },
             { targetCity: new RegExp(`^${cityFilter}$`, "i") },
             { "metadata.cityName": new RegExp(`^${cityFilter}$`, "i") },
-            { title: new RegExp(cityFilter, "i") },
+            {
+              $and: [
+                {
+                  $or: [
+                    { targetCity: { $exists: false } },
+                    { targetCity: null },
+                    { targetCity: "" },
+                  ],
+                },
+                { targetRole: { $in: ["all", "global"] } },
+              ],
+            },
           ],
         });
       }
@@ -292,52 +306,54 @@ export async function getNotifications(
       }
       query.$and = conditions;
     } else if (role === "admin") {
-      // Operational Admin (Moderator / Operations Admin):
-      // Sees moderation queues, reviews, disputes, fraud flags, support tickets, 2FA alerts, plus common notices
+      // Operational Admin:
+      // Handles day-to-day platform operations, payments, subscriptions, customer support, moderation, ad campaigns, and workflow exceptions
+      // Distinct from geographic administrators
       const adminClauses: any[] = [
         commonCondition,
         { target: "admin" },
         { targetRole: "admin" },
-        { type: { $in: ["security", "dispute"] } },
-        { actionType: { $in: ["review", "dispute"] } },
+        {
+          actionType: {
+            $in: [
+              "payment",
+              "subscription_due",
+              "subscription_expired",
+              "support_ticket",
+              "dispute_opened",
+              "dispute_updated",
+              "ad_campaign",
+              "review_escalation",
+              "security_alert",
+              "system",
+              "report_generated",
+            ],
+          },
+        },
         ...(userId ? [{ targetUserId: userId }] : []),
       ];
 
       const conditions: any[] = [
         { $or: adminClauses },
-        // Exclude super admin root private operations, city admin / country admin queues, business-owner only financial receipts, and customer personal alerts
+        // Exclude super admin root private operations, city admin and country admin municipal/national queues, business-owner only receipts, and customer personal alerts
         { targetRole: { $nin: ["super_admin", "country_admin", "city_admin", "owner", "user"] } },
         { target: { $nin: ["super_admin", "country_admin", "city_admin", "user"] } },
       ];
       query.$and = conditions;
     } else if (role === "owner") {
       // Business Owner:
-      // Sees common notices, notifications addressed to their business, 4-month audits, payments, reviews, and ad updates
+      // Sees notifications for businesses they own (registration, 3-stage verification, 4-month audit, customer engagement, subscriptions, payouts, ad campaigns), plus common notices
       const ownerClauses: any[] = [
         commonCondition,
         { targetRole: "owner" },
         { target: "business" },
         ...(userId ? [{ targetUserId: userId }] : []),
         ...(businessId ? [{ targetBusinessId: businessId }] : []),
-        {
-          actionType: {
-            $in: [
-              "business_confirmation",
-              "business_existence_confirmation",
-              "business_upload",
-              "subscription_due",
-              "subscription_expired",
-              "payment",
-              "review",
-              "ad_campaign",
-            ],
-          },
-        },
       ];
 
       const conditions: any[] = [
         { $or: ownerClauses },
-        // Must NOT show admin moderation/dispute queues
+        // Must NOT show admin moderation/dispute queues or platform infrastructure alerts
         {
           target: { $nin: ["admin", "super_admin", "country_admin", "city_admin"] },
           targetRole: { $nin: ["admin", "super_admin", "country_admin", "city_admin"] },
@@ -371,7 +387,7 @@ export async function getNotifications(
       query.$and = conditions;
     } else {
       // Common / Local Users (role === "user" or visitors):
-      // Sees common platform broadcasts, platform announcements, and personal user notifications ONLY
+      // Business discovery, inquiries/chat, reviews, personal account security, community broadcasts
       const userClauses: any[] = [
         commonCondition,
         { targetRole: "user" },
@@ -543,64 +559,74 @@ export async function getNotifications(
       });
     } else if (role === "country_admin") {
       filtered = filtered.filter((n) => {
+        if (n.targetRole === "super_admin" || n.target === "super_admin") return false;
+        if (n.targetRole === "user" || n.target === "user") return false;
+
+        // Strict country isolation
+        if (country && country !== "all") {
+          if (n.targetCountry && n.targetCountry.trim() && n.targetCountry.toLowerCase() !== country.toLowerCase()) {
+            return false;
+          }
+        }
+
+        if (n.targetRole === "country_admin" || n.target === "country_admin") return true;
         if (isCommonNotif(n)) return true;
         if (userId && n.targetUserId === userId) return true;
-        if (n.targetRole === "super_admin" || n.target === "super_admin") return false;
-        if (country && country !== "all" && n.targetCountry) {
-          if (n.targetCountry.toLowerCase() !== country.toLowerCase()) return false;
-        }
-        if (n.targetRole === "country_admin" || n.target === "country_admin") return true;
-        if (["admin", "city_admin"].includes(n.target)) return true;
-        if (["country_admin", "admin", "city_admin", "all"].includes(n.targetRole || "")) return true;
         return false;
       });
     } else if (role === "city_admin") {
       filtered = filtered.filter((n) => {
+        if (["super_admin", "country_admin"].includes(n.targetRole || "") || ["super_admin", "country_admin"].includes(n.target)) return false;
+        if (n.targetRole === "user" || n.target === "user") return false;
+
+        // Strict city isolation: City Admin only receives notifications for their assigned city
+        if (city && city !== "all") {
+          if (n.targetCity && n.targetCity.trim() && n.targetCity.toLowerCase() !== city.toLowerCase()) {
+            return false;
+          }
+        }
+        if (country && country !== "all") {
+          if (n.targetCountry && n.targetCountry.trim() && n.targetCountry.toLowerCase() !== country.toLowerCase()) {
+            return false;
+          }
+        }
+
+        if (n.targetRole === "city_admin" || n.target === "city_admin") return true;
         if (isCommonNotif(n)) return true;
         if (userId && n.targetUserId === userId) return true;
-        if (["super_admin", "country_admin"].includes(n.targetRole || "") || ["super_admin", "country_admin"].includes(n.target)) return false;
-        if (city && city !== "all" && n.targetCity) {
-          if (n.targetCity.toLowerCase() !== city.toLowerCase()) return false;
-        }
-        if (country && country !== "all" && n.targetCountry) {
-          if (n.targetCountry.toLowerCase() !== country.toLowerCase()) return false;
-        }
-        if (n.targetRole === "city_admin" || n.target === "city_admin") return true;
-        if (n.target === "admin" && ["city_admin", "admin", "all", undefined].includes(n.targetRole)) return true;
         return false;
       });
     } else if (role === "admin") {
       filtered = filtered.filter((n) => {
-        if (isCommonNotif(n)) return true;
-        if (userId && n.targetUserId === userId) return true;
         if (["super_admin", "country_admin", "city_admin", "owner", "user"].includes(n.targetRole || "")) return false;
         if (["super_admin", "country_admin", "city_admin", "user"].includes(n.target)) return false;
         if (n.targetRole === "admin" || n.target === "admin") return true;
-        if (["security", "dispute"].includes(n.type || "")) return true;
+        if (isCommonNotif(n)) return true;
+        if (userId && n.targetUserId === userId) return true;
         return false;
       });
     } else if (role === "owner") {
       filtered = filtered.filter((n) => {
-        if (isCommonNotif(n)) return true;
-        if (userId && n.targetUserId === userId) return true;
-        if (businessId && n.targetBusinessId === businessId) return true;
         if (["admin", "super_admin", "country_admin", "city_admin"].includes(n.targetRole || "")) return false;
         if (["admin", "super_admin", "country_admin", "city_admin"].includes(n.target)) return false;
         if (city && city !== "all" && n.targetCity && n.targetCity.toLowerCase() !== city.toLowerCase()) return false;
         if (country && country !== "all" && n.targetCountry && n.targetCountry.toLowerCase() !== country.toLowerCase()) return false;
+        if (businessId && n.targetBusinessId === businessId) return true;
         if (n.targetRole === "owner" || n.target === "business") return true;
+        if (isCommonNotif(n)) return true;
+        if (userId && n.targetUserId === userId) return true;
         return false;
       });
     } else {
       // Common / Local Users (role === "user" or visitors)
       filtered = filtered.filter((n) => {
-        if (isCommonNotif(n)) return true;
-        if (userId && n.targetUserId === userId) return true;
         if (["owner", "admin", "super_admin", "country_admin", "city_admin"].includes(n.targetRole || "")) return false;
         if (["business", "admin", "super_admin", "country_admin", "city_admin"].includes(n.target)) return false;
         if (city && city !== "all" && n.targetCity && n.targetCity.toLowerCase() !== city.toLowerCase()) return false;
         if (country && country !== "all" && n.targetCountry && n.targetCountry.toLowerCase() !== country.toLowerCase()) return false;
         if (n.targetRole === "user" || n.target === "user") return true;
+        if (isCommonNotif(n)) return true;
+        if (userId && n.targetUserId === userId) return true;
         return false;
       });
     }
@@ -692,8 +718,10 @@ export async function createNotification(
     targetCountry: input.targetCountry,
     targetCity: input.targetCity,
     actionType: input.actionType,
+    channels: input.channels || ["in_app"],
+    channelStatus: input.channelStatus || { in_app: "delivered" },
     metadata: input.metadata,
-    status: input.status || "Delivered",
+    status: input.status || "delivered",
     priority: input.priority || "medium",
     sentBy: input.sentBy || "Super Admin",
     type: input.type || "system",
