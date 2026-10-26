@@ -252,10 +252,11 @@ export function RoleSwitcher() {
     (user?.unsafeMetadata as any)?.role ||
     "";
 
-  // Check if current perspective is operational admin or user has operational admin role
+  // Check if current perspective or user role matches each tier
   const isOperationsAdmin = currentRole === "admin" || userMetadataRole === "admin";
   const isCountryAdmin = currentRole === "country_admin" || userMetadataRole === "country_admin";
   const isCityAdmin = currentRole === "city_admin" || userMetadataRole === "city_admin";
+  const isBusinessOwner = currentRole === "owner" || userMetadataRole === "owner";
 
   // Super Admin option is strictly hidden on operational admin page/perspective,
   // country admin page, city admin page, and for operational admins who have no authority
@@ -264,9 +265,14 @@ export function RoleSwitcher() {
     !isOperationsAdmin &&
     !isCountryAdmin &&
     !isCityAdmin &&
+    !isBusinessOwner &&
     (currentRole === "super_admin" || userMetadataRole === "super_admin");
 
   const filteredRoles = roles.filter((r) => {
+    // Business Owner page / Business Owner perspective: show ONLY Business Owner
+    if (isBusinessOwner) {
+      return r.role === "owner";
+    }
     if (r.role === "super_admin") {
       return showSuperAdmin;
     }
