@@ -118,6 +118,7 @@ export function useNotifications() {
   const [confirmingBizId, setConfirmingBizId] = useState<string | null>(null);
 
   const prevCountRef = useRef<number>(0);
+  const prevRoleRef = useRef<string>(currentRole);
   const knownNotifIdsRef = useRef<Set<string>>(new Set());
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -145,8 +146,14 @@ export function useNotifications() {
   }, []);
 
   const fetchNotifications = useCallback(async () => {
-    // Don't fetch until Clerk has finished loading and user is authenticated
-    if (!isLoaded || !isSignedIn) return;
+    // Wait until Clerk metadata has finished loading
+    if (!isLoaded) return;
+
+    // Detect role switch to reset known notifications tracking
+    if (prevRoleRef.current !== currentRole) {
+      knownNotifIdsRef.current.clear();
+      prevRoleRef.current = currentRole;
+    }
 
     // Cancel any previous in-flight request before starting a new one
     abortControllerRef.current?.abort();
@@ -156,7 +163,7 @@ export function useNotifications() {
     try {
       const params = new URLSearchParams();
       params.set("limit", "50");
-      params.set("role", currentRole || "owner");
+      params.set("role", currentRole || "user");
 
       if (currentUser?.id) {
         params.set("userId", currentUser.id);
@@ -200,7 +207,11 @@ export function useNotifications() {
                   ? "🌍 Country Admin Verification"
                   : currentRole === "city_admin"
                   ? "🏙️ City Admin Confirmation"
-                  : "🔔 New Notification";
+                  : currentRole === "admin"
+                  ? "🛡️ Operations Alert"
+                  : currentRole === "owner"
+                  ? "💼 Business Alert"
+                  : "🔔 Notification";
 
               toast(roleTitle, {
                 description: confirmationItem.title,
@@ -236,29 +247,28 @@ export function useNotifications() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoaded, isSignedIn, currentRole, currentUser]);
+  }, [isLoaded, currentRole, currentUser]);
 
-  // Initial fetch and role change fetch — only when signed in
+  // Initial fetch and role change fetch
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
+    if (!isLoaded) return;
     fetchNotifications();
-    // Cancel in-flight request on effect cleanup
     return () => {
       abortControllerRef.current?.abort();
     };
-  }, [fetchNotifications, isLoaded, isSignedIn]);
+  }, [fetchNotifications, isLoaded]);
 
-  // Auto-polling every 8 seconds for real-time alerts — only when signed in
+  // Auto-polling every 12 seconds for real-time alerts
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
+    if (!isLoaded) return;
     const timer = setInterval(() => {
       fetchNotifications();
-    }, 8000);
+    }, 12000);
     return () => {
       clearInterval(timer);
       abortControllerRef.current?.abort();
     };
-  }, [fetchNotifications, isLoaded, isSignedIn]);
+  }, [fetchNotifications, isLoaded]);
 
   const markAsRead = useCallback(async (notificationId: string) => {
     setNotifications((prev) =>

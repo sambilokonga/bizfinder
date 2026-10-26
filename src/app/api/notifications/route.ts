@@ -19,17 +19,16 @@ export async function GET(req: Request) {
 
     const queryRole = searchParams.get("role");
     let userId: string | null = searchParams.get("userId") || null;
-    let role = queryRole || cookieRole || "owner";
+    let role = queryRole || cookieRole || "user";
 
     try {
       const authObj = await auth();
       if (authObj?.userId) {
-        userId = authObj.userId;
-        const dbUser = await getUserByClerkId(userId);
+        if (!userId) userId = authObj.userId;
+        const dbUser = await getUserByClerkId(authObj.userId);
         if (dbUser?.role) {
-          // If queryRole was explicitly provided (e.g. owner dashboard passing 'owner',
-          // city-admin passing 'city_admin', country-admin passing 'country_admin'), respect it
-          if (!queryRole) {
+          // If queryRole was explicitly provided (e.g. role switcher / navbar passing role), respect it
+          if (!queryRole && !cookieRole) {
             role = dbUser.role;
           }
         }

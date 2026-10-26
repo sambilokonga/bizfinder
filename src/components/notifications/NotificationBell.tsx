@@ -20,6 +20,10 @@ import {
   CreditCard,
   CalendarClock,
   AlertTriangle,
+  Globe,
+  Crown,
+  Shield,
+  User,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNotifications, UserNotification } from "@/hooks/useNotifications";
@@ -35,7 +39,7 @@ import { useCurrentRole } from "@/components/layout/RoleSwitcher";
 import { cn } from "@/lib/utils/cn";
 
 export function NotificationBell() {
-  const { currentRole } = useCurrentRole();
+  const { currentRole, currentUser } = useCurrentRole();
   const {
     notifications,
     unreadCount,
@@ -49,11 +53,63 @@ export function NotificationBell() {
     refresh,
   } = useNotifications();
 
-  const [filter, setFilter] = useState<"all" | "confirmations" | "unread">("all");
+  const [filter, setFilter] = useState<"all" | "role" | "common" | "confirmations" | "unread">("all");
   const [isOpen, setIsOpen] = useState(false);
 
+  const ROLE_CONFIG: Record<
+    string,
+    { label: string; icon: string; badgeClass: string; desc: string }
+  > = {
+    user: {
+      label: "Customer / Local User",
+      icon: "👤",
+      badgeClass: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30",
+      desc: "Community discovery & personal updates",
+    },
+    owner: {
+      label: "Business Owner",
+      icon: "💼",
+      badgeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+      desc: "Listing performance & customer inquiries",
+    },
+    city_admin: {
+      label: "City Admin",
+      icon: "🏙️",
+      badgeClass: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30",
+      desc: "Municipal verification & compliance",
+    },
+    country_admin: {
+      label: "Country Admin",
+      icon: "🌍",
+      badgeClass: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30",
+      desc: "National directory & territory leads",
+    },
+    admin: {
+      label: "Operations Admin",
+      icon: "🛡️",
+      badgeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
+      desc: "Moderation, reviews & dispute handling",
+    },
+    super_admin: {
+      label: "Super Admin",
+      icon: "👑",
+      badgeClass: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30",
+      desc: "Root platform control & global oversight",
+    },
+  };
+
+  const activeRoleConfig = ROLE_CONFIG[currentRole] || ROLE_CONFIG.user;
+
+  const isCommonNotification = (n: UserNotification) =>
+    n.target === "global" ||
+    n.targetRole === "all" ||
+    n.targetRole === "global" ||
+    (n.type === "broadcast" && (!n.targetRole || n.targetRole === "all"));
+
+  const commonNotifications = notifications.filter(isCommonNotification);
+  const roleNotifications = notifications.filter((n) => !isCommonNotification(n));
   const confirmationNotifications = notifications.filter(
-    (n) => n.actionType === "business_confirmation"
+    (n) => n.actionType === "business_confirmation" || Boolean(n.targetBusinessId)
   );
 
   const displayedNotifications =
@@ -61,6 +117,10 @@ export function NotificationBell() {
       ? notifications.filter((n) => !n.isRead)
       : filter === "confirmations"
       ? confirmationNotifications
+      : filter === "role"
+      ? roleNotifications
+      : filter === "common"
+      ? commonNotifications
       : notifications;
 
   const getNotificationIcon = (n: UserNotification) => {
@@ -70,22 +130,86 @@ export function NotificationBell() {
     if (n.actionType === "subscription_due") {
       return <CreditCard className="w-4 h-4 text-indigo-500" />;
     }
-    if (n.actionType === "business_confirmation" || n.target === "admin" || n.targetRole === "super_admin") {
+    if (
+      n.actionType === "business_confirmation" ||
+      n.target === "admin" ||
+      n.targetRole === "super_admin"
+    ) {
       return <ShieldCheck className="w-4 h-4 text-purple-500" />;
     }
-    if (n.target === "country_admin") {
-      return <ShieldCheck className="w-4 h-4 text-indigo-500" />;
+    if (n.target === "country_admin" || n.targetRole === "country_admin") {
+      return <Globe className="w-4 h-4 text-indigo-500" />;
     }
-    if (n.target === "city_admin") {
-      return <Building2 className="w-4 h-4 text-sky-500" />;
+    if (n.target === "city_admin" || n.targetRole === "city_admin") {
+      return <Building2 className="w-4 h-4 text-cyan-500" />;
     }
-    if (n.target === "business") {
+    if (n.target === "business" || n.targetRole === "owner") {
       return <Building2 className="w-4 h-4 text-emerald-500" />;
     }
     if (n.type === "alert" || n.status === "Pending") {
       return <ShieldAlert className="w-4 h-4 text-rose-500" />;
     }
+    if (isCommonNotification(n)) {
+      return <Globe className="w-4 h-4 text-sky-500" />;
+    }
     return <Sparkles className="w-4 h-4 text-primary" />;
+  };
+
+  const getScopeBadge = (n: UserNotification) => {
+    if (isCommonNotification(n)) {
+      return (
+        <Badge className="bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20 text-[9px] font-bold px-1.5 py-0 flex items-center gap-0.5">
+          <Globe className="w-2.5 h-2.5" />
+          Common
+        </Badge>
+      );
+    }
+    if (n.targetRole === "super_admin" || n.target === "super_admin") {
+      return (
+        <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 text-[9px] font-bold px-1.5 py-0 flex items-center gap-0.5">
+          <Crown className="w-2.5 h-2.5" />
+          Super Admin
+        </Badge>
+      );
+    }
+    if (n.targetRole === "country_admin" || n.target === "country_admin") {
+      return (
+        <Badge className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 text-[9px] font-bold px-1.5 py-0 flex items-center gap-0.5">
+          <Globe className="w-2.5 h-2.5" />
+          Country Admin
+        </Badge>
+      );
+    }
+    if (n.targetRole === "city_admin" || n.target === "city_admin") {
+      return (
+        <Badge className="bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20 text-[9px] font-bold px-1.5 py-0 flex items-center gap-0.5">
+          <Building2 className="w-2.5 h-2.5" />
+          City Admin
+        </Badge>
+      );
+    }
+    if (n.targetRole === "admin" || n.target === "admin") {
+      return (
+        <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[9px] font-bold px-1.5 py-0 flex items-center gap-0.5">
+          <Shield className="w-2.5 h-2.5" />
+          Operations
+        </Badge>
+      );
+    }
+    if (n.targetRole === "owner" || n.target === "business") {
+      return (
+        <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[9px] font-bold px-1.5 py-0 flex items-center gap-0.5">
+          <Building2 className="w-2.5 h-2.5" />
+          Business
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 text-[9px] font-bold px-1.5 py-0 flex items-center gap-0.5">
+        <User className="w-2.5 h-2.5" />
+        Personal
+      </Badge>
+    );
   };
 
   return (
@@ -96,7 +220,13 @@ export function NotificationBell() {
             aria-label="Notifications"
             className="relative flex items-center justify-center w-9 h-9 rounded-xl border border-border/60 bg-background/50 hover:bg-muted/80 text-foreground transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
-            <Bell className={`w-4 h-4 ${unreadCount > 0 ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground"} transition-colors`} />
+            <Bell
+              className={`w-4 h-4 ${
+                unreadCount > 0
+                  ? "text-indigo-600 dark:text-indigo-400"
+                  : "text-muted-foreground"
+              } transition-colors`}
+            />
             {unreadCount > 0 && (
               <>
                 <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-[10px] font-bold text-white shadow-md animate-in zoom-in-50">
@@ -111,57 +241,81 @@ export function NotificationBell() {
         <DropdownMenuContent
           align="end"
           sideOffset={8}
-          className="w-84 sm:w-[420px] p-0 rounded-3xl border border-border/80 bg-background/95 backdrop-blur-xl shadow-2xl overflow-hidden"
+          className="w-88 sm:w-[460px] p-0 rounded-3xl border border-border/80 bg-background/95 backdrop-blur-xl shadow-2xl overflow-hidden"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-muted/40">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                <span>Alerts & Notifications</span>
-                {unreadCount > 0 && (
+          <div className="px-4 py-3 border-b border-border/50 bg-muted/40">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                    <span>Alerts & Notifications</span>
+                    {unreadCount > 0 && (
+                      <Badge
+                        variant="secondary"
+                        className="px-1.5 py-0 text-[10px] font-bold bg-primary/10 text-primary border-primary/20"
+                      >
+                        {unreadCount} new
+                      </Badge>
+                    )}
+                  </h3>
+                </div>
+                {/* Active Role Identifier */}
+                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                  <span className="text-[10px] font-medium text-muted-foreground">Showing for:</span>
                   <Badge
-                    variant="secondary"
-                    className="px-1.5 py-0 text-[10px] font-bold bg-primary/10 text-primary border-primary/20"
+                    variant="outline"
+                    className={cn(
+                      "text-[10px] px-1.5 py-0 font-semibold flex items-center gap-1",
+                      activeRoleConfig.badgeClass
+                    )}
                   >
-                    {unreadCount} new
+                    <span>{activeRoleConfig.icon}</span>
+                    <span>{activeRoleConfig.label}</span>
+                    {currentUser?.assignedCity && currentRole === "city_admin" && (
+                      <span className="opacity-80">• {currentUser.assignedCity}</span>
+                    )}
+                    {currentUser?.assignedCountry && currentRole === "country_admin" && (
+                      <span className="opacity-80">• {currentUser.assignedCountry}</span>
+                    )}
                   </Badge>
-                )}
-              </h3>
-            </div>
+                </div>
+              </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={toggleSound}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-                title={soundEnabled ? "Mute notification sounds" : "Enable notification sounds"}
-              >
-                {soundEnabled ? (
-                  <Volume2 className="w-3.5 h-3.5 text-indigo-500" />
-                ) : (
-                  <VolumeX className="w-3.5 h-3.5 text-muted-foreground" />
-                )}
-              </button>
-
-              {unreadCount > 0 && (
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  onClick={() => markAllAsRead()}
-                  className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                  onClick={toggleSound}
+                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                  title={soundEnabled ? "Mute notification sounds" : "Enable notification sounds"}
                 >
-                  <CheckCheck className="w-3.5 h-3.5" />
-                  <span>Mark all read</span>
+                  {soundEnabled ? (
+                    <Volume2 className="w-3.5 h-3.5 text-indigo-500" />
+                  ) : (
+                    <VolumeX className="w-3.5 h-3.5 text-muted-foreground" />
+                  )}
                 </button>
-              )}
+
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => markAllAsRead()}
+                    className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                  >
+                    <CheckCheck className="w-3.5 h-3.5" />
+                    <span>Mark all read</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Filter Tabs */}
-          <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/40 bg-muted/20 text-xs">
+          <div className="flex items-center gap-1 px-3 py-2 border-b border-border/40 bg-muted/20 text-xs overflow-x-auto no-scrollbar">
             <button
               onClick={() => setFilter("all")}
               className={cn(
-                "px-2.5 py-1 rounded-lg font-semibold transition-all text-xs",
+                "px-2.5 py-1 rounded-lg font-semibold transition-all text-xs shrink-0",
                 filter === "all"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-muted"
@@ -171,27 +325,55 @@ export function NotificationBell() {
             </button>
 
             <button
-              onClick={() => setFilter("confirmations")}
+              onClick={() => setFilter("role")}
               className={cn(
-                "px-2.5 py-1 rounded-lg font-semibold transition-all text-xs flex items-center gap-1",
-                filter === "confirmations"
+                "px-2.5 py-1 rounded-lg font-semibold transition-all text-xs flex items-center gap-1 shrink-0",
+                filter === "role"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-muted"
               )}
             >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Confirmations</span>
-              {confirmationNotifications.length > 0 && (
+              <span>{activeRoleConfig.icon}</span>
+              <span>My Role</span>
+              <span className="text-[10px] ml-0.5 opacity-80">({roleNotifications.length})</span>
+            </button>
+
+            <button
+              onClick={() => setFilter("common")}
+              className={cn(
+                "px-2.5 py-1 rounded-lg font-semibold transition-all text-xs flex items-center gap-1 shrink-0",
+                filter === "common"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-muted"
+              )}
+            >
+              <Globe className="w-3 h-3" />
+              <span>Common</span>
+              <span className="text-[10px] ml-0.5 opacity-80">({commonNotifications.length})</span>
+            </button>
+
+            {confirmationNotifications.length > 0 && (
+              <button
+                onClick={() => setFilter("confirmations")}
+                className={cn(
+                  "px-2.5 py-1 rounded-lg font-semibold transition-all text-xs flex items-center gap-1 shrink-0",
+                  filter === "confirmations"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-muted"
+                )}
+              >
+                <ShieldCheck className="w-3 h-3" />
+                <span>Confirmations</span>
                 <span className="text-[10px] ml-0.5 px-1 py-0 rounded bg-white/20 font-bold">
                   {confirmationNotifications.length}
                 </span>
-              )}
-            </button>
+              </button>
+            )}
 
             <button
               onClick={() => setFilter("unread")}
               className={cn(
-                "px-2.5 py-1 rounded-lg font-semibold transition-all text-xs",
+                "px-2.5 py-1 rounded-lg font-semibold transition-all text-xs shrink-0",
                 filter === "unread"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-muted"
@@ -208,9 +390,13 @@ export function NotificationBell() {
                 <div className="w-10 h-10 mx-auto mb-3 rounded-2xl bg-muted/60 flex items-center justify-center text-muted-foreground">
                   <Bell className="w-5 h-5" />
                 </div>
-                <p className="text-xs font-semibold text-foreground">No alerts</p>
+                <p className="text-xs font-semibold text-foreground">No notifications</p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {filter === "confirmations"
+                  {filter === "role"
+                    ? `No role-specific notifications for ${activeRoleConfig.label}.`
+                    : filter === "common"
+                    ? "No common system announcements right now."
+                    : filter === "confirmations"
                     ? "No pending business confirmations right now."
                     : filter === "unread"
                     ? "You're all caught up! No unread notifications."
@@ -245,8 +431,10 @@ export function NotificationBell() {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        {/* Tags */}
+                        {/* Scope & Context Badges */}
                         <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                          {getScopeBadge(notif)}
+
                           {notif.actionType === "business_existence_confirmation" && (
                             <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[9px] font-bold px-1.5 py-0 flex items-center gap-1">
                               <CalendarClock className="w-2.5 h-2.5" />
@@ -259,14 +447,20 @@ export function NotificationBell() {
                               Subscription Due
                             </Badge>
                           )}
-                          {isConfirmation && notif.actionType !== "business_existence_confirmation" && (
-                            <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 text-[9px] font-bold px-1.5 py-0">
-                              Confirmation Alert
-                            </Badge>
-                          )}
+                          {isConfirmation &&
+                            notif.actionType !== "business_existence_confirmation" && (
+                              <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 text-[9px] font-bold px-1.5 py-0">
+                                Confirmation Alert
+                              </Badge>
+                            )}
                           {notif.metadata?.cityName && (
                             <Badge variant="outline" className="text-[9px] px-1.5 py-0">
                               📍 {notif.metadata.cityName}
+                            </Badge>
+                          )}
+                          {notif.targetCity && !notif.metadata?.cityName && (
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                              📍 {notif.targetCity}
                             </Badge>
                           )}
                           {isNewUser && (
@@ -317,15 +511,18 @@ export function NotificationBell() {
                             onClick={async (e) => {
                               e.stopPropagation();
                               try {
-                                const res = await fetch(`/api/businesses/${notif.targetBusinessId}/confirm-existence`, {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({
-                                    actorName: "Owner / User",
-                                    actorRole: "owner",
-                                    notes: "Confirmed active via quick notification action.",
-                                  }),
-                                });
+                                const res = await fetch(
+                                  `/api/businesses/${notif.targetBusinessId}/confirm-existence`,
+                                  {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      actorName: currentUser?.name || "Owner",
+                                      actorRole: currentRole,
+                                      notes: "Confirmed active via quick notification action.",
+                                    }),
+                                  }
+                                );
                                 const data = await res.json();
                                 if (data.success) {
                                   toast.success(`✨ Business Confirmed!`, {
@@ -334,7 +531,9 @@ export function NotificationBell() {
                                   markAsRead(notif.id);
                                   refresh();
                                 } else {
-                                  toast.error(data.error || "Failed to confirm business existence.");
+                                  toast.error(
+                                    data.error || "Failed to confirm business existence."
+                                  );
                                 }
                               } catch (err) {
                                 toast.error("Error confirming existence. Please try again.");
