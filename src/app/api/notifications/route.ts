@@ -76,6 +76,8 @@ export async function GET(req: Request) {
   }
 }
 
+import { dispatchNotification } from "@/lib/notifications/engine";
+
 export async function POST(req: Request) {
   try {
     let userId: string | null = null;
@@ -104,11 +106,14 @@ export async function POST(req: Request) {
       targetRole,
       targetCountry,
       targetCity,
-      actionType,
+      actionType = "system",
       metadata,
       sentBy,
       type = "system",
       priority = "medium",
+      channels = ["in_app"],
+      recipientEmail,
+      recipientPhone,
       link,
     } = body;
 
@@ -122,7 +127,7 @@ export async function POST(req: Request) {
 
     const finalSender = sentBy || senderName || "Platform System";
 
-    const result = await createNotification({
+    const dispatchRes = await dispatchNotification({
       title: title.trim(),
       body: contentBody.trim(),
       target,
@@ -136,10 +141,25 @@ export async function POST(req: Request) {
       sentBy: finalSender,
       type,
       priority,
+      channels: Array.isArray(channels) && channels.length > 0 ? channels : ["in_app"],
+      recipientEmail,
+      recipientPhone,
       link: link ? link.trim() : undefined,
     });
 
-    return NextResponse.json(result, { status: 201 });
+    if (!dispatchRes.success && dispatchRes.error) {
+      return NextResponse.json({ error: dispatchRes.error }, { status: 400 });
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        notification: dispatchRes.notification,
+        channelsDelivered: dispatchRes.channelsDelivered,
+        channelStatus: dispatchRes.channelStatus,
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
     console.error("Error creating user notification:", error);
     return NextResponse.json(
