@@ -232,12 +232,52 @@ interface NotificationItem {
 export default function AdminControlPanel() {
   const { currentRole, currentUser } = useCurrentRole();
 
-  // Navigation state matching exact 15 modules
+  // Navigation state matching exact 15 modules with accordion collapse
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeNav, setActiveNav] = useState<string>("dashboard");
   const [activeSubnav, setActiveSubnav] = useState<string>("overview");
-  // All sections collapsed by default — click main title to expand
+  const [expandedGroup, setExpandedGroup] = useState<string>("core");
+  const [expandAllGroups, setExpandAllGroups] = useState<boolean>(false);
   const [expandedNavSections, setExpandedNavSections] = useState<string[]>([]);
+
+  // Navigation module to parent section mapping
+  const NAV_ITEM_TO_GROUP: Record<string, string> = useMemo(
+    () => ({
+      dashboard: "core",
+      global_visitors: "core",
+      users: "core",
+      city_admins_hub: "core",
+      businesses: "core",
+      categories: "core",
+      locations: "core",
+      reviews: "content",
+      media: "content",
+      advertisements: "content",
+      payments: "platform",
+      analytics: "platform",
+      moderation: "platform",
+      notifications: "platform",
+      support: "platform",
+      settings: "system",
+      security: "system",
+      geo_admins: "system",
+      territory: "system",
+    }),
+    []
+  );
+
+  // Sync section group & collapse previously opened item submenus when activeNav changes
+  useEffect(() => {
+    const parentGroup = NAV_ITEM_TO_GROUP[activeNav];
+    if (parentGroup && !expandAllGroups) {
+      setExpandedGroup(parentGroup);
+    }
+    if (activeNav === "dashboard" || activeNav === "global_visitors") {
+      setExpandedNavSections([]);
+    } else {
+      setExpandedNavSections([activeNav]);
+    }
+  }, [activeNav, expandAllGroups, NAV_ITEM_TO_GROUP]);
 
   // ── Geo-Scope / Jurisdiction State ─────────────────────────────────────────
   // Allows Super Admins to simulate any role/territory, and locks Country/City Admins to their scope.
@@ -262,7 +302,8 @@ export default function AdminControlPanel() {
     return "all";
   });
 
-  const isSuperAdmin = currentRole === "super_admin" && geoScopeRole === "super_admin";
+  const isOperationsAdmin = currentRole === "admin" || geoScopeRole === "admin";
+  const isSuperAdmin = (currentRole === "super_admin" || geoScopeRole === "super_admin") && geoScopeRole !== "country_admin" && geoScopeRole !== "city_admin" && geoScopeRole !== "admin";
   const isCountryAdmin = currentRole === "country_admin" || geoScopeRole === "country_admin";
   const isCityAdmin = currentRole === "city_admin" || geoScopeRole === "city_admin";
 
@@ -293,6 +334,8 @@ export default function AdminControlPanel() {
       }
     } else if (currentRole === "super_admin") {
       setGeoScopeRole("super_admin");
+    } else if (currentRole === "admin") {
+      setGeoScopeRole("admin");
     }
   }, [currentRole, currentUser?.assignedCountry, currentUser?.country, currentUser?.assignedCity, currentUser?.city]);
 
@@ -319,10 +362,70 @@ export default function AdminControlPanel() {
     }
   }, [currentRole, currentUser?.assignedCountry]);
 
+  // Accordion toggle: toggles the specified item while collapsing all other items
   const toggleNavSection = (section: string) => {
     setExpandedNavSections((prev) =>
-      prev.includes(section) ? prev.filter((s) => s !== section) : [...prev, section]
+      prev.includes(section) ? [] : [section]
     );
+  };
+
+  // Item click handler: expands the clicked item, collapses previously opened items
+  const handleItemClick = (
+    key: string,
+    hasSubItems: boolean,
+    firstSubKey?: string
+  ) => {
+    setActiveNav(key);
+    const parentGroup = NAV_ITEM_TO_GROUP[key] || "core";
+    if (!expandAllGroups) {
+      setExpandedGroup(parentGroup);
+    }
+
+    if (hasSubItems) {
+      setExpandedNavSections((prev) => (prev.includes(key) ? [] : [key]));
+      if (firstSubKey && activeNav !== key) {
+        setActiveSubnav(firstSubKey);
+      }
+    } else {
+      setExpandedNavSections([]);
+      setSidebarOpen(false);
+    }
+  };
+
+  // Section click handler: expands the clicked section and collapses all other sections & submenus
+  const handleSectionClick = (groupKey: string) => {
+    if (expandAllGroups) {
+      setExpandAllGroups(false);
+      setExpandedGroup(groupKey);
+      setExpandedNavSections([]);
+      return;
+    }
+
+    if (expandedGroup === groupKey) {
+      // Toggle closed
+      setExpandedGroup("");
+      setExpandedNavSections([]);
+    } else {
+      setExpandedGroup(groupKey);
+      setExpandedNavSections([]);
+
+      const defaultNavForGroup: Record<string, string> = {
+        core: "dashboard",
+        content: "reviews",
+        platform: "payments",
+        system: "settings",
+      };
+      const currentGroup = NAV_ITEM_TO_GROUP[activeNav];
+      if (currentGroup !== groupKey) {
+        const targetNav = defaultNavForGroup[groupKey];
+        if (targetNav) {
+          setActiveNav(targetNav);
+          if (targetNav !== "dashboard" && targetNav !== "global_visitors") {
+            setExpandedNavSections([targetNav]);
+          }
+        }
+      }
+    }
   };
 
   // Core Data Lists
@@ -2166,6 +2269,60 @@ export default function AdminControlPanel() {
     }
   };
 
+  // ── Helper: Render Modern Collapsible Section Header ───────────────────────
+  const renderSectionHeader = (
+    groupKey: string,
+    label: string,
+    badgeText?: string
+  ) => {
+    const isGroupExpanded = expandAllGroups || expandedGroup === groupKey;
+    const isGroupActive = NAV_ITEM_TO_GROUP[activeNav] === groupKey;
+
+    return (
+      <button
+        type="button"
+        onClick={() => handleSectionClick(groupKey)}
+        className={`w-full group flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.14em] transition-all duration-200 cursor-pointer ${
+          isGroupExpanded || isGroupActive
+            ? "bg-gradient-to-r from-indigo-500/15 via-purple-500/10 to-transparent text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 shadow-xs"
+            : "text-muted-foreground/70 hover:text-foreground hover:bg-accent/40 border border-transparent"
+        }`}
+        title={`Click to contrast and toggle ${label}`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          <div
+            className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all ${
+              isGroupActive
+                ? "bg-indigo-500 shadow-[0_0_8px_currentColor]"
+                : isGroupExpanded
+                ? "bg-indigo-500/70"
+                : "bg-muted-foreground/30 group-hover:bg-muted-foreground/70"
+            }`}
+          />
+          <span className="truncate">{label}</span>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {badgeText && (
+            <span
+              className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold ${
+                isGroupExpanded || isGroupActive
+                  ? "bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {badgeText}
+            </span>
+          )}
+          <ChevronDown
+            className={`w-3.5 h-3.5 transition-transform duration-200 ${
+              isGroupExpanded ? "rotate-0 text-indigo-500" : "-rotate-90 text-muted-foreground/60"
+            }`}
+          />
+        </div>
+      </button>
+    );
+  };
+
   // ── Modern Sidebar Nav Item Builder ──────────────────────────────────────
   const renderSidebarItem = (
     key: string,
@@ -2181,32 +2338,27 @@ export default function AdminControlPanel() {
     return (
       <div key={key} className="space-y-0.5">
         <button
+          type="button"
           onClick={() => {
-            setActiveNav(key);
-            if (subItems && subItems.length > 0) {
-              if (!isExpanded) setActiveSubnav(subItems[0].key);
-              toggleNavSection(key);
-            } else {
-              setSidebarOpen(false); // close drawer on mobile for leaf items
-            }
+            handleItemClick(key, Boolean(subItems && subItems.length > 0), subItems?.[0]?.key);
           }}
           className={`relative w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all duration-200 group overflow-hidden ${
             isSelected
-              ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/25"
+              ? "bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/25 ring-1 ring-white/20 font-bold"
               : "text-muted-foreground hover:text-foreground hover:bg-accent/70"
           }`}
         >
           {/* Active left-border glow */}
           {isSelected && (
-            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-white/70 shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 rounded-r-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" />
           )}
           <div className="flex items-center gap-2.5 truncate">
             <span className={`shrink-0 transition-transform duration-200 ${
-              isSelected ? "text-primary-foreground scale-110" : "text-muted-foreground group-hover:text-foreground group-hover:scale-105"
+              isSelected ? "text-white scale-110 drop-shadow" : "text-muted-foreground group-hover:text-foreground group-hover:scale-105"
             }`}>
               {icon}
             </span>
-            <span className="truncate font-semibold">{label}</span>
+            <span className="truncate font-semibold tracking-tight">{label}</span>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
@@ -2223,7 +2375,7 @@ export default function AdminControlPanel() {
               </Badge>
             )}
             {!superAdminOnly && hasAlert && !isSelected && (
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
             )}
             {subItems && subItems.length > 0 && (
               <span
@@ -2231,9 +2383,10 @@ export default function AdminControlPanel() {
                   e.stopPropagation();
                   toggleNavSection(key);
                 }}
-                className={`p-0.5 rounded-md transition-all duration-200 ${
-                  isSelected ? "text-primary-foreground/70 hover:text-white" : "hover:bg-accent"
+                className={`p-1 rounded-md transition-all duration-200 ${
+                  isSelected ? "text-white hover:bg-white/20" : "hover:bg-accent text-muted-foreground hover:text-foreground"
                 }`}
+                title={isExpanded ? "Collapse sub-items" : "Expand sub-items"}
               >
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? "rotate-0" : "-rotate-90"}`} />
               </span>
@@ -2243,11 +2396,12 @@ export default function AdminControlPanel() {
 
         {/* Subnav with slide-down animation */}
         {subItems && isExpanded && (
-          <div className="pl-4 pr-1 pt-0.5 pb-1 space-y-0.5 animate-subnav-open">
+          <div className="pl-4 pr-1 pt-1 pb-1 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
             {subItems.map((sub) => {
               const isSubActive = activeNav === key && activeSubnav === sub.key;
               return (
                 <button
+                  type="button"
                   key={sub.key}
                   onClick={() => {
                     setActiveNav(key);
@@ -2256,19 +2410,19 @@ export default function AdminControlPanel() {
                   }}
                   className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-[11px] font-medium transition-all duration-150 ${
                     isSubActive
-                      ? "bg-primary/10 text-primary font-bold border border-primary/20"
+                      ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 font-bold border border-indigo-500/30 shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
                     <div className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all ${
-                      isSubActive ? "bg-primary shadow-[0_0_6px_currentColor]" : "bg-muted-foreground/30"
+                      isSubActive ? "bg-indigo-500 shadow-[0_0_6px_currentColor]" : "bg-muted-foreground/30"
                     }`} />
                     <span className="truncate">{sub.label}</span>
                   </div>
                   {sub.count !== undefined && sub.count > 0 && (
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold shrink-0 ${
-                      isSubActive ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                      isSubActive ? "bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30" : "bg-muted text-muted-foreground"
                     }`}>
                       {sub.count}
                     </span>
@@ -2340,7 +2494,7 @@ export default function AdminControlPanel() {
                 Admin Ecosystem Control
               </h1>
               <Badge variant="outline" className="text-[9px] sm:text-[10px] uppercase font-bold border-indigo-500/30 text-indigo-600 dark:text-indigo-400 py-0 sm:py-0.5">
-                {isSuperAdmin ? "👑 Super Admin" : "Admin Operations"}
+                {isSuperAdmin ? "👑 Super Admin" : isCountryAdmin ? "🌍 Country Admin" : isCityAdmin ? "🏙️ City Admin" : "🛡️ Operations Admin"}
               </Badge>
             </div>
             <p className="text-[10px] sm:text-xs text-muted-foreground truncate hidden sm:block">
@@ -2407,160 +2561,185 @@ export default function AdminControlPanel() {
           {/* Scrollable nav area */}
           <div className="p-3 space-y-5 flex-1">
 
+            {/* Quick Accordion Focus / View Mode Strip */}
+            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-muted/40 border border-border/50 text-[10px]">
+              <span className="font-bold flex items-center gap-1.5 text-muted-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                <span>Single Focus Mode</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setExpandAllGroups((prev) => !prev);
+                  if (expandAllGroups) {
+                    setExpandedGroup(NAV_ITEM_TO_GROUP[activeNav] || "core");
+                  }
+                }}
+                className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+              >
+                {expandAllGroups ? "Collapse Others" : "Expand All"}
+              </button>
+            </div>
+
             {/* ── Section: Core ─────────────────────────────────────────── */}
-            <div className="space-y-0.5">
-              <div className="px-3 pb-1 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
-                <div className="flex-1 h-px bg-border/60" />
-                Core Operations
-                <div className="flex-1 h-px bg-border/60" />
-              </div>
-              {renderSidebarItem("dashboard", "Dashboard", <Activity className="w-4 h-4 text-indigo-500" />)}
-              {renderSidebarItem("global_visitors", "Global Visitors", <Globe className="w-4 h-4 text-cyan-400" />)}
-              {renderSidebarItem("users", "Users", <Users className="w-4 h-4 text-sky-500" />, false, [
-                { key: "all", label: isCountryAdmin ? "All Regular Users" : "All Users", count: userTotalCount || usersList.length },
-                { key: "customers", label: "Customers", count: userCounts.customers },
-                { key: "owners", label: "Business Owners", count: userCounts.owners },
-                ...(!isCountryAdmin ? [{ key: "admins", label: "Administrators", count: userCounts.admins }] : []),
-                { key: "suspended", label: "Suspended", count: userCounts.suspended },
-              ])}
-              {/* Dedicated City Admins Hub for Country Admin only */}
-              {isCountryAdmin && renderSidebarItem(
-                "city_admins_hub",
-                `City Admins (${geoSelectedCountry === "all" ? "Ethiopia" : geoSelectedCountry})`,
-                <ShieldCheck className="w-4 h-4 text-amber-500" />,
-                false,
-                [
-                  { key: "all", label: "All Municipal Admins", count: userCounts.cityAdmins ?? 0 },
-                  { key: "appointed", label: "Appointed" },
-                  { key: "vacant", label: "Vacant Cities" },
-                ]
+            <div className="space-y-1">
+              {renderSectionHeader("core", "Core Operations", isCountryAdmin ? "7 modules" : "6 modules")}
+
+              {(expandAllGroups || expandedGroup === "core") && (
+                <div className="space-y-0.5 animate-in fade-in duration-150">
+                  {renderSidebarItem("dashboard", "Command Center", <Activity className="w-4 h-4 text-indigo-500" />)}
+                  {renderSidebarItem("global_visitors", "Global Visitors", <Globe className="w-4 h-4 text-cyan-400" />)}
+                  {renderSidebarItem("users", isSuperAdmin ? "Global Users & Admins" : isOperationsAdmin ? "Operations Users & Accounts" : isCountryAdmin ? "National Users" : "Users", <Users className="w-4 h-4 text-sky-500" />, false, [
+                    { key: "all", label: isCountryAdmin ? "All Regular Users" : isSuperAdmin ? "All Global Users" : isOperationsAdmin ? "All Platform Users" : "All Users", count: userTotalCount || usersList.length },
+                    { key: "customers", label: "Customers", count: userCounts.customers },
+                    { key: "owners", label: "Business Owners", count: userCounts.owners },
+                    ...(!isCountryAdmin ? [{ key: "admins", label: isSuperAdmin ? "Admins & Leads" : isOperationsAdmin ? "Admin Directory" : "Administrators", count: userCounts.admins }] : []),
+                    { key: "suspended", label: "Suspended", count: userCounts.suspended },
+                  ])}
+                  {/* Dedicated City Admins Hub for Country Admin only */}
+                  {isCountryAdmin && renderSidebarItem(
+                    "city_admins_hub",
+                    `City Admins (${geoSelectedCountry === "all" ? "Ethiopia" : geoSelectedCountry})`,
+                    <ShieldCheck className="w-4 h-4 text-amber-500" />,
+                    false,
+                    [
+                      { key: "all", label: "All Municipal Admins", count: userCounts.cityAdmins ?? 0 },
+                      { key: "appointed", label: "Appointed" },
+                      { key: "vacant", label: "Vacant Cities" },
+                    ]
+                  )}
+                  {renderSidebarItem("businesses", isSuperAdmin ? "Businesses (Worldwide)" : isOperationsAdmin ? "Businesses (Operations Queue)" : isCountryAdmin ? `Businesses (${geoSelectedCountry})` : isCityAdmin ? `Businesses (${geoSelectedCity})` : "Businesses", <Building2 className="w-4 h-4 text-emerald-500" />, false, [
+                    { key: "all", label: isSuperAdmin ? "All Global Listings" : isOperationsAdmin ? "All Directory Listings" : "All City Listings", count: bizCounts.all || bizTotalCount },
+                    { key: "pending_confirmations", label: "🔔 Confirmations", count: (bizCounts as any).confirmations ?? 0, alert: ((bizCounts as any).confirmations ?? 0) > 0 },
+                    { key: "pending", label: "Pending Verification", count: bizCounts.pending },
+                    { key: "verified", label: "Verified", count: bizCounts.verified },
+                    { key: "claimed", label: "Owner Claims Queue", count: bizCounts.claimed },
+                    { key: "rejected", label: "Rejected / Remediation", count: bizCounts.rejected },
+                    { key: "suspended", label: "Suspended", count: bizCounts.suspended },
+                    { key: "new", label: "+ New Listing Wizard" },
+                  ])}
+                  {renderSidebarItem("categories", isSuperAdmin ? "Categories (Taxonomy)" : isOperationsAdmin ? "Categories (Taxonomy)" : (geoSelectedCity !== "all" || isCityAdmin) ? `Categories (${geoSelectedCity !== "all" ? geoSelectedCity : currentUser?.assignedCity || "City"})` : (geoSelectedCountry !== "all" || isCountryAdmin) ? `Categories (${geoSelectedCountry !== "all" ? geoSelectedCountry : currentUser?.assignedCountry || "Country"})` : "Categories", <FolderTree className="w-4 h-4 text-purple-500" />, false, [
+                    { key: "all", label: isSuperAdmin ? "Global Directory Taxonomy" : isOperationsAdmin ? "Global Directory Taxonomy" : (geoSelectedCity !== "all" || isCityAdmin) ? "All City Categories" : (geoSelectedCountry !== "all" || isCountryAdmin) ? "All Country Categories" : "All Categories", count: categories.length },
+                    { key: "industries", label: "Industries", count: industryGroups.length },
+                    { key: "subcategories", label: "Subcategories", count: categories.filter((c) => c.level > 1).length },
+                  ])}
+                  {renderSidebarItem("locations", "Locations", <MapPin className="w-4 h-4 text-rose-500" />, false, [
+                    { key: "map_radar", label: "Geographic Radar Map" },
+                    { key: "countries", label: "Countries", count: 195 },
+                    { key: "regions", label: "States / Regions" },
+                    { key: "cities", label: "Cities", count: locations.length },
+                    { key: "districts", label: "Districts" },
+                    { key: "register", label: "+ Register Location" },
+                  ])}
+                </div>
               )}
-              {renderSidebarItem("businesses", isCountryAdmin ? `Businesses (${geoSelectedCountry})` : isCityAdmin ? `Businesses (${geoSelectedCity})` : "Businesses", <Building2 className="w-4 h-4 text-emerald-500" />, false, [
-                { key: "all", label: "All City Listings", count: bizCounts.all || bizTotalCount },
-                { key: "pending_confirmations", label: "🔔 Confirmations", count: (bizCounts as any).confirmations ?? 0, alert: ((bizCounts as any).confirmations ?? 0) > 0 },
-                { key: "pending", label: "Pending Verification", count: bizCounts.pending },
-                { key: "verified", label: "Verified", count: bizCounts.verified },
-                { key: "claimed", label: "Owner Claims Queue", count: bizCounts.claimed },
-                { key: "rejected", label: "Rejected / Remediation", count: bizCounts.rejected },
-                { key: "suspended", label: "Suspended", count: bizCounts.suspended },
-                { key: "new", label: "+ New Listing Wizard" },
-              ])}
-              {renderSidebarItem("categories", (geoSelectedCity !== "all" || isCityAdmin) ? `Categories (${geoSelectedCity !== "all" ? geoSelectedCity : currentUser?.assignedCity || "City"})` : (geoSelectedCountry !== "all" || isCountryAdmin) ? `Categories (${geoSelectedCountry !== "all" ? geoSelectedCountry : currentUser?.assignedCountry || "Country"})` : "Categories", <FolderTree className="w-4 h-4 text-purple-500" />, false, [
-                { key: "all", label: (geoSelectedCity !== "all" || isCityAdmin) ? "All City Categories" : (geoSelectedCountry !== "all" || isCountryAdmin) ? "All Country Categories" : "All Categories", count: categories.length },
-                { key: "industries", label: "Industries", count: industryGroups.length },
-                { key: "subcategories", label: "Subcategories", count: categories.filter((c) => c.level > 1).length },
-              ])}
-              {renderSidebarItem("locations", "Locations", <MapPin className="w-4 h-4 text-rose-500" />, false, [
-                { key: "map_radar", label: "Geographic Radar Map" },
-                { key: "countries", label: "Countries", count: 195 },
-                { key: "regions", label: "States / Regions" },
-                { key: "cities", label: "Cities", count: locations.length },
-                { key: "districts", label: "Districts" },
-                { key: "register", label: "+ Register Location" },
-              ])}
             </div>
 
             {/* ── Section: Content & Media ───────────────────────────────── */}
-            <div className="space-y-0.5">
-              <div className="px-3 pb-1 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
-                <div className="flex-1 h-px bg-border/60" />
-                Content & Media
-                <div className="flex-1 h-px bg-border/60" />
-              </div>
-              {renderSidebarItem("reviews", "Reviews", <Sparkles className="w-4 h-4 text-amber-500" />, false, [
-                { key: "all", label: "All Reviews", count: reviewCounts.all || reviewTotalCount },
-                { key: "pending", label: "Pending", count: reviewCounts.pending },
-                { key: "reported", label: "Reported", count: reviewCounts.reported },
-                { key: "removed", label: "Removed", count: reviewCounts.removed },
-              ])}
-              {renderSidebarItem("media", "Media Library", <Camera className="w-4 h-4 text-pink-500" />, false, [
-                { key: "all", label: "All Assets", count: mediaTotalCount },
-                { key: "photos", label: "Photos", count: mediaCounts.photos },
-                { key: "videos", label: "Videos", count: mediaCounts.videos },
-                { key: "pending", label: "Pending Review", count: mediaCounts.pending },
-                { key: "reported", label: "Reported", count: mediaCounts.reported },
-              ])}
-              {renderSidebarItem("advertisements", "Advertisements", <Megaphone className="w-4 h-4 text-teal-500" />, false, [
-                { key: "all", label: "All Campaigns", count: adTotalCount },
-                { key: "create", label: "Create Campaign" },
-                { key: "active", label: "Active", count: adCounts.active },
-                { key: "paused", label: "Paused", count: adCounts.paused },
-                { key: "completed", label: "Completed", count: adCounts.completed },
-              ])}
+            <div className="space-y-1">
+              {renderSectionHeader("content", "Content & Media", "3 modules")}
+
+              {(expandAllGroups || expandedGroup === "content") && (
+                <div className="space-y-0.5 animate-in fade-in duration-150">
+                  {renderSidebarItem("reviews", "Reviews", <Sparkles className="w-4 h-4 text-amber-500" />, false, [
+                    { key: "all", label: "All Reviews", count: reviewCounts.all || reviewTotalCount },
+                    { key: "pending", label: "Pending", count: reviewCounts.pending },
+                    { key: "reported", label: "Reported", count: reviewCounts.reported },
+                    { key: "removed", label: "Removed", count: reviewCounts.removed },
+                  ])}
+                  {renderSidebarItem("media", "Media Library", <Camera className="w-4 h-4 text-pink-500" />, false, [
+                    { key: "all", label: "All Assets", count: mediaTotalCount },
+                    { key: "photos", label: "Photos", count: mediaCounts.photos },
+                    { key: "videos", label: "Videos", count: mediaCounts.videos },
+                    { key: "pending", label: "Pending Review", count: mediaCounts.pending },
+                    { key: "reported", label: "Reported", count: mediaCounts.reported },
+                  ])}
+                  {renderSidebarItem("advertisements", "Advertisements", <Megaphone className="w-4 h-4 text-teal-500" />, false, [
+                    { key: "all", label: "All Campaigns", count: adTotalCount },
+                    { key: "create", label: "Create Campaign" },
+                    { key: "active", label: "Active", count: adCounts.active },
+                    { key: "paused", label: "Paused", count: adCounts.paused },
+                    { key: "completed", label: "Completed", count: adCounts.completed },
+                  ])}
+                </div>
+              )}
             </div>
 
             {/* ── Section: Platform Operations ───────────────────────────── */}
-            <div className="space-y-0.5">
-              <div className="px-3 pb-1 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
-                <div className="flex-1 h-px bg-border/60" />
-                Platform Ops
-                <div className="flex-1 h-px bg-border/60" />
-              </div>
-              {renderSidebarItem("payments", "Payments", <CreditCard className="w-4 h-4 text-green-500" />, false, [
-                { key: "transactions", label: "Transactions", count: payTotalCount },
-                { key: "subscriptions", label: "Subscriptions" },
-                { key: "invoices", label: "Invoices" },
-                { key: "refunds", label: "Refunds" },
-                { key: "revenue", label: "Revenue Overview" },
-              ])}
-              {renderSidebarItem("analytics", "Analytics", <BarChart3 className="w-4 h-4 text-indigo-400" />, false, [
-                { key: "all", label: "Live Event Ledger", count: analyticsTotalCount },
-                { key: "platform", label: "Platform Overview" },
-                { key: "search", label: "Search Analytics" },
-                { key: "location", label: "Location Breakdown" },
-                { key: "business", label: "Business Metrics" },
-              ])}
-              {renderSidebarItem("moderation", "Reports & Moderation", <Flag className="w-4 h-4 text-red-500" />, false, [
-                { key: "all", label: "All Reports", count: reportStats?.totalReports || reportTotalCount },
-                { key: "business", label: "Business Reports", count: reportStats?.businessReportsCount },
-                { key: "user", label: "User Reports", count: reportStats?.userReportsCount },
-                { key: "review", label: "Review Reports", count: reportStats?.reviewReportsCount },
-                { key: "resolved", label: "Resolved", count: reportStats?.resolvedCount },
-              ])}
-              {renderSidebarItem("notifications", "Notifications", <Bell className="w-4 h-4 text-yellow-500" />, false, [
-                { key: "all", label: "All Notifications", count: notifTotalCount },
-                { key: "send", label: "Send Broadcast" },
-                { key: "templates", label: "Templates" },
-              ])}
-              {renderSidebarItem("support", "Support Desk", <Ticket className="w-4 h-4 text-emerald-400" />, false, [
-                { key: "all", label: "All Tickets", count: ticketStats?.total ?? ticketTotalCount },
-                { key: "open", label: "Open", count: ticketStats?.open ?? 0 },
-                { key: "in_progress", label: "In Progress", count: ticketStats?.inProgress ?? 0 },
-                { key: "waiting_on_customer", label: "Awaiting Customer", count: ticketStats?.waiting ?? 0 },
-                { key: "resolved", label: "Resolved", count: ticketStats?.resolved ?? 0 },
-              ])}
+            <div className="space-y-1">
+              {renderSectionHeader("platform", "Platform Ops", "5 modules")}
+
+              {(expandAllGroups || expandedGroup === "platform") && (
+                <div className="space-y-0.5 animate-in fade-in duration-150">
+                  {renderSidebarItem("payments", "Payments", <CreditCard className="w-4 h-4 text-green-500" />, false, [
+                    { key: "transactions", label: "Transactions", count: payTotalCount },
+                    { key: "subscriptions", label: "Subscriptions" },
+                    { key: "invoices", label: "Invoices" },
+                    { key: "refunds", label: "Refunds" },
+                    { key: "revenue", label: "Revenue Overview" },
+                  ])}
+                  {renderSidebarItem("analytics", "Analytics", <BarChart3 className="w-4 h-4 text-indigo-400" />, false, [
+                    { key: "all", label: "Live Event Ledger", count: analyticsTotalCount },
+                    { key: "platform", label: "Platform Overview" },
+                    { key: "search", label: "Search Analytics" },
+                    { key: "location", label: "Location Breakdown" },
+                    { key: "business", label: "Business Metrics" },
+                  ])}
+                  {renderSidebarItem("moderation", "Reports & Moderation", <Flag className="w-4 h-4 text-red-500" />, false, [
+                    { key: "all", label: "All Reports", count: reportStats?.totalReports || reportTotalCount },
+                    { key: "business", label: "Business Reports", count: reportStats?.businessReportsCount },
+                    { key: "user", label: "User Reports", count: reportStats?.userReportsCount },
+                    { key: "review", label: "Review Reports", count: reportStats?.reviewReportsCount },
+                    { key: "resolved", label: "Resolved", count: reportStats?.resolvedCount },
+                  ])}
+                  {renderSidebarItem("notifications", "Notifications", <Bell className="w-4 h-4 text-yellow-500" />, false, [
+                    { key: "all", label: "All Notifications", count: notifTotalCount },
+                    { key: "send", label: "Send Broadcast" },
+                    { key: "templates", label: "Templates" },
+                  ])}
+                  {renderSidebarItem("support", "Support Desk", <Ticket className="w-4 h-4 text-emerald-400" />, false, [
+                    { key: "all", label: "All Tickets", count: ticketStats?.total ?? ticketTotalCount },
+                    { key: "open", label: "Open", count: ticketStats?.open ?? 0 },
+                    { key: "in_progress", label: "In Progress", count: ticketStats?.inProgress ?? 0 },
+                    { key: "waiting_on_customer", label: "Awaiting Customer", count: ticketStats?.waiting ?? 0 },
+                    { key: "resolved", label: "Resolved", count: ticketStats?.resolved ?? 0 },
+                  ])}
+                </div>
+              )}
             </div>
 
             {/* ── Section: System ────────────────────────────────────────── */}
-            <div className="space-y-0.5">
-              <div className="px-3 pb-1 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
-                <div className="flex-1 h-px bg-border/60" />
-                System
-                <div className="flex-1 h-px bg-border/60" />
-              </div>
-              {renderSidebarItem("settings", "Settings", <Settings className="w-4 h-4 text-slate-400" />, false, [
-                { key: "general", label: "General" },
-                { key: "business", label: "Business Rules" },
-                { key: "search", label: "Search & Map" },
-                { key: "seo", label: "SEO & Social" },
-                { key: "notifications", label: "Notifications" },
-                { key: "payments", label: "Payment Gateway" },
-                { key: "security", label: "Security Policy" },
-                ...(isCountryAdmin || isCityAdmin ? [{ key: "liaison", label: "National Liaison" }] : []),
-                { key: "maintenance", label: "Maintenance" },
-              ])}
-              {renderSidebarItem("security", "Security", <Lock className="w-4 h-4 text-rose-500" />, true, [
-                { key: "admins", label: "Admin Accounts" },
-                { key: "roles", label: "Role Management" },
-                { key: "permissions", label: "Permissions" },
-                { key: "audit", label: "Audit Logs" },
-                { key: "logins", label: "Login Activity" },
-              ])}
-              {/* Territory Admin — only visible to Super Admin; Country Admin sees City Admins Hub instead */}
-              {!isCountryAdmin && !isCityAdmin && renderSidebarItem("geo_admins", "Territory Admin", <Globe className="w-4 h-4 text-indigo-500" />, false, [
-                { key: "country_leads", label: "Country Admins", count: 195 },
-                { key: "city_admins", label: "City Admins" },
-              ])}
+            <div className="space-y-1">
+              {renderSectionHeader("system", "System", isSuperAdmin ? "3 modules" : "1 module")}
+
+              {(expandAllGroups || expandedGroup === "system") && (
+                <div className="space-y-0.5 animate-in fade-in duration-150">
+                  {renderSidebarItem("settings", "Settings", <Settings className="w-4 h-4 text-slate-400" />, false, [
+                    { key: "general", label: "General" },
+                    { key: "business", label: "Business Rules" },
+                    { key: "search", label: "Search & Map" },
+                    { key: "seo", label: "SEO & Social" },
+                    { key: "notifications", label: "Notifications" },
+                    { key: "payments", label: "Payment Gateway" },
+                    { key: "security", label: "Security Policy" },
+                    ...(isCountryAdmin || isCityAdmin ? [{ key: "liaison", label: "National Liaison" }] : []),
+                    { key: "maintenance", label: "Maintenance" },
+                  ])}
+                  {/* Security — strictly restricted to Super Admin; Operational Admin has no authority over accounts/privileges */}
+                  {isSuperAdmin && renderSidebarItem("security", "Security", <Lock className="w-4 h-4 text-rose-500" />, true, [
+                    { key: "admins", label: "Admin Accounts" },
+                    { key: "roles", label: "Role Management" },
+                    { key: "permissions", label: "Permissions" },
+                    { key: "audit", label: "Audit Logs" },
+                    { key: "logins", label: "Login Activity" },
+                  ])}
+                  {/* Territory Admin — strictly restricted to Super Admin; Country Admin manages City Admins via City Admins Hub; Operational Admin has no authority over accounts/privileges */}
+                  {isSuperAdmin && renderSidebarItem("geo_admins", "Territory Admin", <Globe className="w-4 h-4 text-indigo-500" />, true, [
+                    { key: "country_leads", label: "Country Admins", count: 195 },
+                    { key: "city_admins", label: "City Admins" },
+                  ])}
+                </div>
+              )}
             </div>
           </div>
 
@@ -2570,7 +2749,7 @@ export default function AdminControlPanel() {
               <div className="truncate">
                 <div className="text-[10px] font-black text-foreground capitalize flex items-center gap-1.5">
                   {isSuperAdmin ? <Crown className="w-3 h-3 text-amber-500" /> : <Shield className="w-3 h-3 text-indigo-500" />}
-                  {currentRole.replace(/_/g, " ")}
+                  {isSuperAdmin ? "Super Admin" : isCountryAdmin ? "Country Admin" : isCityAdmin ? "City Admin" : "Operations Admin"}
                 </div>
                 <div className="text-[9px] text-muted-foreground mt-0.5">Admin Control Panel</div>
               </div>
@@ -2611,6 +2790,7 @@ export default function AdminControlPanel() {
           <div className="mb-4 sm:mb-6 max-w-7xl mx-auto">
             <GeoScopeBanner
               currentRole={geoScopeRole}
+              userRole={currentRole}
               onRoleChange={setGeoScopeRole}
               selectedCountry={geoSelectedCountry}
               onCountryChange={setGeoSelectedCountry}
@@ -2622,7 +2802,7 @@ export default function AdminControlPanel() {
           {/* ════════════════════════════════════════════════════════════════════
               🌍 16. TERRITORY ADMINISTRATION — Geo-Scoped Admin Management
              ════════════════════════════════════════════════════════════════════ */}
-          {activeNav === "geo_admins" && (
+          {(activeNav === "geo_admins" || activeNav === "territory") && (
             <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto">
               <TerritoryAdministrationView
                 currentRole={geoScopeRole}

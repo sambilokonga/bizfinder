@@ -633,15 +633,111 @@ export default function CityAdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeNav, setActiveNav] = useState<string>("dashboard");
   const [activeSubnav, setActiveSubnav] = useState<string>("overview");
-  const [expandedNavSections, setExpandedNavSections] = useState<string[]>([
-    "dashboard",
-    "businesses",
-  ]);
+  const [expandedGroup, setExpandedGroup] = useState<string>("core");
+  const [expandAllGroups, setExpandAllGroups] = useState<boolean>(false);
+  const [expandedNavSections, setExpandedNavSections] = useState<string[]>([]);
 
+  // Navigation module to parent section mapping
+  const NAV_ITEM_TO_GROUP: Record<string, string> = useMemo(
+    () => ({
+      dashboard: "core",
+      global_visitors: "core",
+      users: "core",
+      businesses: "core",
+      categories: "core",
+      locations: "core",
+      reviews: "content",
+      media: "content",
+      advertisements: "content",
+      payments: "platform",
+      analytics: "platform",
+      moderation: "platform",
+      notifications: "platform",
+      support: "platform",
+      settings: "system",
+      security: "system",
+      territory: "system",
+    }),
+    []
+  );
+
+  // Sync section group & collapse previously opened item submenus when activeNav changes
+  useEffect(() => {
+    const parentGroup = NAV_ITEM_TO_GROUP[activeNav];
+    if (parentGroup && !expandAllGroups) {
+      setExpandedGroup(parentGroup);
+    }
+    if (activeNav === "dashboard") {
+      setExpandedNavSections([]);
+    } else {
+      setExpandedNavSections([activeNav]);
+    }
+  }, [activeNav, expandAllGroups, NAV_ITEM_TO_GROUP]);
+
+  // Accordion toggle: toggles the specified item while collapsing all other items
   const toggleNavSection = (section: string) => {
     setExpandedNavSections((prev) =>
-      prev.includes(section) ? prev.filter((s) => s !== section) : [...prev, section]
+      prev.includes(section) ? [] : [section]
     );
+  };
+
+  // Item click handler: expands the clicked item, collapses previously opened items
+  const handleItemClick = (
+    key: string,
+    hasSubItems: boolean,
+    firstSubKey?: string
+  ) => {
+    setActiveNav(key);
+    const parentGroup = NAV_ITEM_TO_GROUP[key] || "core";
+    if (!expandAllGroups) {
+      setExpandedGroup(parentGroup);
+    }
+
+    if (hasSubItems) {
+      setExpandedNavSections((prev) => (prev.includes(key) ? [] : [key]));
+      if (firstSubKey && activeNav !== key) {
+        setActiveSubnav(firstSubKey);
+      }
+    } else {
+      setExpandedNavSections([]);
+      setSidebarOpen(false);
+    }
+  };
+
+  // Section click handler: expands the clicked section and collapses all other sections & submenus
+  const handleSectionClick = (groupKey: string) => {
+    if (expandAllGroups) {
+      setExpandAllGroups(false);
+      setExpandedGroup(groupKey);
+      setExpandedNavSections([]);
+      return;
+    }
+
+    if (expandedGroup === groupKey) {
+      // Toggle closed
+      setExpandedGroup("");
+      setExpandedNavSections([]);
+    } else {
+      setExpandedGroup(groupKey);
+      setExpandedNavSections([]);
+
+      const defaultNavForGroup: Record<string, string> = {
+        core: "dashboard",
+        content: "reviews",
+        platform: "payments",
+        system: "settings",
+      };
+      const currentGroup = NAV_ITEM_TO_GROUP[activeNav];
+      if (currentGroup !== groupKey) {
+        const targetNav = defaultNavForGroup[groupKey];
+        if (targetNav) {
+          setActiveNav(targetNav);
+          if (targetNav !== "dashboard") {
+            setExpandedNavSections([targetNav]);
+          }
+        }
+      }
+    }
   };
 
   // ── City Payments State ────────────────────────────────────────────────────
@@ -1726,6 +1822,60 @@ export default function CityAdminDashboard() {
     toast.success("Reply dispatched to merchant!");
   };
 
+  // ── Helper: Render Modern Collapsible Section Header ───────────────────────
+  const renderSectionHeader = (
+    groupKey: string,
+    label: string,
+    badgeText?: string
+  ) => {
+    const isGroupExpanded = expandAllGroups || expandedGroup === groupKey;
+    const isGroupActive = NAV_ITEM_TO_GROUP[activeNav] === groupKey;
+
+    return (
+      <button
+        type="button"
+        onClick={() => handleSectionClick(groupKey)}
+        className={`w-full group flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.14em] transition-all duration-200 cursor-pointer ${
+          isGroupExpanded || isGroupActive
+            ? "bg-gradient-to-r from-sky-500/15 via-indigo-500/10 to-transparent text-sky-600 dark:text-sky-400 border border-sky-500/30 shadow-xs"
+            : "text-muted-foreground/70 hover:text-foreground hover:bg-accent/40 border border-transparent"
+        }`}
+        title={`Click to contrast and toggle ${label}`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          <div
+            className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all ${
+              isGroupActive
+                ? "bg-sky-500 shadow-[0_0_8px_currentColor]"
+                : isGroupExpanded
+                ? "bg-sky-500/70"
+                : "bg-muted-foreground/30 group-hover:bg-muted-foreground/70"
+            }`}
+          />
+          <span className="truncate">{label}</span>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {badgeText && (
+            <span
+              className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold ${
+                isGroupExpanded || isGroupActive
+                  ? "bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/30"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {badgeText}
+            </span>
+          )}
+          <ChevronDown
+            className={`w-3.5 h-3.5 transition-transform duration-200 ${
+              isGroupExpanded ? "rotate-0 text-sky-500" : "-rotate-90 text-muted-foreground/60"
+            }`}
+          />
+        </div>
+      </button>
+    );
+  };
+
   // ── Helper: Render Modern Expandable Sidebar Item ─────────────────────────
   const renderSidebarItem = (
     key: string,
@@ -1740,29 +1890,24 @@ export default function CityAdminDashboard() {
     return (
       <div key={key} className="space-y-0.5">
         <button
+          type="button"
           onClick={() => {
-            setActiveNav(key);
-            if (subItems && subItems.length > 0) {
-              if (!isExpanded) setActiveSubnav(subItems[0].key);
-              toggleNavSection(key);
-            } else {
-              setSidebarOpen(false); // close drawer on mobile for leaf items
-            }
+            handleItemClick(key, Boolean(subItems && subItems.length > 0), subItems?.[0]?.key);
           }}
           className={`relative w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all duration-200 group overflow-hidden ${
             isSelected
-              ? "bg-gradient-to-r from-sky-600 to-indigo-600 text-white shadow-lg shadow-sky-500/25"
+              ? "bg-gradient-to-r from-sky-600 via-sky-600 to-indigo-600 text-white shadow-md shadow-sky-500/25 ring-1 ring-white/20 font-bold"
               : "text-muted-foreground hover:text-foreground hover:bg-accent/70"
           }`}
         >
           {isSelected && (
-            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-white/70 shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 rounded-r-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" />
           )}
           <div className="flex items-center gap-2.5 truncate">
             <span
               className={`shrink-0 transition-transform duration-200 ${
                 isSelected
-                  ? "text-white scale-110"
+                  ? "text-white scale-110 drop-shadow"
                   : "text-muted-foreground group-hover:text-foreground group-hover:scale-105"
               }`}
             >
@@ -1778,9 +1923,10 @@ export default function CityAdminDashboard() {
                   e.stopPropagation();
                   toggleNavSection(key);
                 }}
-                className={`p-0.5 rounded-md transition-all duration-200 ${
-                  isSelected ? "text-white/80 hover:text-white" : "hover:bg-accent"
+                className={`p-1 rounded-md transition-all duration-200 ${
+                  isSelected ? "text-white hover:bg-white/20" : "hover:bg-accent text-muted-foreground hover:text-foreground"
                 }`}
+                title={isExpanded ? "Collapse sub-items" : "Expand sub-items"}
               >
                 <ChevronDown
                   className={`w-3.5 h-3.5 transition-transform duration-200 ${
@@ -1793,11 +1939,12 @@ export default function CityAdminDashboard() {
         </button>
 
         {subItems && isExpanded && (
-          <div className="pl-4 pr-1 pt-0.5 pb-1 space-y-0.5">
+          <div className="pl-4 pr-1 pt-1 pb-1 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
             {subItems.map((sub) => {
               const isSubActive = activeNav === key && activeSubnav === sub.key;
               return (
                 <button
+                  type="button"
                   key={sub.key}
                   onClick={() => {
                     setActiveNav(key);
@@ -1806,7 +1953,7 @@ export default function CityAdminDashboard() {
                   }}
                   className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-[11px] font-medium transition-all duration-150 ${
                     isSubActive
-                      ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20"
+                      ? "bg-sky-500/15 text-sky-600 dark:text-sky-300 font-bold border border-sky-500/30 shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                   }`}
                 >
@@ -1824,7 +1971,7 @@ export default function CityAdminDashboard() {
                     <span
                       className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold shrink-0 ${
                         isSubActive
-                          ? "bg-sky-500/20 text-sky-600 dark:text-sky-300"
+                          ? "bg-sky-500/20 text-sky-600 dark:text-sky-300 border border-sky-500/30"
                           : "bg-muted text-muted-foreground"
                       }`}
                     >
@@ -2032,158 +2179,178 @@ export default function CityAdminDashboard() {
               </p>
             </div>
 
+            {/* Quick Accordion Focus / View Mode Strip */}
+            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-muted/40 border border-border/50 text-[10px]">
+              <span className="font-bold flex items-center gap-1.5 text-muted-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+                <span>Single Focus Mode</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setExpandAllGroups((prev) => !prev);
+                  if (expandAllGroups) {
+                    setExpandedGroup(NAV_ITEM_TO_GROUP[activeNav] || "core");
+                  }
+                }}
+                className="font-bold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
+              >
+                {expandAllGroups ? "Collapse Others" : "Expand All"}
+              </button>
+            </div>
+
             {/* ── Section: Core Operations ────────────────────────────── */}
-            <div className="space-y-0.5">
-              <div className="px-3 pb-1 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
-                <div className="flex-1 h-px bg-border/60" />
-                Core Operations
-                <div className="flex-1 h-px bg-border/60" />
-              </div>
+            <div className="space-y-1">
+              {renderSectionHeader("core", "Core Operations", "6 modules")}
 
-              {renderSidebarItem("dashboard", "Command Center", <Landmark className="w-4 h-4 text-sky-500" />)}
+              {(expandAllGroups || expandedGroup === "core") && (
+                <div className="space-y-0.5 animate-in fade-in duration-150">
+                  {renderSidebarItem("dashboard", "Command Center", <Landmark className="w-4 h-4 text-sky-500" />)}
 
-              {renderSidebarItem("global_visitors", "Global Visitors", <Globe className="w-4 h-4 text-cyan-400" />, false, [
-                { key: "overview", label: "City Reach & Matrix" },
-                { key: "origins", label: "Top Visitor Countries" },
-                { key: "inquiries", label: "International Leads" },
-              ])}
+                  {renderSidebarItem("global_visitors", "Global Visitors", <Globe className="w-4 h-4 text-cyan-400" />, false, [
+                    { key: "overview", label: "City Reach & Matrix" },
+                    { key: "origins", label: "Top Visitor Countries" },
+                    { key: "inquiries", label: "International Leads" },
+                  ])}
 
-              {renderSidebarItem("users", "Municipal Users", <Users className="w-4 h-4 text-sky-500" />, false, [
-                { key: "all", label: "All Municipal Users", count: userCounts.all || cityUsersTotal || cityUsers.length },
-                { key: "customers", label: "Citizens & Customers", count: userCounts.customers },
-                { key: "owners", label: "Business Owners", count: userCounts.owners },
-                { key: "suspended", label: "Suspended Accounts", count: userCounts.suspended },
-              ])}
+                  {renderSidebarItem("users", "Municipal Users", <Users className="w-4 h-4 text-sky-500" />, false, [
+                    { key: "all", label: "All Municipal Users", count: userCounts.all || cityUsersTotal || cityUsers.length },
+                    { key: "customers", label: "Citizens & Customers", count: userCounts.customers },
+                    { key: "owners", label: "Business Owners", count: userCounts.owners },
+                    { key: "suspended", label: "Suspended Accounts", count: userCounts.suspended },
+                  ])}
 
-              {renderSidebarItem("businesses", `Businesses (${selectedCity})`, <Building2 className="w-4 h-4 text-emerald-500" />, false, [
-                { key: "all", label: "All City Listings", count: businesses.length },
-                { key: "confirmations", label: "🔔 Confirmations", count: stats.pendingVerification },
-                { key: "pending", label: "Pending Verification", count: stats.pendingVerification },
-                { key: "verified", label: "Verified Businesses", count: stats.verifiedBusinesses },
-                { key: "claims", label: "Owner Claims Queue", count: claimsList.filter((c) => c.status === "pending").length },
-                { key: "new", label: "+ New Listing Wizard" },
-                { key: "rejected", label: "Rejected Listings" },
-                { key: "suspended", label: "Suspended" },
-              ])}
+                  {renderSidebarItem("businesses", `Businesses (${selectedCity})`, <Building2 className="w-4 h-4 text-emerald-500" />, false, [
+                    { key: "all", label: "All City Listings", count: businesses.length },
+                    { key: "confirmations", label: "🔔 Confirmations", count: stats.pendingVerification },
+                    { key: "pending", label: "Pending Verification", count: stats.pendingVerification },
+                    { key: "verified", label: "Verified Businesses", count: stats.verifiedBusinesses },
+                    { key: "claims", label: "Owner Claims Queue", count: claimsList.filter((c) => c.status === "pending").length },
+                    { key: "new", label: "+ New Listing Wizard" },
+                    { key: "rejected", label: "Rejected Listings" },
+                    { key: "suspended", label: "Suspended" },
+                  ])}
 
-              {renderSidebarItem("categories", "Categories", <FolderTree className="w-4 h-4 text-purple-500" />, false, [
-                { key: "all", label: "All City Categories", count: topCategories.length || 12 },
-                { key: "industries", label: "Commercial Sectors" },
-                { key: "petition", label: "Petition Country Lead" },
-              ])}
+                  {renderSidebarItem("categories", "Categories", <FolderTree className="w-4 h-4 text-purple-500" />, false, [
+                    { key: "all", label: "All City Categories", count: topCategories.length || 12 },
+                    { key: "industries", label: "Commercial Sectors" },
+                    { key: "petition", label: "Petition Country Lead" },
+                  ])}
 
-              {renderSidebarItem("locations", "Locations", <MapPin className="w-4 h-4 text-rose-500" />, false, [
-                { key: "subcities", label: "Sub-Cities & Woredas", count: activeSubcitiesList.length },
-                { key: "districts", label: "Commercial Corridors" },
-                { key: "coverage", label: "Density & Coverage" },
-              ])}
+                  {renderSidebarItem("locations", "Locations", <MapPin className="w-4 h-4 text-rose-500" />, false, [
+                    { key: "subcities", label: "Sub-Cities & Woredas", count: activeSubcitiesList.length },
+                    { key: "districts", label: "Commercial Corridors" },
+                    { key: "coverage", label: "Density & Coverage" },
+                  ])}
+                </div>
+              )}
             </div>
 
             {/* ── Section: Content & Media ───────────────────────────── */}
-            <div className="space-y-0.5">
-              <div className="px-3 pb-1 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
-                <div className="flex-1 h-px bg-border/60" />
-                Content & Media
-                <div className="flex-1 h-px bg-border/60" />
-              </div>
+            <div className="space-y-1">
+              {renderSectionHeader("content", "Content & Media", "3 modules")}
 
-              {renderSidebarItem("reviews", "Reviews", <Star className="w-4 h-4 text-amber-500" />, false, [
-                { key: "all", label: "All City Reviews", count: revTotal || reviewsList.length },
-                { key: "published", label: "Published" },
-                { key: "reported", label: "Flagged for Review", count: reviewsList.filter((r) => (r.status || "").toLowerCase() === "reported").length },
-                { key: "removed", label: "Removed" },
-              ])}
+              {(expandAllGroups || expandedGroup === "content") && (
+                <div className="space-y-0.5 animate-in fade-in duration-150">
+                  {renderSidebarItem("reviews", "Reviews", <Star className="w-4 h-4 text-amber-500" />, false, [
+                    { key: "all", label: "All City Reviews", count: revTotal || reviewsList.length },
+                    { key: "published", label: "Published" },
+                    { key: "reported", label: "Flagged for Review", count: reviewsList.filter((r) => (r.status || "").toLowerCase() === "reported").length },
+                    { key: "removed", label: "Removed" },
+                  ])}
 
-              {renderSidebarItem("media", "Media Library", <Camera className="w-4 h-4 text-pink-500" />, false, [
-                { key: "all", label: "All Media Assets", count: mediaList.length },
-                { key: "photos", label: "Storefront Photos" },
-                { key: "logos", label: "Brand Logos" },
-                { key: "videos", label: "Promotional Videos" },
-                { key: "pending", label: "Pending Review", count: mediaList.filter((m) => m.status === "Pending").length },
-              ])}
+                  {renderSidebarItem("media", "Media Library", <Camera className="w-4 h-4 text-pink-500" />, false, [
+                    { key: "all", label: "All Media Assets", count: mediaList.length },
+                    { key: "photos", label: "Storefront Photos" },
+                    { key: "logos", label: "Brand Logos" },
+                    { key: "videos", label: "Promotional Videos" },
+                    { key: "pending", label: "Pending Review", count: mediaList.filter((m) => m.status === "Pending").length },
+                  ])}
 
-              {renderSidebarItem("advertisements", "Advertisements", <Megaphone className="w-4 h-4 text-teal-500" />, false, [
-                { key: "all", label: "All Local Campaigns", count: campaignsList.length },
-                { key: "active", label: "Active Campaigns", count: campaignsList.filter((c) => c.status === "active").length },
-                { key: "create", label: "+ Create Campaign" },
-                { key: "paused", label: "Paused" },
-              ])}
+                  {renderSidebarItem("advertisements", "Advertisements", <Megaphone className="w-4 h-4 text-teal-500" />, false, [
+                    { key: "all", label: "All Local Campaigns", count: campaignsList.length },
+                    { key: "active", label: "Active Campaigns", count: campaignsList.filter((c) => c.status === "active").length },
+                    { key: "create", label: "+ Create Campaign" },
+                    { key: "paused", label: "Paused" },
+                  ])}
+                </div>
+              )}
             </div>
 
             {/* ── Section: Platform Operations ───────────────────────── */}
-            <div className="space-y-0.5">
-              <div className="px-3 pb-1 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
-                <div className="flex-1 h-px bg-border/60" />
-                Platform Ops
-                <div className="flex-1 h-px bg-border/60" />
-              </div>
+            <div className="space-y-1">
+              {renderSectionHeader("platform", "Platform Ops", "5 modules")}
 
-              {renderSidebarItem("payments", "Payments", <CreditCard className="w-4 h-4 text-emerald-500" />, false, [
-                { key: "transactions", label: "City Transactions", count: cityPayments.length },
-                { key: "matrix", label: "Revenue Geo-Matrix" },
-                { key: "subscriptions", label: "Active Plans" },
-                { key: "refunds", label: "Refunds & Disputes" },
-              ])}
+              {(expandAllGroups || expandedGroup === "platform") && (
+                <div className="space-y-0.5 animate-in fade-in duration-150">
+                  {renderSidebarItem("payments", "Payments", <CreditCard className="w-4 h-4 text-emerald-500" />, false, [
+                    { key: "transactions", label: "City Transactions", count: cityPayments.length },
+                    { key: "matrix", label: "Revenue Geo-Matrix" },
+                    { key: "subscriptions", label: "Active Plans" },
+                    { key: "refunds", label: "Refunds & Disputes" },
+                  ])}
 
-              {renderSidebarItem("analytics", "Analytics", <BarChart3 className="w-4 h-4 text-indigo-400" />, false, [
-                { key: "overview", label: "Economic Pulse" },
-                { key: "curve", label: "Growth Curve" },
-                { key: "sectors", label: "Sector Breakdown" },
-                { key: "search_trends", label: "Citizen Searches" },
-              ])}
+                  {renderSidebarItem("analytics", "Analytics", <BarChart3 className="w-4 h-4 text-indigo-400" />, false, [
+                    { key: "overview", label: "Economic Pulse" },
+                    { key: "curve", label: "Growth Curve" },
+                    { key: "sectors", label: "Sector Breakdown" },
+                    { key: "search_trends", label: "Citizen Searches" },
+                  ])}
 
-              {renderSidebarItem("moderation", "Reports & Moderation", <Flag className="w-4 h-4 text-red-500" />, false, [
-                { key: "all", label: "All Citizen Reports", count: reportsList.filter((r) => r.status !== "resolved").length },
-                { key: "business", label: "Storefront Disputes" },
-                { key: "licensing", label: "Unlicensed Activity" },
-                { key: "resolved", label: "Resolved Archive" },
-              ])}
+                  {renderSidebarItem("moderation", "Reports & Moderation", <Flag className="w-4 h-4 text-red-500" />, false, [
+                    { key: "all", label: "All Citizen Reports", count: reportsList.filter((r) => r.status !== "resolved").length },
+                    { key: "business", label: "Storefront Disputes" },
+                    { key: "licensing", label: "Unlicensed Activity" },
+                    { key: "resolved", label: "Resolved Archive" },
+                  ])}
 
-              {renderSidebarItem("notifications", "Notifications", <Bell className="w-4 h-4 text-yellow-500" />, false, [
-                { key: "bulletins", label: "City Bulletins", count: noticesList.length },
-                { key: "broadcast", label: "Send Broadcast Alert" },
-                { key: "history", label: "Delivery Logs" },
-              ])}
+                  {renderSidebarItem("notifications", "Notifications", <Bell className="w-4 h-4 text-yellow-500" />, false, [
+                    { key: "bulletins", label: "City Bulletins", count: noticesList.length },
+                    { key: "broadcast", label: "Send Broadcast Alert" },
+                    { key: "history", label: "Delivery Logs" },
+                  ])}
 
-              {renderSidebarItem("support", "Support Desk", <Ticket className="w-4 h-4 text-cyan-500" />, false, [
-                { key: "all", label: "All Tickets", count: supportTickets.length },
-                { key: "open", label: "Open Issues", count: supportTickets.filter((t) => t.status === "open").length },
-                { key: "in_progress", label: "In Progress", count: supportTickets.filter((t) => t.status === "in_progress").length },
-                { key: "resolved", label: "Resolved" },
-              ])}
+                  {renderSidebarItem("support", "Support Desk", <Ticket className="w-4 h-4 text-cyan-500" />, false, [
+                    { key: "all", label: "All Tickets", count: supportTickets.length },
+                    { key: "open", label: "Open Issues", count: supportTickets.filter((t) => t.status === "open").length },
+                    { key: "in_progress", label: "In Progress", count: supportTickets.filter((t) => t.status === "in_progress").length },
+                    { key: "resolved", label: "Resolved" },
+                  ])}
+                </div>
+              )}
             </div>
 
             {/* ── Section: System ────────────────────────────────────── */}
-            <div className="space-y-0.5">
-              <div className="px-3 pb-1 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
-                <div className="flex-1 h-px bg-border/60" />
-                System
-                <div className="flex-1 h-px bg-border/60" />
-              </div>
+            <div className="space-y-1">
+              {renderSectionHeader("system", "System", "3 modules")}
 
-              {renderSidebarItem("settings", "Settings", <SlidersHorizontal className="w-4 h-4 text-slate-400" />, false, [
-                { key: "general", label: "General" },
-                { key: "business", label: "Business & Verification" },
-                { key: "search", label: "Search & Map" },
-                { key: "seo", label: "SEO & Social" },
-                { key: "notifications", label: "Notifications" },
-                { key: "payments", label: "Payment Gateway" },
-                { key: "security", label: "Security Policy" },
-                { key: "liaison", label: "National Liaison" },
-                { key: "maintenance", label: "Maintenance" },
-              ])}
+              {(expandAllGroups || expandedGroup === "system") && (
+                <div className="space-y-0.5 animate-in fade-in duration-150">
+                  {renderSidebarItem("settings", "Settings", <SlidersHorizontal className="w-4 h-4 text-slate-400" />, false, [
+                    { key: "general", label: "General" },
+                    { key: "business", label: "Business & Verification" },
+                    { key: "search", label: "Search & Map" },
+                    { key: "seo", label: "SEO & Social" },
+                    { key: "notifications", label: "Notifications" },
+                    { key: "payments", label: "Payment Gateway" },
+                    { key: "security", label: "Security Policy" },
+                    { key: "liaison", label: "National Liaison" },
+                    { key: "maintenance", label: "Maintenance" },
+                  ])}
 
-              {renderSidebarItem("security", "Security", <Lock className="w-4 h-4 text-rose-500" />, false, [
-                { key: "audit", label: "Municipal Audit Trail" },
-                { key: "sessions", label: "Admin Login Activity" },
-                { key: "credentials", label: "Role & Credentials" },
-              ])}
+                  {renderSidebarItem("security", "Security", <Lock className="w-4 h-4 text-rose-500" />, false, [
+                    { key: "audit", label: "Municipal Audit Trail" },
+                    { key: "sessions", label: "Admin Login Activity" },
+                    { key: "credentials", label: "Role & Credentials" },
+                  ])}
 
-              {renderSidebarItem("territory", "Territory Admin", <Landmark className="w-4 h-4 text-indigo-500" />, false, [
-                { key: "jurisdiction", label: "Municipal Boundaries" },
-                { key: "subcities", label: "Sub-City Allocation" },
-                { key: "escalation", label: "National Hierarchy" },
-              ])}
+                  {renderSidebarItem("territory", "Territory Admin", <Landmark className="w-4 h-4 text-indigo-500" />, false, [
+                    { key: "jurisdiction", label: "Municipal Boundaries" },
+                    { key: "subcities", label: "Sub-City Allocation" },
+                    { key: "escalation", label: "National Hierarchy" },
+                  ])}
+                </div>
+              )}
             </div>
           </div>
 

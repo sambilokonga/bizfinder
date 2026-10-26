@@ -197,8 +197,8 @@ export function useCurrentRole() {
 }
 
 export function RoleSwitcher() {
-  const { currentRole, setRole } = useCurrentRole();
-  const { isSignedIn, isLoaded } = useUser();
+  const { currentRole, setRole, currentUser } = useCurrentRole();
+  const { isSignedIn, isLoaded, user } = useUser();
   const [isOpen, setIsOpen] = useState(false);
 
   const roles: Array<{ role: UserRole; label: string; icon: React.ReactNode; desc: string; portalUrl: string }> = [
@@ -246,7 +246,46 @@ export function RoleSwitcher() {
     },
   ];
 
-  const currentRoleInfo = roles.find((r) => r.role === currentRole) || roles[0];
+  const userMetadataRole =
+    (user?.publicMetadata as any)?.role ||
+    (user?.publicMetadata as any)?.roles ||
+    (user?.unsafeMetadata as any)?.role ||
+    "";
+
+  // Check if current perspective is operational admin or user has operational admin role
+  const isOperationsAdmin = currentRole === "admin" || userMetadataRole === "admin";
+  const isCountryAdmin = currentRole === "country_admin" || userMetadataRole === "country_admin";
+  const isCityAdmin = currentRole === "city_admin" || userMetadataRole === "city_admin";
+
+  // Super Admin option is strictly hidden on operational admin page/perspective,
+  // country admin page, city admin page, and for operational admins who have no authority
+  // to modify accounts or privileges.
+  const showSuperAdmin =
+    !isOperationsAdmin &&
+    !isCountryAdmin &&
+    !isCityAdmin &&
+    (currentRole === "super_admin" || userMetadataRole === "super_admin");
+
+  const filteredRoles = roles.filter((r) => {
+    if (r.role === "super_admin") {
+      return showSuperAdmin;
+    }
+    // Operational admin has no authority to elevate to territory lead roles
+    if (isOperationsAdmin && (r.role === "country_admin" || r.role === "city_admin")) {
+      return false;
+    }
+    // City admin has no authority to view or switch to Country Main Admin or Operations Admin
+    if (isCityAdmin && (r.role === "country_admin" || r.role === "admin")) {
+      return false;
+    }
+    return true;
+  });
+
+  const currentRoleInfo =
+    filteredRoles.find((r) => r.role === currentRole) ||
+    roles.find((r) => r.role === currentRole) ||
+    filteredRoles[0] ||
+    roles[0];
 
   if (!isLoaded) {
     return (
@@ -293,7 +332,7 @@ export function RoleSwitcher() {
           </div>
 
           <div className="mt-2 space-y-1 max-h-[340px] overflow-y-auto pr-0.5">
-            {roles.map((r) => {
+            {filteredRoles.map((r) => {
               const isSelected = r.role === currentRole;
               return (
                 <div

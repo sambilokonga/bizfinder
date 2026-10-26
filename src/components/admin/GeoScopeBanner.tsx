@@ -17,6 +17,7 @@ import { COUNTRIES_WITH_CITIES, getCitiesForCountry } from "@/lib/data/countries
 
 interface GeoScopeBannerProps {
   currentRole: "super_admin" | "country_admin" | "city_admin" | "admin";
+  userRole?: string;
   onRoleChange: (role: "super_admin" | "country_admin" | "city_admin" | "admin") => void;
   selectedCountry: string; // "all" or specific country name
   onCountryChange: (country: string) => void;
@@ -26,6 +27,7 @@ interface GeoScopeBannerProps {
 
 export function GeoScopeBanner({
   currentRole,
+  userRole,
   onRoleChange,
   selectedCountry,
   onCountryChange,
@@ -35,6 +37,18 @@ export function GeoScopeBanner({
   const isSuperAdmin = currentRole === "super_admin";
   const isCountryAdmin = currentRole === "country_admin";
   const isCityAdmin = currentRole === "city_admin";
+  const isOperationsAdmin = currentRole === "admin";
+
+  // Super Admin option is strictly restricted to the Super Admin portal and only accessible to users with super_admin privileges.
+  // It is hidden on the operational admin dashboard, country admin dashboard, and city admin dashboard.
+  const showSuperAdminOption =
+    isSuperAdmin &&
+    !isOperationsAdmin &&
+    !isCountryAdmin &&
+    !isCityAdmin &&
+    userRole !== "admin" &&
+    userRole !== "country_admin" &&
+    userRole !== "city_admin";
 
   const countryEntry = COUNTRIES_WITH_CITIES.find(
     (c) => c.name.toLowerCase() === selectedCountry.toLowerCase()
@@ -93,53 +107,78 @@ export function GeoScopeBanner({
             Simulate Role:
           </span>
 
-          <button
-            type="button"
-            onClick={() => {
-              onRoleChange("super_admin");
-              onCountryChange("all");
-              onCityChange("all");
-            }}
-            className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
-              isSuperAdmin
-                ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
-                : "text-slate-300 hover:text-white hover:bg-white/5"
-            }`}
-          >
-            👑 Super Admin
-          </button>
+          {/* Hide Super Admin option on operational admin, country admin, and city admin dashboards */}
+          {showSuperAdminOption && (
+            <button
+              type="button"
+              onClick={() => {
+                onRoleChange("super_admin");
+                onCountryChange("all");
+                onCityChange("all");
+              }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                isSuperAdmin
+                  ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
+                  : "text-slate-300 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              👑 Super Admin
+            </button>
+          )}
 
-          <button
-            type="button"
-            onClick={() => {
-              onRoleChange("country_admin");
-              if (selectedCountry === "all") onCountryChange("Ethiopia");
-              onCityChange("all");
-            }}
-            className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
-              isCountryAdmin
-                ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
-                : "text-slate-300 hover:text-white hover:bg-white/5"
-            }`}
-          >
-            🌍 Country Lead
-          </button>
+          {userRole !== "admin" && userRole !== "city_admin" && (
+            <button
+              type="button"
+              onClick={() => {
+                onRoleChange("country_admin");
+                if (selectedCountry === "all") onCountryChange("Ethiopia");
+                onCityChange("all");
+              }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                isCountryAdmin
+                  ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
+                  : "text-slate-300 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              🌍 Country Lead
+            </button>
+          )}
 
-          <button
-            type="button"
-            onClick={() => {
-              onRoleChange("city_admin");
-              if (selectedCountry === "all") onCountryChange("Ethiopia");
-              if (selectedCity === "all") onCityChange("Addis Ababa");
-            }}
-            className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
-              isCityAdmin
-                ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
-                : "text-slate-300 hover:text-white hover:bg-white/5"
-            }`}
-          >
-            🏙️ City Admin
-          </button>
+          {userRole !== "admin" && (
+            <button
+              type="button"
+              onClick={() => {
+                onRoleChange("city_admin");
+                if (selectedCountry === "all") onCountryChange("Ethiopia");
+                if (selectedCity === "all") onCityChange("Addis Ababa");
+              }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                isCityAdmin
+                  ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
+                  : "text-slate-300 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              🏙️ City Admin
+            </button>
+          )}
+
+          {!isCountryAdmin && userRole !== "country_admin" && userRole !== "city_admin" && (
+            <button
+              type="button"
+              onClick={() => {
+                onRoleChange("admin");
+                onCountryChange("all");
+                onCityChange("all");
+              }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                currentRole === "admin"
+                  ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
+                  : "text-slate-300 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              🛡️ Operations Admin
+            </button>
+          )}
         </div>
       </div>
 

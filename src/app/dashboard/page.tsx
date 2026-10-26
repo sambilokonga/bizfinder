@@ -778,8 +778,47 @@ export default function OwnerDashboardPage() {
     | "territory"
   >("dashboard");
 
-
   const [activeSubnav, setActiveSubnav] = useState<string>("all");
+  const [expandedGroup, setExpandedGroup] = useState<string>("business");
+  const [expandAllGroups, setExpandAllGroups] = useState<boolean>(false);
+  const [expandedNavSections, setExpandedNavSections] = useState<string[]>([]);
+
+  // Navigation module to parent section mapping
+  const NAV_ITEM_TO_GROUP: Record<string, string> = useMemo(
+    () => ({
+      dashboard: "business",
+      businesses: "business",
+      management: "business",
+      media: "business",
+      territory: "business",
+      reviews: "customer",
+      customers: "customer",
+      messages: "customer",
+      notifications: "customer",
+      analytics: "growth",
+      advertising: "growth",
+      promotions: "growth",
+      billing: "growth",
+      support: "account",
+      moderation: "account",
+      settings: "account",
+      security: "account",
+    }),
+    []
+  );
+
+  // Sync section group & collapse previously opened item submenus when activeNav changes
+  useEffect(() => {
+    const parentGroup = NAV_ITEM_TO_GROUP[activeNav];
+    if (parentGroup && !expandAllGroups) {
+      setExpandedGroup(parentGroup);
+    }
+    if (activeNav === "dashboard") {
+      setExpandedNavSections([]);
+    } else {
+      setExpandedNavSections([activeNav]);
+    }
+  }, [activeNav, expandAllGroups, NAV_ITEM_TO_GROUP]);
 
   // Businesses State & 20-Per-Page Pagination
   const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -2529,6 +2568,126 @@ export default function OwnerDashboardPage() {
     </div>
   );
 
+  // Accordion toggle: toggles the specified item while collapsing all other items
+  const toggleNavSection = (section: string) => {
+    setExpandedNavSections((prev) =>
+      prev.includes(section) ? [] : [section]
+    );
+  };
+
+  // Item click handler: expands the clicked item, collapses previously opened items
+  const handleItemClick = (
+    key: typeof activeNav,
+    hasSubItems: boolean,
+    firstSubKey?: string
+  ) => {
+    setActiveNav(key);
+    const parentGroup = NAV_ITEM_TO_GROUP[key] || "business";
+    if (!expandAllGroups) {
+      setExpandedGroup(parentGroup);
+    }
+
+    if (hasSubItems) {
+      setExpandedNavSections((prev) => (prev.includes(key) ? [] : [key]));
+      if (firstSubKey && activeNav !== key) {
+        setActiveSubnav(firstSubKey);
+      }
+    } else {
+      setExpandedNavSections([]);
+      setSidebarOpen(false);
+    }
+  };
+
+  // Section click handler: expands the clicked section and collapses all other sections & submenus
+  const handleSectionClick = (groupKey: string) => {
+    if (expandAllGroups) {
+      setExpandAllGroups(false);
+      setExpandedGroup(groupKey);
+      setExpandedNavSections([]);
+      return;
+    }
+
+    if (expandedGroup === groupKey) {
+      // Toggle closed
+      setExpandedGroup("");
+      setExpandedNavSections([]);
+    } else {
+      setExpandedGroup(groupKey);
+      setExpandedNavSections([]);
+
+      const defaultNavForGroup: Record<string, typeof activeNav> = {
+        business: "dashboard",
+        customer: "reviews",
+        growth: "analytics",
+        account: "support",
+      };
+      const currentGroup = NAV_ITEM_TO_GROUP[activeNav];
+      if (currentGroup !== groupKey) {
+        const targetNav = defaultNavForGroup[groupKey];
+        if (targetNav) {
+          setActiveNav(targetNav);
+          if (targetNav !== "dashboard") {
+            setExpandedNavSections([targetNav]);
+          }
+        }
+      }
+    }
+  };
+
+  // Helper: Render Modern Collapsible Section Header
+  const renderSectionHeader = (
+    groupKey: string,
+    label: string,
+    badgeText?: string
+  ) => {
+    const isGroupExpanded = expandAllGroups || expandedGroup === groupKey;
+    const isGroupActive = NAV_ITEM_TO_GROUP[activeNav] === groupKey;
+
+    return (
+      <button
+        type="button"
+        onClick={() => handleSectionClick(groupKey)}
+        className={`w-full group flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.14em] transition-all duration-200 cursor-pointer ${
+          isGroupExpanded || isGroupActive
+            ? "bg-gradient-to-r from-indigo-500/15 via-purple-500/10 to-transparent text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 shadow-xs"
+            : "text-muted-foreground/70 hover:text-foreground hover:bg-accent/40 border border-transparent"
+        }`}
+        title={`Click to contrast and toggle ${label}`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          <div
+            className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all ${
+              isGroupActive
+                ? "bg-indigo-500 shadow-[0_0_8px_currentColor]"
+                : isGroupExpanded
+                ? "bg-indigo-500/70"
+                : "bg-muted-foreground/30 group-hover:bg-muted-foreground/70"
+            }`}
+          />
+          <span className="truncate">{label}</span>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {badgeText && (
+            <span
+              className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold ${
+                isGroupExpanded || isGroupActive
+                  ? "bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {badgeText}
+            </span>
+          )}
+          <ChevronDown
+            className={`w-3.5 h-3.5 transition-transform duration-200 ${
+              isGroupExpanded ? "rotate-0 text-indigo-500" : "-rotate-90 text-muted-foreground/60"
+            }`}
+          />
+        </div>
+      </button>
+    );
+  };
+
   // ── Modern Dashboard Sidebar Nav Item Builder ───────────────────────
   const renderSidebarItem = (
     navKey: typeof activeNav,
@@ -2537,81 +2696,98 @@ export default function OwnerDashboardPage() {
     badge?: number,
     subtabs?: { key: string; label: string; count?: number }[]
   ) => {
-    const isActive = activeNav === navKey;
-    const isExpanded = isActive; // dashboard auto-expands active item's subtabs
+    const isSelected = activeNav === navKey;
+    const isExpanded = expandedNavSections.includes(navKey);
 
     return (
-      <div className="space-y-0.5">
+      <div key={navKey} className="space-y-0.5">
         <button
+          type="button"
           onClick={() => {
-            setActiveNav(navKey);
-            if (subtabs && subtabs.length > 0) {
-              setActiveSubnav(subtabs[0].key);
-            } else {
-              setActiveSubnav("all");
-            }
-            setSidebarOpen(false); // close drawer on mobile
+            handleItemClick(navKey, Boolean(subtabs && subtabs.length > 0), subtabs?.[0]?.key);
           }}
-          className={`relative w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-200 group overflow-hidden ${
-            isActive
-              ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/25"
+          className={`relative w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all duration-200 group overflow-hidden ${
+            isSelected
+              ? "bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/25 ring-1 ring-white/20 font-bold"
               : "text-muted-foreground hover:text-foreground hover:bg-accent/70"
           }`}
         >
           {/* Active left-border glow */}
-          {isActive && (
-            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-white/70 shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+          {isSelected && (
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 rounded-r-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" />
           )}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 truncate">
             <span className={`shrink-0 transition-transform duration-200 ${
-              isActive ? "text-primary-foreground scale-110" : "text-muted-foreground group-hover:text-foreground group-hover:scale-105"
+              isSelected ? "text-white scale-110 drop-shadow" : "text-muted-foreground group-hover:text-foreground group-hover:scale-105"
             }`}>
               {icon}
             </span>
-            <span className="font-bold">{label}</span>
+            <span className="truncate font-semibold tracking-tight">{label}</span>
           </div>
-          {badge !== undefined && badge > 0 && (
-            <span
-              className={`text-[10px] px-2 py-0.5 rounded-full font-black shrink-0 ${
-                isActive ? "bg-white/25 text-white" : "bg-red-500 text-white"
-              }`}
-            >
-              {badge > 99 ? "99+" : badge}
-            </span>
-          )}
-        </button>
 
-        {/* Expandable Subnav — animates open when item is active */}
-        {isExpanded && subtabs && subtabs.length > 0 && (
-          <div className="pl-4 pr-1 pt-0.5 pb-1 space-y-0.5 animate-subnav-open">
-            {subtabs.map((st) => (
-              <button
-                key={st.key}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveSubnav(st.key);
-                }}
-                className={`w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all duration-150 flex items-center justify-between gap-1.5 ${
-                  activeSubnav === st.key
-                    ? "bg-primary/10 text-primary font-bold border border-primary/20"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+          <div className="flex items-center gap-1.5 shrink-0">
+            {badge !== undefined && badge > 0 && (
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded-full font-black shrink-0 ${
+                  isSelected ? "bg-white/25 text-white" : "bg-red-500 text-white"
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all ${
-                    activeSubnav === st.key ? "bg-primary shadow-[0_0_6px_currentColor]" : "bg-muted-foreground/30"
-                  }`} />
-                  <span>{st.label}</span>
-                </div>
-                {st.count !== undefined && st.count > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold shrink-0 ${
-                    activeSubnav === st.key ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
-                  }`}>
-                    {st.count}
-                  </span>
-                )}
-              </button>
-            ))}
+                {badge > 99 ? "99+" : badge}
+              </span>
+            )}
+            {subtabs && subtabs.length > 0 && (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleNavSection(navKey);
+                }}
+                className={`p-1 rounded-md transition-all duration-200 ${
+                  isSelected ? "text-white hover:bg-white/20" : "hover:bg-accent text-muted-foreground hover:text-foreground"
+                }`}
+                title={isExpanded ? "Collapse sub-items" : "Expand sub-items"}
+              >
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? "rotate-0" : "-rotate-90"}`} />
+              </span>
+            )}
+          </div>
+        </button>
+
+        {/* Expandable Subnav with slide-down animation */}
+        {subtabs && isExpanded && (
+          <div className="pl-4 pr-1 pt-1 pb-1 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
+            {subtabs.map((st) => {
+              const isSubActive = activeNav === navKey && activeSubnav === st.key;
+              return (
+                <button
+                  type="button"
+                  key={st.key}
+                  onClick={() => {
+                    setActiveNav(navKey);
+                    setActiveSubnav(st.key);
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-[11px] font-medium transition-all duration-150 ${
+                    isSubActive
+                      ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 font-bold border border-indigo-500/30 shadow-xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all ${
+                      isSubActive ? "bg-indigo-500 shadow-[0_0_6px_currentColor]" : "bg-muted-foreground/30"
+                    }`} />
+                    <span className="truncate">{st.label}</span>
+                  </div>
+                  {st.count !== undefined && st.count > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold shrink-0 ${
+                      isSubActive ? "bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30" : "bg-muted text-muted-foreground"
+                    }`}>
+                      {st.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
@@ -2732,136 +2908,160 @@ export default function OwnerDashboardPage() {
           {/* Scrollable nav area */}
           <div className="p-3 space-y-5 flex-1">
 
+            {/* Quick Accordion Focus / View Mode Strip */}
+            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-muted/40 border border-border/50 text-[10px]">
+              <span className="font-bold flex items-center gap-1.5 text-muted-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                <span>Single Focus Mode</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setExpandAllGroups((prev) => !prev);
+                  if (expandAllGroups) {
+                    setExpandedGroup(NAV_ITEM_TO_GROUP[activeNav] || "business");
+                  }
+                }}
+                className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+              >
+                {expandAllGroups ? "Collapse Others" : "Expand All"}
+              </button>
+            </div>
+
             {/* ── Section: My Business ──────────────────────────────────── */}
-            <div className="space-y-0.5">
-              <div className="px-3 pb-1 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
-                <div className="flex-1 h-px bg-border/60" />
-                My Business
-                <div className="flex-1 h-px bg-border/60" />
-              </div>
-              {renderSidebarItem("dashboard", "Dashboard", <Building2 className="w-4 h-4 text-indigo-500" />)}
-              {renderSidebarItem("businesses", "My Businesses", <Building2 className="w-4 h-4 text-emerald-500" />, businesses.length, [
-                { key: "all", label: "All Listings" },
-                { key: "add", label: "Add New Business" },
-                { key: "active", label: "Active" },
-                { key: "pending", label: "Pending Approval" },
-                { key: "rejected", label: "Rejected" },
-                { key: "suspended", label: "Suspended" },
-              ])}
-              {renderSidebarItem("management", "Management", <Sliders className="w-4 h-4 text-blue-500" />, undefined, [
-                { key: "info", label: "Business Info" },
-                { key: "categories", label: "Categories & Tags" },
-                { key: "locations", label: "Branch Locations", count: branches.length },
-                { key: "contact", label: "Contact Info" },
-                { key: "hours", label: "Opening Hours" },
-                { key: "services", label: "Services Menu", count: (selectedBusiness.services || []).length },
-              ])}
-              {renderSidebarItem("media", "Media & Photos", <Camera className="w-4 h-4 text-purple-500" />, undefined, [
-                { key: "photos", label: "Photo Gallery" },
-                { key: "videos", label: "Videos" },
-                { key: "logo", label: "Logo & Avatar" },
-                { key: "cover", label: "Cover Header" },
-              ])}
-              {renderSidebarItem("territory", "Territory & Jurisdiction", <Landmark className="w-4 h-4 text-indigo-500" />, undefined, [
-                { key: "overview", label: "Municipal Desk" },
-                { key: "city-lead", label: "City Administrator" },
-                { key: "national-lead", label: "Country Lead Admin" },
-              ])}
+            <div className="space-y-1">
+              {renderSectionHeader("business", "My Business", "5 modules")}
+
+              {(expandAllGroups || expandedGroup === "business") && (
+                <div className="space-y-0.5 animate-in fade-in duration-150">
+                  {renderSidebarItem("dashboard", "Dashboard", <Building2 className="w-4 h-4 text-indigo-500" />)}
+                  {renderSidebarItem("businesses", "My Businesses", <Building2 className="w-4 h-4 text-emerald-500" />, businesses.length, [
+                    { key: "all", label: "All Listings" },
+                    { key: "add", label: "Add New Business" },
+                    { key: "active", label: "Active" },
+                    { key: "pending", label: "Pending Approval" },
+                    { key: "rejected", label: "Rejected" },
+                    { key: "suspended", label: "Suspended" },
+                  ])}
+                  {renderSidebarItem("management", "Management", <Sliders className="w-4 h-4 text-blue-500" />, undefined, [
+                    { key: "info", label: "Business Info" },
+                    { key: "categories", label: "Categories & Tags" },
+                    { key: "locations", label: "Branch Locations", count: branches.length },
+                    { key: "contact", label: "Contact Info" },
+                    { key: "hours", label: "Opening Hours" },
+                    { key: "services", label: "Services Menu", count: (selectedBusiness.services || []).length },
+                  ])}
+                  {renderSidebarItem("media", "Media & Photos", <Camera className="w-4 h-4 text-purple-500" />, undefined, [
+                    { key: "photos", label: "Photo Gallery" },
+                    { key: "videos", label: "Videos" },
+                    { key: "logo", label: "Logo & Avatar" },
+                    { key: "cover", label: "Cover Header" },
+                  ])}
+                  {renderSidebarItem("territory", "Territory & Jurisdiction", <Landmark className="w-4 h-4 text-indigo-500" />, undefined, [
+                    { key: "overview", label: "Municipal Desk" },
+                    { key: "city-lead", label: "City Administrator" },
+                    { key: "national-lead", label: "Country Lead Admin" },
+                  ])}
+                </div>
+              )}
             </div>
 
             {/* ── Section: Customer Engagement ──────────────────────────── */}
-            <div className="space-y-0.5">
-              <div className="px-3 pb-1 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
-                <div className="flex-1 h-px bg-border/60" />
-                Customer Hub
-                <div className="flex-1 h-px bg-border/60" />
-              </div>
-              {renderSidebarItem("reviews", "Customer Reviews", <Star className="w-4 h-4 text-amber-500" />, reviewCounts.all || reviews.length || undefined, [
-                { key: "all", label: "All Reviews", count: reviewCounts.all || reviews.length },
-                { key: "replies", label: "Responded", count: reviewCounts.replies },
-                { key: "pending", label: "Awaiting Reply", count: reviewCounts.pending },
-              ])}
-              {renderSidebarItem("customers", "Customers", <UserCheck className="w-4 h-4 text-violet-500" />, customersTotalCount || undefined, [
-                { key: "all", label: "All Customers", count: customersTotalCount },
-                { key: "owners", label: "Business Owners" },
-                { key: "users", label: "Regular Users" },
-              ])}
-              {renderSidebarItem("messages", "Customer Inquiries", <MessageSquare className="w-4 h-4 text-sky-500" />, unreadMessagesCount, [
-                { key: "all", label: "All Inquiries" },
-                { key: "unread", label: "Unread" },
-                { key: "archived", label: "Archived" },
-              ])}
-              {renderSidebarItem("notifications", "Notifications", <Bell className="w-4 h-4 text-yellow-500" />, unreadNotifsCount || undefined, [
-                { key: "all", label: "All Alerts", count: ownerNotifTotalCount || undefined },
-                { key: "unread", label: "Unread", count: unreadNotifsCount || undefined },
-                { key: "critical", label: "Urgent", count: ownerNotifStats?.criticalCount || undefined },
-                { key: "business", label: "Business Alerts", count: ownerNotifStats?.businessCount || undefined },
-              ])}
+            <div className="space-y-1">
+              {renderSectionHeader("customer", "Customer Hub", "4 modules")}
+
+              {(expandAllGroups || expandedGroup === "customer") && (
+                <div className="space-y-0.5 animate-in fade-in duration-150">
+                  {renderSidebarItem("reviews", "Customer Reviews", <Star className="w-4 h-4 text-amber-500" />, reviewCounts.all || reviews.length || undefined, [
+                    { key: "all", label: "All Reviews", count: reviewCounts.all || reviews.length },
+                    { key: "replies", label: "Responded", count: reviewCounts.replies },
+                    { key: "pending", label: "Awaiting Reply", count: reviewCounts.pending },
+                  ])}
+                  {renderSidebarItem("customers", "Customers", <UserCheck className="w-4 h-4 text-violet-500" />, customersTotalCount || undefined, [
+                    { key: "all", label: "All Customers", count: customersTotalCount },
+                    { key: "owners", label: "Business Owners" },
+                    { key: "users", label: "Regular Users" },
+                  ])}
+                  {renderSidebarItem("messages", "Customer Inquiries", <MessageSquare className="w-4 h-4 text-sky-500" />, unreadMessagesCount, [
+                    { key: "all", label: "All Inquiries" },
+                    { key: "unread", label: "Unread" },
+                    { key: "archived", label: "Archived" },
+                  ])}
+                  {renderSidebarItem("notifications", "Notifications", <Bell className="w-4 h-4 text-yellow-500" />, unreadNotifsCount || undefined, [
+                    { key: "all", label: "All Alerts", count: ownerNotifTotalCount || undefined },
+                    { key: "unread", label: "Unread", count: unreadNotifsCount || undefined },
+                    { key: "critical", label: "Urgent", count: ownerNotifStats?.criticalCount || undefined },
+                    { key: "business", label: "Business Alerts", count: ownerNotifStats?.businessCount || undefined },
+                  ])}
+                </div>
+              )}
             </div>
 
             {/* ── Section: Growth & Revenue ─────────────────────────────── */}
-            <div className="space-y-0.5">
-              <div className="px-3 pb-1 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
-                <div className="flex-1 h-px bg-border/60" />
-                Growth & Revenue
-                <div className="flex-1 h-px bg-border/60" />
-              </div>
-              {renderSidebarItem("analytics", "Analytics", <BarChart3 className="w-4 h-4 text-teal-500" />, dashboardAnalyticsTotalCount || undefined, [
-                { key: "events", label: "Live Event Ledger", count: dashboardAnalyticsTotalCount },
-                { key: "overview", label: "Overview Metrics" },
-                { key: "keywords", label: "Search Keywords" },
-                { key: "geo", label: "Geographic Breakdown" },
-              ])}
-              {renderSidebarItem("advertising", "Advertising & Ads", <Crown className="w-4 h-4 text-amber-500" />, campaigns.length || undefined, [
-                { key: "campaigns", label: "Ad Campaigns" },
-                { key: "create", label: "Create Campaign" },
-                { key: "performance", label: "Ad Performance" },
-                { key: "budget", label: "Budget" },
-              ])}
-              {renderSidebarItem("promotions", "Offers & Deals", <Gift className="w-4 h-4 text-rose-500" />, offers.length || undefined, [
-                { key: "offers", label: "Active Offers", count: offers.length },
-                { key: "discounts", label: "Discounts & BOGO" },
-                { key: "coupons", label: "Promo Coupons" },
-              ])}
-              {renderSidebarItem("billing", "Billing & Plans", <CreditCard className="w-4 h-4 text-green-500" />, undefined, [
-                { key: "subscription", label: "Current Plan" },
-                { key: "methods", label: "Payment Methods" },
-                { key: "transactions", label: "Transactions" },
-                { key: "invoices", label: "Invoices" },
-              ])}
+            <div className="space-y-1">
+              {renderSectionHeader("growth", "Growth & Revenue", "4 modules")}
+
+              {(expandAllGroups || expandedGroup === "growth") && (
+                <div className="space-y-0.5 animate-in fade-in duration-150">
+                  {renderSidebarItem("analytics", "Analytics", <BarChart3 className="w-4 h-4 text-teal-500" />, dashboardAnalyticsTotalCount || undefined, [
+                    { key: "events", label: "Live Event Ledger", count: dashboardAnalyticsTotalCount },
+                    { key: "overview", label: "Overview Metrics" },
+                    { key: "keywords", label: "Search Keywords" },
+                    { key: "geo", label: "Geographic Breakdown" },
+                  ])}
+                  {renderSidebarItem("advertising", "Advertising & Ads", <Crown className="w-4 h-4 text-amber-500" />, campaigns.length || undefined, [
+                    { key: "campaigns", label: "Ad Campaigns" },
+                    { key: "create", label: "Create Campaign" },
+                    { key: "performance", label: "Ad Performance" },
+                    { key: "budget", label: "Budget" },
+                  ])}
+                  {renderSidebarItem("promotions", "Offers & Deals", <Gift className="w-4 h-4 text-rose-500" />, offers.length || undefined, [
+                    { key: "offers", label: "Active Offers", count: offers.length },
+                    { key: "discounts", label: "Discounts & BOGO" },
+                    { key: "coupons", label: "Promo Coupons" },
+                  ])}
+                  {renderSidebarItem("billing", "Billing & Plans", <CreditCard className="w-4 h-4 text-green-500" />, undefined, [
+                    { key: "subscription", label: "Current Plan" },
+                    { key: "methods", label: "Payment Methods" },
+                    { key: "transactions", label: "Transactions" },
+                    { key: "invoices", label: "Invoices" },
+                  ])}
+                </div>
+              )}
             </div>
 
             {/* ── Section: Account ───────────────────────────────────────── */}
-            <div className="space-y-0.5">
-              <div className="px-3 pb-1 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 flex items-center gap-2">
-                <div className="flex-1 h-px bg-border/60" />
-                Account
-                <div className="flex-1 h-px bg-border/60" />
-              </div>
-              {renderSidebarItem("support", "Support Desk", <Ticket className="w-4 h-4 text-indigo-400" />, ownerTicketTotalCount || undefined, [
-                { key: "all", label: "My Tickets", count: ownerTicketTotalCount },
-                { key: "open", label: "Open", count: ownerTicketStats?.open },
-                { key: "waiting_on_customer", label: "Awaiting Reply", count: ownerTicketStats?.waiting },
-                { key: "resolved", label: "Resolved", count: ownerTicketStats?.resolved },
-              ])}
-              {renderSidebarItem("moderation", "Disputes & Reports", <Flag className="w-4 h-4 text-red-500" />, ownerReportTotalCount || undefined, [
-                { key: "all", label: "All Cases", count: ownerReportTotalCount },
-                { key: "pending", label: "In Review", count: ownerReportStats?.underReviewCount },
-                { key: "resolved", label: "Resolved", count: ownerReportStats?.resolvedCount },
-              ])}
-              {renderSidebarItem("settings", "Account Settings", <Lock className="w-4 h-4 text-slate-400" />, undefined, [
-                { key: "account", label: "Account Profile" },
-                { key: "business", label: "Business Preferences" },
-                { key: "notifications", label: "Notification Preferences" },
-                { key: "security", label: "Security & 2FA" },
-              ])}
-              {renderSidebarItem("security", "Security & Access", <Shield className="w-4 h-4 text-rose-500" />, undefined, [
-                { key: "audit", label: "Security Audit" },
-                { key: "firewall", label: "Firewall & IPs" },
-                { key: "sessions", label: "Active Sessions" },
-                { key: "mfa", label: "2FA & Identity" },
-                { key: "apikeys", label: "API Keys" },
-              ])}
+            <div className="space-y-1">
+              {renderSectionHeader("account", "Account", "4 modules")}
+
+              {(expandAllGroups || expandedGroup === "account") && (
+                <div className="space-y-0.5 animate-in fade-in duration-150">
+                  {renderSidebarItem("support", "Support Desk", <Ticket className="w-4 h-4 text-indigo-400" />, ownerTicketTotalCount || undefined, [
+                    { key: "all", label: "My Tickets", count: ownerTicketTotalCount },
+                    { key: "open", label: "Open", count: ownerTicketStats?.open },
+                    { key: "waiting_on_customer", label: "Awaiting Reply", count: ownerTicketStats?.waiting },
+                    { key: "resolved", label: "Resolved", count: ownerTicketStats?.resolved },
+                  ])}
+                  {renderSidebarItem("moderation", "Disputes & Reports", <Flag className="w-4 h-4 text-red-500" />, ownerReportTotalCount || undefined, [
+                    { key: "all", label: "All Cases", count: ownerReportTotalCount },
+                    { key: "pending", label: "In Review", count: ownerReportStats?.underReviewCount },
+                    { key: "resolved", label: "Resolved", count: ownerReportStats?.resolvedCount },
+                  ])}
+                  {renderSidebarItem("settings", "Account Settings", <Lock className="w-4 h-4 text-slate-400" />, undefined, [
+                    { key: "account", label: "Account Profile" },
+                    { key: "business", label: "Business Preferences" },
+                    { key: "notifications", label: "Notification Preferences" },
+                    { key: "security", label: "Security & 2FA" },
+                  ])}
+                  {renderSidebarItem("security", "Security & Access", <Shield className="w-4 h-4 text-rose-500" />, undefined, [
+                    { key: "audit", label: "Security Audit" },
+                    { key: "firewall", label: "Firewall & IPs" },
+                    { key: "sessions", label: "Active Sessions" },
+                    { key: "mfa", label: "2FA & Identity" },
+                    { key: "apikeys", label: "API Keys" },
+                  ])}
+                </div>
+              )}
             </div>
           </div>
 
