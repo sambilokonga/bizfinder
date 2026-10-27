@@ -5,6 +5,7 @@ import { SEED_BUSINESSES } from "@/lib/db/seed-data/businesses";
 import { processBusinessImagesForCloudinary } from "@/lib/cloudinary";
 
 import { globalCityRegistry } from "@/lib/data/city-business-registry";
+import { isBusinessInCategory } from "@/lib/utils/category-matcher";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -63,7 +64,7 @@ export async function GET(request: Request) {
     } as any);
 
     if (result && Array.isArray(result.businesses)) {
-      if (result.businesses.length > 0 || (result.counts && result.counts.all > 0) || result.total > 0) {
+      if (result.businesses.length > 0 || result.total > 0) {
         return NextResponse.json({ ...result, success: true });
       }
     }
@@ -93,7 +94,7 @@ export async function GET(request: Request) {
     );
   }
   if (category && category !== "all") {
-    results = results.filter((b) => b.categoryId === category || b.categoryName === category);
+    results = results.filter((b) => isBusinessInCategory(b, category) || b.categoryId === category || b.categoryName === category);
   }
   if (featured) results = results.filter((b) => b.isFeatured);
   if (verified) results = results.filter((b) => b.isVerified);

@@ -91,6 +91,55 @@ import {
   Cake,
   Cookie,
   ShieldCheck,
+  Accessibility,
+  Anchor,
+  Apple,
+  BatteryCharging,
+  Beef,
+  Blocks,
+  BookMarked,
+  Boxes,
+  Church,
+  Cog,
+  Croissant,
+  Disc,
+  DoorOpen,
+  Droplets,
+  Eye,
+  Factory,
+  Fish,
+  FlaskConical,
+  Footprints,
+  Grid,
+  HeartHandshake,
+  Hourglass,
+  Languages,
+  Lightbulb,
+  Megaphone,
+  Microscope,
+  Milk,
+  Mountain,
+  Palette,
+  Paperclip,
+  Pickaxe,
+  Printer,
+  Receipt,
+  Recycle,
+  Refrigerator,
+  Ship,
+  Sofa,
+  Sprout,
+  Square,
+  Sun,
+  Tent,
+  Tractor,
+  TreePine,
+  User,
+  UserCheck,
+  Users,
+  Volume2,
+  Wheat,
+  Zap,
   LucideIcon,
 } from "lucide-react";
 
@@ -361,6 +410,57 @@ const ICON_COMPONENTS: Record<string, LucideIcon> = {
   Cake,
   Cookie,
   ShieldCheck,
+  Accessibility,
+  Anchor,
+  Apple,
+  BatteryCharging,
+  Beef,
+  Blocks,
+  BookMarked,
+  Boxes,
+  Church,
+  Cog,
+  Croissant,
+  Disc,
+  DoorOpen,
+  Droplets,
+  Eye,
+  Factory,
+  Fish,
+  FlaskConical,
+  Footprints,
+  Grid,
+  HeartHandshake,
+  Hourglass,
+  Languages,
+  Lightbulb,
+  Megaphone,
+  Microscope,
+  Milk,
+  Mountain,
+  Palette,
+  Paperclip,
+  Pickaxe,
+  Printer,
+  Receipt,
+  Recycle,
+  Refrigerator,
+  Ship,
+  Sofa,
+  Sprout,
+  Square,
+  Sun,
+  Tent,
+  Tractor,
+  TreePine,
+  User,
+  UserCheck,
+  Users,
+  Volume2,
+  Wheat,
+  Zap,
+  Needle: Scissors,
+  Tool: Wrench,
 };
 
 /**
@@ -465,6 +565,7 @@ export function getCategoryTheme(categoryName?: string, categorySlug?: string): 
   if (text.includes("construct") || text.includes("contract") || text.includes("build") || text.includes("repair")) return THEMES.construction;
   if (text.includes("travel") || text.includes("tour")) return THEMES.travel;
   if (text.includes("legal") || text.includes("consult") || text.includes("law") || text.includes("professional")) return THEMES.professional;
+  if (text.includes("access") || text.includes("disabilit") || text.includes("assist") || text.includes("mobility")) return THEMES.health;
 
   return THEMES.default;
 }
@@ -485,29 +586,30 @@ export function CategoryIconBadge({
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   className?: string;
 }) {
+  const isEmoji = iconName && /\p{Extended_Pictographic}/u.test(iconName);
   const IconComponent = getCategoryLucideIcon(iconName, categoryName);
   const theme = getCategoryTheme(categoryName, categorySlug);
 
   const sizeClasses = {
     xs: {
       wrapper: "w-6 h-6 xs:w-7 xs:h-7 rounded-lg",
-      icon: "w-3 h-3 xs:w-3.5 xs:h-3.5",
+      icon: "w-3 h-3 xs:w-3.5 xs:h-3.5 text-xs",
     },
     sm: {
       wrapper: "w-7.5 h-7.5 xs:w-8 xs:h-8 sm:w-9 sm:h-9 rounded-lg xs:rounded-xl",
-      icon: "w-3.5 h-3.5 xs:w-4 xs:h-4",
+      icon: "w-3.5 h-3.5 xs:w-4 xs:h-4 text-xs xs:text-sm",
     },
     md: {
       wrapper: "w-9 h-9 xs:w-10 xs:h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-xl xs:rounded-2xl",
-      icon: "w-4.5 h-4.5 xs:w-5 xs:h-5 sm:w-5.5 sm:h-5.5 md:w-6 md:h-6",
+      icon: "w-4.5 h-4.5 xs:w-5 xs:h-5 sm:w-5.5 sm:h-5.5 md:w-6 md:h-6 text-sm xs:text-base",
     },
     lg: {
       wrapper: "w-11 h-11 xs:w-12 xs:h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-xl sm:rounded-2xl",
-      icon: "w-5.5 h-5.5 xs:w-6 xs:h-6 sm:w-7 sm:h-7 md:w-8 md:h-8",
+      icon: "w-5.5 h-5.5 xs:w-6 xs:h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-base xs:text-lg",
     },
     xl: {
       wrapper: "w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-2xl sm:rounded-3xl",
-      icon: "w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 md:w-10 md:h-10",
+      icon: "w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 text-xl xs:text-2xl",
     },
   }[size];
 
@@ -516,7 +618,13 @@ export function CategoryIconBadge({
       className={`relative flex items-center justify-center shrink-0 transition-all duration-300 ${sizeClasses.wrapper} ${theme.iconBg} ${theme.iconColor} ${theme.glow} ${className}`}
     >
       <div className={`absolute inset-0 rounded-[inherit] bg-gradient-to-br ${theme.gradient} opacity-70 pointer-events-none`} />
-      <IconComponent className={`relative z-10 transition-transform duration-300 group-hover:scale-110 ${sizeClasses.icon}`} />
+      {isEmoji ? (
+        <span className={`relative z-10 transition-transform duration-300 group-hover:scale-110 flex items-center justify-center leading-none ${sizeClasses.icon}`}>
+          {iconName}
+        </span>
+      ) : (
+        <IconComponent className={`relative z-10 transition-transform duration-300 group-hover:scale-110 ${sizeClasses.icon}`} />
+      )}
     </div>
   );
 }

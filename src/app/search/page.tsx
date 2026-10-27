@@ -42,7 +42,7 @@ import { isBusinessInCategory } from "@/lib/utils/category-matcher";
 import { Business, PriceTier } from "@/types/business";
 import { SyncedMapView } from "@/components/search/SyncedMapView";
 import { FavoriteButton } from "@/components/ui/FavoriteButton";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
+
 import { UnifiedSearchAutocomplete, SEARCH_OPTIONS } from "@/components/search/UnifiedSearchAutocomplete";
 import { SearchOptionScope, SearchAutocompleteResult } from "@/types/search";
 
@@ -588,8 +588,6 @@ function SearchPageContent() {
               <option value="distance">Nearest First</option>
             </select>
 
-            {/* Quick Dark/Light Toggle */}
-            <ThemeToggle variant="button" className="hidden sm:flex shrink-0" />
 
             {/* View Mode Toggle (Mobile / Tablet) */}
             <div className="flex lg:hidden items-center p-0.5 rounded-lg xs:rounded-xl bg-slate-100 dark:bg-slate-800 border border-border shrink-0">

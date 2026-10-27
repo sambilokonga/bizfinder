@@ -32,7 +32,7 @@ import { SEED_BUSINESSES } from "@/lib/db/seed-data/businesses";
 import { getBusinessCardLocation } from "@/lib/utils/business-location";
 import { Business } from "@/types/business";
 import { WriteReviewModal } from "@/components/business/WriteReviewModal";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
+
 
 const EMOJI_OPTIONS = ["❤️", "🔖", "🍽️", "🏥", "🛍️", "☕", "💼", "🏋️", "🎉", "📚"];
 
@@ -177,7 +177,7 @@ export default function SavedPage() {
                 {collections.length} collection{collections.length !== 1 ? "s" : ""}
               </p>
             </div>
-            <ThemeToggle variant="pill" className="shrink-0 mt-0.5" />
+
           </div>
 
           {/* Tab bar */}

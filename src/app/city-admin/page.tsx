@@ -86,7 +86,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
+
 import { useCurrentRole } from "@/components/layout/RoleSwitcher";
 import { Business } from "@/types/business";
 import { SEED_BUSINESSES } from "@/lib/db/seed-data/businesses";
@@ -110,6 +110,8 @@ import { AdminSettingsView } from "@/components/admin/AdminSettingsView";
 import { SecurityWorkstation } from "@/components/security/SecurityWorkstation";
 import { AssignGeoAdminModal } from "@/components/admin/AssignGeoAdminModal";
 import { GeoAdminRecord } from "@/app/api/admin/geo-admins/route";
+import { CategoryIconBadge } from "@/lib/utils/category-icon-helper";
+import { isBusinessInCategory } from "@/lib/utils/category-matcher";
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 
@@ -619,6 +621,7 @@ export default function CityAdminDashboard() {
     currentUser?.assignedCity || "Addis Ababa"
   );
   const [selectedSubcityFilter, setSelectedSubcityFilter] = useState<string>("all");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
 
   useEffect(() => {
     if (currentUser?.assignedCountry) {
@@ -977,9 +980,12 @@ export default function CityAdminDashboard() {
     setIsLoadingBiz(true);
     try {
       const q = businessSearch.trim() ? `&q=${encodeURIComponent(businessSearch.trim())}` : "";
+      const catParam = selectedCategoryFilter && selectedCategoryFilter !== "all"
+        ? `&category=${encodeURIComponent(selectedCategoryFilter)}`
+        : "";
       const statusParam = status && status !== "all" && status !== "overview" ? status : "all";
       const res = await fetch(
-        `/api/businesses?country=${encodeURIComponent(selectedCountry)}&city=${encodeURIComponent(selectedCity)}&status=${statusParam}&page=${page}&limit=${BIZ_PAGE_LIMIT}${q}`
+        `/api/businesses?country=${encodeURIComponent(selectedCountry)}&city=${encodeURIComponent(selectedCity)}&status=${statusParam}&page=${page}&limit=${BIZ_PAGE_LIMIT}${q}${catParam}`
       );
       const data = await res.json();
       if (data.businesses && Array.isArray(data.businesses)) {
@@ -1007,7 +1013,7 @@ export default function CityAdminDashboard() {
     } finally {
       setIsLoadingBiz(false);
     }
-  }, [selectedCountry, selectedCity, businessSearch]);
+  }, [selectedCountry, selectedCity, businessSearch, selectedCategoryFilter]);
 
   const handleExportCityBusinesses = async (format: "csv" | "json") => {
     setIsExportingBiz(true);
@@ -1047,8 +1053,8 @@ export default function CityAdminDashboard() {
         userRoleFilter !== "all"
           ? userRoleFilter
           : subnav !== "all" && subnav !== "overview"
-          ? subnav
-          : "all";
+            ? subnav
+            : "all";
 
       const params = new URLSearchParams();
       params.set("page", String(page));
@@ -1116,16 +1122,29 @@ export default function CityAdminDashboard() {
     try {
       const res = await fetch(`/api/categories?city=${encodeURIComponent(selectedCity)}&country=${encodeURIComponent(selectedCountry)}`);
       const data = await res.json();
-      const list = Array.isArray(data.categories) && data.categories.length > 0 ? data.categories : SEED_CATEGORIES;
+      // Prioritize genuine per-city categories breakdown containing real business counts
+      const cityCats = Array.isArray(data.cityCategories) && data.cityCategories.length > 0
+        ? data.cityCategories
+        : Array.isArray(data.breakdown) && data.breakdown.length > 0
+        ? data.breakdown
+        : [];
+
+      const list = cityCats.length > 0
+        ? cityCats
+        : Array.isArray(data.categories) && data.categories.length > 0
+        ? data.categories.filter((c: any) => c.level === 1)
+        : SEED_CATEGORIES.filter((c: any) => c.level === 1);
+
       setCategoriesList(list);
       setCategoryTotal(list.length);
       setCategoryTotalPages(Math.max(1, Math.ceil(list.length / CATEGORY_PAGE_LIMIT)));
       setCategoryPage(page);
     } catch (e) {
       console.warn("Failed to fetch categories:", e);
-      setCategoriesList(SEED_CATEGORIES);
-      setCategoryTotal(SEED_CATEGORIES.length);
-      setCategoryTotalPages(Math.max(1, Math.ceil(SEED_CATEGORIES.length / CATEGORY_PAGE_LIMIT)));
+      const fallback = SEED_CATEGORIES.filter((c: any) => c.level === 1);
+      setCategoriesList(fallback);
+      setCategoryTotal(fallback.length);
+      setCategoryTotalPages(Math.max(1, Math.ceil(fallback.length / CATEGORY_PAGE_LIMIT)));
     } finally {
       setIsCategoriesLoading(false);
     }
@@ -1400,9 +1419,8 @@ export default function CityAdminDashboard() {
                 variant={p === currentPage ? "default" : "outline"}
                 disabled={isLoading}
                 onClick={() => onPageChange(p)}
-                className={`h-8 w-8 text-xs font-bold rounded-xl ${
-                  p === currentPage ? "bg-primary text-primary-foreground font-black" : ""
-                }`}
+                className={`h-8 w-8 text-xs font-bold rounded-xl ${p === currentPage ? "bg-primary text-primary-foreground font-black" : ""
+                  }`}
               >
                 {p}
               </Button>
@@ -1517,6 +1535,16 @@ export default function CityAdminDashboard() {
         const dist = (b.districtName || bAny.subcityId || "").toLowerCase();
         if (!dist.includes(selectedSubcityFilter.toLowerCase())) return false;
       }
+
+      // Category filter
+      if (selectedCategoryFilter !== "all") {
+        const catQ = selectedCategoryFilter.toLowerCase();
+        const matchesCategory = isBusinessInCategory(b, selectedCategoryFilter) ||
+          (b.categoryName || "").toLowerCase().includes(catQ) ||
+          catQ.includes((b.categoryName || "").toLowerCase());
+        if (!matchesCategory) return false;
+      }
+
       // Status subtab filter
       if (activeNav === "businesses") {
         if (activeSubnav === "pending" && b.isVerified) return false;
@@ -1530,7 +1558,7 @@ export default function CityAdminDashboard() {
       if (businessSearch.trim()) {
         const q = businessSearch.toLowerCase();
         const matchesName = b.name?.toLowerCase().includes(q);
-        const matchesCat = b.categoryName?.toLowerCase().includes(q);
+        const matchesCat = b.categoryName?.toLowerCase().includes(q) || isBusinessInCategory(b, q);
         const matchesSubcity = (b.districtName || bAny.subcityId || "")?.toLowerCase().includes(q);
         const matchesAddress = b.addressLine?.toLowerCase().includes(q);
         if (!matchesName && !matchesCat && !matchesSubcity && !matchesAddress) return false;
@@ -1538,12 +1566,12 @@ export default function CityAdminDashboard() {
 
       return true;
     });
-  }, [businesses, selectedSubcityFilter, activeNav, activeSubnav, businessSearch]);
+  }, [businesses, selectedSubcityFilter, selectedCategoryFilter, activeNav, activeSubnav, businessSearch]);
 
   // Reset to page 1 when sub-tab or search filter changes
   useEffect(() => {
     setBizPage(1);
-  }, [activeSubnav, businessSearch, selectedSubcityFilter]);
+  }, [activeSubnav, businessSearch, selectedSubcityFilter, selectedCategoryFilter]);
 
   // ── Approval & Verification Handlers ─────────────────────────────────────
   const handleApproveBusiness = async (biz: Business) => {
@@ -1551,10 +1579,10 @@ export default function CityAdminDashboard() {
       prev.map((b) =>
         b.id === biz.id
           ? {
-              ...b,
-              approvalStatus: "pending_country",
-              approvedByCity: { approved: true, at: new Date().toISOString(), by: `${selectedCity} City Admin` },
-            }
+            ...b,
+            approvalStatus: "pending_country",
+            approvedByCity: { approved: true, at: new Date().toISOString(), by: `${selectedCity} City Admin` },
+          }
           : b
       )
     );
@@ -1835,41 +1863,37 @@ export default function CityAdminDashboard() {
       <button
         type="button"
         onClick={() => handleSectionClick(groupKey)}
-        className={`w-full group flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.14em] transition-all duration-200 cursor-pointer ${
-          isGroupExpanded || isGroupActive
+        className={`w-full group flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.14em] transition-all duration-200 cursor-pointer ${isGroupExpanded || isGroupActive
             ? "bg-gradient-to-r from-sky-500/15 via-indigo-500/10 to-transparent text-sky-600 dark:text-sky-400 border border-sky-500/30 shadow-xs"
             : "text-muted-foreground/70 hover:text-foreground hover:bg-accent/40 border border-transparent"
-        }`}
+          }`}
         title={`Click to contrast and toggle ${label}`}
       >
         <div className="flex items-center gap-2 truncate">
           <div
-            className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all ${
-              isGroupActive
+            className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all ${isGroupActive
                 ? "bg-sky-500 shadow-[0_0_8px_currentColor]"
                 : isGroupExpanded
-                ? "bg-sky-500/70"
-                : "bg-muted-foreground/30 group-hover:bg-muted-foreground/70"
-            }`}
+                  ? "bg-sky-500/70"
+                  : "bg-muted-foreground/30 group-hover:bg-muted-foreground/70"
+              }`}
           />
           <span className="truncate">{label}</span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {badgeText && (
             <span
-              className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold ${
-                isGroupExpanded || isGroupActive
+              className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold ${isGroupExpanded || isGroupActive
                   ? "bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/30"
                   : "bg-muted text-muted-foreground"
-              }`}
+                }`}
             >
               {badgeText}
             </span>
           )}
           <ChevronDown
-            className={`w-3.5 h-3.5 transition-transform duration-200 ${
-              isGroupExpanded ? "rotate-0 text-sky-500" : "-rotate-90 text-muted-foreground/60"
-            }`}
+            className={`w-3.5 h-3.5 transition-transform duration-200 ${isGroupExpanded ? "rotate-0 text-sky-500" : "-rotate-90 text-muted-foreground/60"
+              }`}
           />
         </div>
       </button>
@@ -1894,22 +1918,20 @@ export default function CityAdminDashboard() {
           onClick={() => {
             handleItemClick(key, Boolean(subItems && subItems.length > 0), subItems?.[0]?.key);
           }}
-          className={`relative w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all duration-200 group overflow-hidden ${
-            isSelected
+          className={`relative w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all duration-200 group overflow-hidden ${isSelected
               ? "bg-gradient-to-r from-sky-600 via-sky-600 to-indigo-600 text-white shadow-md shadow-sky-500/25 ring-1 ring-white/20 font-bold"
               : "text-muted-foreground hover:text-foreground hover:bg-accent/70"
-          }`}
+            }`}
         >
           {isSelected && (
             <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 rounded-r-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" />
           )}
           <div className="flex items-center gap-2.5 truncate">
             <span
-              className={`shrink-0 transition-transform duration-200 ${
-                isSelected
+              className={`shrink-0 transition-transform duration-200 ${isSelected
                   ? "text-white scale-110 drop-shadow"
                   : "text-muted-foreground group-hover:text-foreground group-hover:scale-105"
-              }`}
+                }`}
             >
               {icon}
             </span>
@@ -1923,15 +1945,13 @@ export default function CityAdminDashboard() {
                   e.stopPropagation();
                   toggleNavSection(key);
                 }}
-                className={`p-1 rounded-md transition-all duration-200 ${
-                  isSelected ? "text-white hover:bg-white/20" : "hover:bg-accent text-muted-foreground hover:text-foreground"
-                }`}
+                className={`p-1 rounded-md transition-all duration-200 ${isSelected ? "text-white hover:bg-white/20" : "hover:bg-accent text-muted-foreground hover:text-foreground"
+                  }`}
                 title={isExpanded ? "Collapse sub-items" : "Expand sub-items"}
               >
                 <ChevronDown
-                  className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                    isExpanded ? "rotate-0" : "-rotate-90"
-                  }`}
+                  className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? "rotate-0" : "-rotate-90"
+                    }`}
                 />
               </span>
             )}
@@ -1951,29 +1971,26 @@ export default function CityAdminDashboard() {
                     setActiveSubnav(sub.key);
                     setSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-[11px] font-medium transition-all duration-150 ${
-                    isSubActive
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-[11px] font-medium transition-all duration-150 ${isSubActive
                       ? "bg-sky-500/15 text-sky-600 dark:text-sky-300 font-bold border border-sky-500/30 shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-2 truncate">
                     <div
-                      className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all ${
-                        isSubActive
+                      className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all ${isSubActive
                           ? "bg-sky-500 shadow-[0_0_6px_currentColor]"
                           : "bg-muted-foreground/30"
-                      }`}
+                        }`}
                     />
                     <span className="truncate">{sub.label}</span>
                   </div>
                   {sub.count !== undefined && sub.count > 0 && (
                     <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold shrink-0 ${
-                        isSubActive
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold shrink-0 ${isSubActive
                           ? "bg-sky-500/20 text-sky-600 dark:text-sky-300 border border-sky-500/30"
                           : "bg-muted text-muted-foreground"
-                      }`}
+                        }`}
                     >
                       {sub.count}
                     </span>
@@ -1996,20 +2013,18 @@ export default function CityAdminDashboard() {
         <button
           key={tab.key}
           onClick={() => setActiveSubnav(tab.key)}
-          className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs flex items-center gap-1.5 ${
-            activeSubnav === tab.key
+          className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs flex items-center gap-1.5 ${activeSubnav === tab.key
               ? "bg-sky-600 text-white shadow-sm"
               : "bg-card text-muted-foreground border border-border hover:border-foreground/30 hover:text-foreground"
-          }`}
+            }`}
         >
           <span>{tab.label}</span>
           {tab.count !== undefined && (
             <span
-              className={`text-[10px] px-1.5 rounded-full ${
-                activeSubnav === tab.key
+              className={`text-[10px] px-1.5 rounded-full ${activeSubnav === tab.key
                   ? "bg-white/20 text-white"
                   : "bg-muted text-muted-foreground"
-              }`}
+                }`}
             >
               {tab.count}
             </span>
@@ -2082,6 +2097,8 @@ export default function CityAdminDashboard() {
                 onChange={(e) => {
                   setSelectedCity(e.target.value);
                   setSelectedSubcityFilter("all");
+                  setSelectedCategoryFilter("all");
+                  setBusinessSearch("");
                   toast.info(`Switched municipal jurisdiction to ${e.target.value}`);
                 }}
                 className="bg-transparent text-foreground font-bold text-xs focus:outline-none cursor-pointer"
@@ -2116,16 +2133,25 @@ export default function CityAdminDashboard() {
               </Link>
             )}
 
-            <ThemeToggle variant="button" />
 
             {/* Admin Avatar Chip */}
             <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-border">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                EV
-              </div>
+              {currentUser?.avatarUrl ? (
+                <img
+                  src={currentUser.avatarUrl}
+                  alt={currentUser.name}
+                  className="w-8 h-8 rounded-full object-cover shadow-sm ring-2 ring-sky-500/30"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                  {currentUser?.name
+                    ? currentUser.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
+                    : "CA"}
+                </div>
+              )}
               <div className="text-left hidden lg:block">
                 <div className="text-xs font-bold leading-tight">
-                  {currentUser?.name || "Elena Vance"}
+                  {currentUser?.name || "City Admin"}
                 </div>
                 <div className="text-[10px] text-muted-foreground">Municipal Lead</div>
               </div>
@@ -2146,9 +2172,8 @@ export default function CityAdminDashboard() {
           />
         )}
         {/* ── Left Sidebar Navigation: Grouped Modern Hierarchy ─────────── */}
-        <aside className={`dashboard-sidebar z-50 w-64 xl:w-72 shrink-0 border-r border-border/80 bg-card/95 p-3 space-y-5 flex flex-col justify-between overflow-y-auto no-scrollbar${
-          sidebarOpen ? " open" : ""
-        }`}>
+        <aside className={`dashboard-sidebar z-50 w-64 xl:w-72 shrink-0 border-r border-border/80 bg-card/95 p-3 space-y-5 flex flex-col justify-between overflow-y-auto no-scrollbar${sidebarOpen ? " open" : ""
+          }`}>
           {/* Mobile close button */}
           <div className="md:hidden flex items-center justify-between pb-3 mb-1 border-b border-border/60">
             <span className="text-sm font-bold text-foreground">Navigation</span>
@@ -2406,11 +2431,10 @@ export default function CityAdminDashboard() {
                   setActiveNav(t.id);
                   setActiveSubnav("overview");
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 flex items-center gap-1 ${
-                  activeNav === t.id
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 flex items-center gap-1 ${activeNav === t.id
                     ? "bg-sky-600 text-white shadow"
                     : "bg-muted text-muted-foreground"
-                }`}
+                  }`}
               >
                 <span>{t.icon}</span>
                 <span>{t.label}</span>
@@ -2457,9 +2481,8 @@ export default function CityAdminDashboard() {
                     </Button>
                     <Button
                       size="sm"
-                      variant="outline"
                       onClick={() => setIsBroadcastModalOpen(true)}
-                      className="border-white/20 text-white hover:bg-white/10 gap-1.5 text-xs"
+                      className="bg-white/10 border border-white/25 text-white hover:bg-white/20 gap-1.5 text-xs font-bold backdrop-blur-sm"
                     >
                       <Megaphone className="w-4 h-4 text-sky-400" />
                       City Bulletin
@@ -2915,12 +2938,12 @@ export default function CityAdminDashboard() {
                                 {u.role === "owner" || u.role === "business owner" || u.role === "business_owner"
                                   ? "Business Owner"
                                   : u.role === "city_admin" || u.role === "city admin"
-                                  ? "City Admin"
-                                  : u.role === "country_admin" || u.role === "country admin"
-                                  ? "Country Admin"
-                                  : u.role === "super_admin" || u.role === "super admin" || u.role === "admin"
-                                  ? "Admin"
-                                  : "Citizen / Customer"}
+                                    ? "City Admin"
+                                    : u.role === "country_admin" || u.role === "country admin"
+                                      ? "Country Admin"
+                                      : u.role === "super_admin" || u.role === "super admin" || u.role === "admin"
+                                        ? "Admin"
+                                        : "Citizen / Customer"}
                               </span>
                             </td>
                             <td className="px-6 py-3.5">
@@ -3072,8 +3095,8 @@ export default function CityAdminDashboard() {
                                 claim.status === "approved"
                                   ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px]"
                                   : claim.status === "rejected"
-                                  ? "bg-rose-500/10 text-rose-600 border-rose-500/30 text-[10px]"
-                                  : "bg-amber-500/10 text-amber-600 border-amber-500/30 text-[10px]"
+                                    ? "bg-rose-500/10 text-rose-600 border-rose-500/30 text-[10px]"
+                                    : "bg-amber-500/10 text-amber-600 border-amber-500/30 text-[10px]"
                               }
                             >
                               {claim.status.toUpperCase()}
@@ -3136,11 +3159,24 @@ export default function CityAdminDashboard() {
                         className="w-full pl-9 h-10 rounded-2xl bg-background border border-border text-xs font-semibold text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                       />
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <select
+                        value={selectedCategoryFilter}
+                        onChange={(e) => {
+                          setSelectedCategoryFilter(e.target.value);
+                          setBizPage(1);
+                        }}
+                        className="h-10 px-3 rounded-2xl bg-background border border-border text-xs font-semibold text-foreground focus:outline-none max-w-[155px] truncate"
+                      >
+                        <option value="all">All Categories</option>
+                        {categoriesList.map((c: any) => (
+                          <option key={c.id || c.name} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
                       <select
                         value={selectedSubcityFilter}
                         onChange={(e) => setSelectedSubcityFilter(e.target.value)}
-                        className="h-10 px-3 rounded-2xl bg-background border border-border text-xs font-semibold text-foreground focus:outline-none"
+                        className="h-10 px-3 rounded-2xl bg-background border border-border text-xs font-semibold text-foreground focus:outline-none max-w-[145px] truncate"
                       >
                         <option value="all">All Sub-Cities</option>
                         {activeSubcitiesList.map((sc) => (
@@ -3152,13 +3188,31 @@ export default function CityAdminDashboard() {
                         variant="outline"
                         onClick={() => fetchBusinesses(bizPage)}
                         disabled={isLoadingBiz}
-                        className="text-xs font-bold gap-1.5 h-10 rounded-2xl"
+                        className="text-xs font-bold gap-1.5 h-10 rounded-2xl shrink-0"
                       >
                         <RefreshCw className={`w-3.5 h-3.5 ${isLoadingBiz ? "animate-spin" : ""}`} />
                         Refresh
                       </Button>
                     </div>
                   </div>
+
+                  {selectedCategoryFilter !== "all" && (
+                    <div className="flex items-center gap-2 px-1">
+                      <Badge className="bg-purple-500/10 text-purple-600 border border-purple-500/30 text-xs px-2.5 py-1 gap-1.5 flex items-center">
+                        <span>Category: <strong>{selectedCategoryFilter}</strong> ({filteredBusinesses.length} {filteredBusinesses.length === 1 ? "listing" : "listings"})</span>
+                        <button
+                          onClick={() => {
+                            setSelectedCategoryFilter("all");
+                            setBizPage(1);
+                          }}
+                          className="hover:text-purple-800 ml-1 rounded-full p-0.5"
+                          title="Clear category filter"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </Badge>
+                    </div>
+                  )}
 
                   {/* Listings Table */}
                   <div className="rounded-3xl bg-card border border-border overflow-hidden shadow-sm">
@@ -3216,8 +3270,8 @@ export default function CityAdminDashboard() {
                                       b.isVerified
                                         ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[10px] font-bold"
                                         : (b as any).approvalStatus === "rejected"
-                                        ? "bg-rose-500/10 text-rose-600 border border-rose-500/20 text-[10px] font-bold"
-                                        : "bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[10px] font-bold"
+                                          ? "bg-rose-500/10 text-rose-600 border border-rose-500/20 text-[10px] font-bold"
+                                          : "bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[10px] font-bold"
                                     }
                                   >
                                     {b.isVerified ? "✓ Verified" : (b as any).approvalStatus === "rejected" ? "✕ Rejected" : "⏳ Pending"}
@@ -3318,47 +3372,105 @@ export default function CityAdminDashboard() {
 
               {/* Category Grid Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {(categoriesList.length > 0 ? categoriesList : SEED_CATEGORIES)
+                {(categoriesList.length > 0 ? categoriesList : SEED_CATEGORIES.filter((c: any) => c.level === 1))
                   .slice((categoryPage - 1) * CATEGORY_PAGE_LIMIT, categoryPage * CATEGORY_PAGE_LIMIT)
-                  .map((cat, idx) => {
-                    const matchCount = cat.businessCount !== undefined ? cat.businessCount : (
-                      businesses.filter(
-                        (b) => b.categoryName?.toLowerCase() === cat.name?.toLowerCase() || b.categoryId === cat.id
-                      ).length || [14, 11, 8, 7, 5, 4, 3, 3, 2, 2, 1, 1][idx % 12]
-                    );
+                  .map((cat: any, idx: number) => {
+                    const matchCount = typeof cat.businessCount === "number"
+                      ? cat.businessCount
+                      : (() => {
+                          const topMatch = topCategories.find(
+                            (t) =>
+                              t.name?.toLowerCase() === cat.name?.toLowerCase() ||
+                              t.name?.toLowerCase().includes(cat.name?.toLowerCase()) ||
+                              cat.name?.toLowerCase().includes(t.name?.toLowerCase())
+                          );
+                          if (topMatch && typeof topMatch.count === "number") return topMatch.count;
+
+                          return businesses.filter((b) =>
+                            isBusinessInCategory(b, cat.id || cat.name || cat.slug) ||
+                            b.categoryName?.toLowerCase() === cat.name?.toLowerCase() ||
+                            b.categoryId === cat.id
+                          ).length;
+                        })();
+
+                    const isCore = cat.status === "Core Sector" || matchCount >= 8;
+                    const isActive = cat.status === "Active Sector" || matchCount > 0;
 
                     return (
                       <div
                         key={cat.id || idx}
-                        className="p-5 rounded-3xl bg-card border border-border space-y-3 hover:border-purple-500/40 transition-colors shadow-sm"
+                        className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-border space-y-3 hover:border-purple-500/40 transition-colors shadow-sm overflow-hidden flex flex-col justify-between"
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-600 flex items-center justify-center font-bold text-base">
-                            {cat.icon || "📂"}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <CategoryIconBadge
+                              iconName={cat.icon}
+                              categoryName={cat.name}
+                              categorySlug={cat.slug}
+                              size="sm"
+                            />
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {cat.economicShare && (
+                                <span className="text-[10px] font-mono font-semibold text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-md">
+                                  {cat.economicShare}
+                                </span>
+                              )}
+                              <Badge
+                                variant="outline"
+                                className={`text-[10px] font-bold shrink-0 ${
+                                  isCore
+                                    ? "border-purple-500/30 text-purple-600 bg-purple-500/10"
+                                    : isActive
+                                    ? "border-sky-500/30 text-sky-600 bg-sky-500/10"
+                                    : "border-border text-muted-foreground bg-muted"
+                                }`}
+                              >
+                                {isCore ? "Core Sector" : isActive ? "Active Sector" : "Emerging"}
+                              </Badge>
+                            </div>
                           </div>
-                          <Badge variant="outline" className="text-[10px] font-bold border-purple-500/30 text-purple-600 bg-purple-500/10">
-                            {matchCount > 8 ? "Core Sector" : "Emerging"}
-                          </Badge>
+
+                          <div className="min-w-0">
+                            <h3 className="font-bold text-foreground text-sm truncate">{cat.name}</h3>
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                              {cat.description || `Commercial establishments registered under ${cat.name} in ${selectedCity}.`}
+                            </p>
+                          </div>
+
+                          {cat.subcategories && Array.isArray(cat.subcategories) && cat.subcategories.length > 0 && (
+                            <div className="flex flex-wrap gap-1 pt-0.5">
+                              {cat.subcategories.slice(0, 3).map((sub: string) => (
+                                <span
+                                  key={sub}
+                                  className="text-[9.5px] px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground font-medium truncate max-w-[140px]"
+                                >
+                                  {sub}
+                                </span>
+                              ))}
+                              {cat.subcategories.length > 3 && (
+                                <span className="text-[9.5px] px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground font-medium">
+                                  +{cat.subcategories.length - 3} more
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
 
-                        <div>
-                          <h3 className="font-bold text-foreground text-sm">{cat.name}</h3>
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                            {cat.description || `Commercial establishments registered under ${cat.name} in ${selectedCity}.`}
-                          </p>
-                        </div>
-
-                        <div className="pt-2 border-t border-border flex items-center justify-between text-xs">
-                          <span className="font-mono font-bold text-foreground">{matchCount} Businesses</span>
+                        <div className="pt-2 border-t border-border flex items-center justify-between text-xs gap-2">
+                          <span className="font-mono font-bold text-foreground truncate">
+                            {matchCount} {matchCount === 1 ? "Business" : "Businesses"}
+                          </span>
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => {
-                              setBusinessSearch(cat.name);
+                              setSelectedCategoryFilter(cat.name);
+                              setBusinessSearch("");
                               setActiveNav("businesses");
                               setActiveSubnav("all");
+                              fetchBusinesses(1, "all");
                             }}
-                            className="h-6 text-[11px] font-bold text-purple-600 hover:text-purple-700"
+                            className="h-6 text-[11px] font-bold text-purple-600 hover:text-purple-700 shrink-0 px-2"
                           >
                             View Listings →
                           </Button>
@@ -3561,8 +3673,8 @@ export default function CityAdminDashboard() {
                                 rev.status === "reported"
                                   ? "bg-rose-500/10 text-rose-600 border-rose-500/30 text-[10px]"
                                   : rev.status === "removed"
-                                  ? "bg-slate-500/10 text-slate-600 border-slate-500/30 text-[10px]"
-                                  : "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px]"
+                                    ? "bg-slate-500/10 text-slate-600 border-slate-500/30 text-[10px]"
+                                    : "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px]"
                               }
                             >
                               {(rev.status || "published").toUpperCase()}
@@ -4033,8 +4145,8 @@ export default function CityAdminDashboard() {
                                         tx.status === "completed"
                                           ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[10px]"
                                           : tx.status === "pending"
-                                          ? "bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[10px]"
-                                          : "bg-rose-500/10 text-rose-600 border border-rose-500/20 text-[10px]"
+                                            ? "bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[10px]"
+                                            : "bg-rose-500/10 text-rose-600 border border-rose-500/20 text-[10px]"
                                       }
                                     >
                                       {tx.status.toUpperCase()}
@@ -4422,8 +4534,8 @@ export default function CityAdminDashboard() {
                                   tkt.status === "open"
                                     ? "bg-sky-500/10 text-sky-600 border border-sky-500/30 text-[10px]"
                                     : tkt.status === "in_progress"
-                                    ? "bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[10px]"
-                                    : "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-[10px]"
+                                      ? "bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[10px]"
+                                      : "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-[10px]"
                                 }
                               >
                                 {tkt.status.replace("_", " ").toUpperCase()}
@@ -5361,8 +5473,8 @@ export default function CityAdminDashboard() {
                   inspectTicket.status === "open"
                     ? "bg-sky-500/10 text-sky-600 border border-sky-500/30 text-[10px]"
                     : inspectTicket.status === "in_progress"
-                    ? "bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[10px]"
-                    : "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-[10px]"
+                      ? "bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[10px]"
+                      : "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-[10px]"
                 }
               >
                 {inspectTicket.status.toUpperCase()}
@@ -5383,11 +5495,10 @@ export default function CityAdminDashboard() {
                 {inspectTicket.messages.map((m) => (
                   <div
                     key={m.id}
-                    className={`p-2.5 rounded-xl ${
-                      m.senderRole === "admin"
+                    className={`p-2.5 rounded-xl ${m.senderRole === "admin"
                         ? "bg-sky-500/10 text-sky-950 dark:text-sky-100 ml-4 border border-sky-500/20"
                         : "bg-muted text-foreground mr-4"
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between text-[10px] font-bold opacity-75 mb-1">
                       <span>{m.sender}</span>

@@ -40,7 +40,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PaymentCheckoutModal } from "@/components/ads/PaymentCheckoutModal";
 import { SEED_BUSINESSES } from "@/lib/db/seed-data/businesses";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
+
 
 interface AdCampaign {
   id: string;
@@ -258,9 +258,8 @@ export default function SponsoredAdsDashboardPage() {
             </p>
           </div>
 
-          {/* Tab Switcher & Theme */}
+          {/* Tab Switcher */}
           <div className="flex flex-col xs:flex-row items-start xs:items-center gap-2 sm:gap-3">
-            <ThemeToggle variant="pill" />
             <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-border overflow-x-auto no-scrollbar">
               <button
                 onClick={() => setActiveTab("plans")}

@@ -235,7 +235,7 @@ export default async function HomePage() {
                 </Button>
               </Link>
               <Link href="/categories">
-                <Button size="default" variant="outline" className="w-auto border-white/30 text-white hover:bg-white/10 rounded-lg xs:rounded-xl font-semibold h-8.5 xs:h-9 sm:h-10 md:h-11 px-3 xs:px-4 sm:px-5 md:px-6 text-xs sm:text-sm">
+                <Button size="default" className="w-auto bg-white/10 border border-white/30 text-white hover:bg-white/20 rounded-lg xs:rounded-xl font-semibold h-8.5 xs:h-9 sm:h-10 md:h-11 px-3 xs:px-4 sm:px-5 md:px-6 text-xs sm:text-sm backdrop-blur-sm">
                   Browse Directory
                 </Button>
               </Link>

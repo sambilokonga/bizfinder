@@ -117,7 +117,7 @@ import { AddCategoryModal } from "@/components/admin/AddCategoryModal";
 import { EditCategoryModal } from "@/components/admin/EditCategoryModal";
 import { AddReviewModal } from "@/components/admin/AddReviewModal";
 import { Category } from "@/types/category";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
+
 import { toast } from "sonner";
 import { SORTED_COUNTRIES } from "@/lib/data/countries-regions";
 import { COUNTRIES_WITH_CITIES, getCitiesForCountry } from "@/lib/data/countries-cities";
@@ -2853,8 +2853,6 @@ export default function OwnerDashboardPage() {
           {/* Real-time Notification Bell */}
           <NotificationBell />
 
-          {/* Theme Toggle (Pill mode) */}
-          <ThemeToggle variant="pill" />
 
           {/* Quick Preview Profile */}
           <Link href={`/business/${selectedBusiness?.id || "biz-1"}`} target="_blank">
@@ -2885,16 +2883,16 @@ export default function OwnerDashboardPage() {
         {/* Mobile overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
         {/* ── Left Sidebar Navigation ───────────────────────────────── */}
-        <aside className={`dashboard-sidebar z-50 w-64 xl:w-72 shrink-0 border-r border-border/60 bg-card/90 backdrop-blur-sm flex flex-col justify-between overflow-y-auto no-scrollbar${
+        <aside className={`dashboard-sidebar z-50 w-64 xl:w-72 shrink-0 border-r border-border/60 bg-card/90 backdrop-blur-sm flex flex-col${
           sidebarOpen ? " open" : ""
         }`}>
-          {/* Mobile close button */}
-          <div className="md:hidden flex items-center justify-between p-3 border-b border-border/60">
+          {/* Mobile/tablet close button — sticky so it stays visible while scrolling */}
+          <div className="lg:hidden sticky top-0 z-10 flex items-center justify-between p-3 border-b border-border/60 bg-card/95 backdrop-blur-sm shrink-0">
             <span className="text-sm font-bold text-foreground">Navigation</span>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -2906,7 +2904,7 @@ export default function OwnerDashboardPage() {
           </div>
 
           {/* Scrollable nav area */}
-          <div className="p-3 space-y-5 flex-1">
+          <div className="p-3 space-y-5 flex-1 min-h-0 overflow-y-auto no-scrollbar">
 
             {/* Quick Accordion Focus / View Mode Strip */}
             <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-muted/40 border border-border/50 text-[10px]">
@@ -3066,13 +3064,13 @@ export default function OwnerDashboardPage() {
           </div>
 
           {/* Sidebar Footer */}
-          <div className="p-3 border-t border-border/60">
+          <div className="p-3 border-t border-border/60 shrink-0">
             <div className="p-3 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-indigo-500/10 border border-emerald-500/20 flex items-center justify-between gap-2">
               <div className="truncate">
                 <div className="text-[10px] font-black text-foreground truncate">{selectedBusiness?.name || "My Business"}</div>
                 <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">★ Pro Premium</div>
               </div>
-              <ThemeToggle variant="button" />
+
             </div>
           </div>
         </aside>
@@ -4711,29 +4709,29 @@ export default function OwnerDashboardPage() {
                         {paginatedIndustries.map((ind) => (
                           <div
                             key={ind.id}
-                            className="p-6 rounded-3xl bg-card border border-border shadow-sm space-y-4 hover:border-primary/30 transition-colors"
+                            className="p-4 sm:p-5 lg:p-6 rounded-2xl sm:rounded-3xl bg-card border border-border shadow-sm space-y-4 hover:border-primary/30 transition-colors overflow-hidden"
                           >
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 border-b border-border pb-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">
                                   <FolderTree className="w-5 h-5" />
                                 </div>
-                                <div>
-                                  <h4 className="font-bold text-foreground text-sm flex items-center gap-2">
-                                    {ind.name}
+                                <div className="min-w-0">
+                                  <h4 className="font-bold text-foreground text-sm flex items-center gap-2 flex-wrap">
+                                    <span className="truncate">{ind.name}</span>
                                     {ind.featured && (
-                                      <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[9px]">
+                                      <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[9px] shrink-0">
                                         Featured
                                       </Badge>
                                     )}
                                   </h4>
-                                  <p className="text-[11px] text-muted-foreground font-mono">
+                                  <p className="text-[11px] text-muted-foreground font-mono truncate">
                                     Slug: /{ind.slug} • Level 1 Industry
                                   </p>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-xs font-mono">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="outline" className="text-xs font-mono px-2.5 py-1 whitespace-nowrap shrink-0">
                                   {ind.categories.length} Categories ({ind.totalCount} items)
                                 </Badge>
                                 <Button
@@ -4743,26 +4741,28 @@ export default function OwnerDashboardPage() {
                                     setDefaultParentForAdd(ind.id);
                                     setIsAddCatModalOpen(true);
                                   }}
-                                  className="h-7 text-xs text-primary font-bold px-2.5"
+                                  className="h-7 text-xs text-primary font-bold px-2.5 whitespace-nowrap shrink-0"
                                 >
                                   <Plus className="w-3 h-3 mr-1" /> Add Subcategory
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setEditingCategory(ind)}
-                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                                >
-                                  <Edit2 className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleDeleteCategory(ind.id, ind.name)}
-                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setEditingCategory(ind)}
+                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                  >
+                                    <Edit2 className="w-3 h-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleDeleteCategory(ind.id, ind.name)}
+                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
 

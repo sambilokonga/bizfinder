@@ -120,7 +120,7 @@ import { RegisterMediaModal } from "@/components/admin/RegisterMediaModal";
 import { MediaLightboxModal } from "@/components/media/MediaLightboxModal";
 import { extractYoutubeVideoId, isYoutubeUrl, getYoutubeThumbnail } from "@/lib/utils/youtube";
 import { AdminAccount } from "@/app/api/admin/admins/route";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
+
 import { GeoScopeBanner } from "@/components/admin/GeoScopeBanner";
 import { GeoAdminsManagement } from "@/components/admin/GeoAdminsManagement";
 import { TerritoryAdministrationView } from "@/components/admin/TerritoryAdministrationView";
@@ -2504,8 +2504,7 @@ export default function AdminControlPanel() {
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Dark / Light Theme Toggle in Admin Top Bar */}
-          <ThemeToggle variant="pill" />
+          {/* Dark / Light Theme Toggle removed — handled by Navbar/Footer */}
 
           <Button
             size="sm"
@@ -2537,17 +2536,17 @@ export default function AdminControlPanel() {
         {/* Mobile overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
         {/* ── Left Sidebar — Modern Section-Grouped Navigation ─────────── */}
-        <aside className={`dashboard-sidebar z-50 w-64 xl:w-72 shrink-0 border-r border-border/60 bg-card/90 backdrop-blur-sm flex flex-col justify-between overflow-y-auto no-scrollbar${
+        <aside className={`dashboard-sidebar z-50 w-64 xl:w-72 shrink-0 border-r border-border/60 bg-card/90 backdrop-blur-sm flex flex-col${
           sidebarOpen ? " open" : ""
         }`}>
 
-          {/* Mobile close button */}
-          <div className="md:hidden flex items-center justify-between p-3 border-b border-border/60">
+          {/* Mobile/tablet close button — sticky so it stays visible while scrolling */}
+          <div className="lg:hidden sticky top-0 z-10 flex items-center justify-between p-3 border-b border-border/60 bg-card/95 backdrop-blur-sm shrink-0">
             <span className="text-sm font-bold text-foreground">Navigation</span>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -2559,7 +2558,7 @@ export default function AdminControlPanel() {
           </div>
 
           {/* Scrollable nav area */}
-          <div className="p-3 space-y-5 flex-1">
+          <div className="p-3 space-y-5 flex-1 min-h-0 overflow-y-auto no-scrollbar">
 
             {/* Quick Accordion Focus / View Mode Strip */}
             <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-muted/40 border border-border/50 text-[10px]">
@@ -2753,7 +2752,7 @@ export default function AdminControlPanel() {
                 </div>
                 <div className="text-[9px] text-muted-foreground mt-0.5">Admin Control Panel</div>
               </div>
-              <ThemeToggle variant="button" />
+
             </div>
           </div>
         </aside>
@@ -2791,6 +2790,7 @@ export default function AdminControlPanel() {
             <GeoScopeBanner
               currentRole={geoScopeRole}
               userRole={currentRole}
+              assignedCountry={currentUser?.assignedCountry}
               onRoleChange={setGeoScopeRole}
               selectedCountry={geoSelectedCountry}
               onCountryChange={setGeoSelectedCountry}
@@ -4782,11 +4782,11 @@ export default function AdminControlPanel() {
                           </Badge>
                         </div>
 
-                        <div className="flex items-center justify-between border-t border-border/60 pt-3">
-                          <span className="text-xs text-muted-foreground font-medium">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-3">
+                          <span className="text-xs text-muted-foreground font-medium shrink-0">
                             {ind.categories.length} sub-branches
                           </span>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 shrink-0">
                             <Button
                               size="sm"
                               variant="ghost"
@@ -4896,31 +4896,31 @@ export default function AdminControlPanel() {
                         {paginatedIndustries.map((ind) => (
                           <div
                             key={ind.id}
-                            className="p-6 rounded-3xl bg-card border border-border shadow-sm space-y-4 hover:border-primary/30 transition-colors"
+                            className="p-4 sm:p-5 lg:p-6 rounded-2xl sm:rounded-3xl bg-card border border-border shadow-sm space-y-4 hover:border-primary/30 transition-colors overflow-hidden"
                           >
                             {/* Industry Header Card */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold text-base shadow-sm">
+                            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 border-b border-border pb-4">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold text-base shadow-sm shrink-0">
                                   <FolderTree className="w-5 h-5" />
                                 </div>
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <h3 className="font-bold text-foreground text-base">{ind.name}</h3>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h3 className="font-bold text-foreground text-base truncate">{ind.name}</h3>
                                     {ind.featured && (
-                                      <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px]">
+                                      <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] shrink-0">
                                         Featured
                                       </Badge>
                                     )}
                                   </div>
-                                  <p className="text-xs text-muted-foreground font-mono">
+                                  <p className="text-xs text-muted-foreground font-mono truncate">
                                     Slug: /{ind.slug} • Level 1 Industry
                                   </p>
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-xs font-mono px-2.5 py-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="outline" className="text-xs font-mono px-2.5 py-1 whitespace-nowrap shrink-0">
                                   {ind.categories.length} Categories ({ind.totalCount} total nodes)
                                 </Badge>
                                 {(() => {
@@ -4938,13 +4938,13 @@ export default function AdminControlPanel() {
                                   return (
                                     <>
                                       {matchingCount > 0 && (
-                                        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs font-mono font-bold">
+                                        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs font-mono font-bold whitespace-nowrap shrink-0">
                                           {matchingCount} {geoSelectedCity !== "all" ? `${geoSelectedCity} Listings` : geoSelectedCountry !== "all" ? `${geoSelectedCountry} Listings` : "Listings"}
                                           {citySector?.economicShare ? ` (${citySector.economicShare}%)` : ""}
                                         </Badge>
                                       )}
                                       {citySector?.topBusinesses && citySector.topBusinesses.length > 0 && (
-                                        <span className="hidden xl:inline-block text-[11px] text-muted-foreground truncate max-w-[140px]" title={citySector.topBusinesses[0].name}>
+                                        <span className="hidden xl:inline-block text-[11px] text-muted-foreground truncate max-w-[140px] shrink-0" title={citySector.topBusinesses[0].name}>
                                           Top: <strong className="text-foreground">{citySector.topBusinesses[0].name}</strong>
                                         </span>
                                       )}
@@ -4955,7 +4955,7 @@ export default function AdminControlPanel() {
                                           setActiveNav("businesses");
                                           setBusinessSearch(ind.name);
                                         }}
-                                        className="gap-1 text-xs font-bold text-primary border-primary/30 hover:bg-primary/10"
+                                        className="gap-1 text-xs font-bold text-primary border-primary/30 hover:bg-primary/10 whitespace-nowrap shrink-0"
                                       >
                                         View Listings →
                                       </Button>
@@ -4969,28 +4969,30 @@ export default function AdminControlPanel() {
                                     setDefaultParentForAdd(ind.id);
                                     setIsAddCatModalOpen(true);
                                   }}
-                                  className="gap-1 text-xs font-bold text-primary border-primary/30 hover:bg-primary/10"
+                                  className="gap-1 text-xs font-bold text-primary border-primary/30 hover:bg-primary/10 whitespace-nowrap shrink-0"
                                 >
                                   <Plus className="w-3.5 h-3.5" /> Add Subcategory
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setEditingCategory(ind)}
-                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                                  title="Edit Industry"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteCategory(ind.id, ind.name)}
-                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                                  title="Delete Industry & Children"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </Button>
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setEditingCategory(ind)}
+                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                                    title="Edit Industry"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteCategory(ind.id, ind.name)}
+                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                                    title="Delete Industry & Children"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
 
@@ -5019,13 +5021,13 @@ export default function AdminControlPanel() {
                                   >
                                     <div>
                                       <div className="flex items-start justify-between gap-1.5 pb-1">
-                                        <div className="font-bold text-xs text-foreground flex items-center gap-1.5">
-                                          <span>{cat.name}</span>
-                                          <span className="text-[10px] text-muted-foreground font-mono">
+                                        <div className="font-bold text-xs text-foreground flex items-center gap-1.5 min-w-0">
+                                          <span className="truncate">{cat.name}</span>
+                                          <span className="text-[10px] text-muted-foreground font-mono shrink-0">
                                             ({cat.subcats.length})
                                           </span>
                                         </div>
-                                        <div className="flex items-center gap-0.5">
+                                        <div className="flex items-center gap-0.5 shrink-0">
                                           <button
                                             onClick={() => setEditingCategory(cat)}
                                             className="text-muted-foreground hover:text-primary p-1 transition-colors"
@@ -7668,7 +7670,7 @@ export default function AdminControlPanel() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 xs:gap-2 flex-wrap">
                   {/* Priority Filter */}
                   <select
                     value={reportPriorityFilter}
@@ -7676,7 +7678,7 @@ export default function AdminControlPanel() {
                       setReportPriorityFilter(e.target.value);
                       setReportPage(1);
                     }}
-                    className="bg-background text-foreground text-xs font-bold py-1.5 px-2.5 rounded-xl border border-border focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="h-7.5 xs:h-8 sm:h-8.5 md:h-9 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs font-semibold px-2 xs:px-2.5 rounded-lg xs:rounded-xl sm:rounded-2xl bg-background text-foreground border border-border/70 hover:border-border focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-2xs transition-all cursor-pointer"
                   >
                     <option value="all">All Priorities</option>
                     <option value="critical">🔴 Critical</option>
@@ -7692,7 +7694,7 @@ export default function AdminControlPanel() {
                       setReportStatusFilter(e.target.value);
                       setReportPage(1);
                     }}
-                    className="bg-background text-foreground text-xs font-bold py-1.5 px-2.5 rounded-xl border border-border focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="h-7.5 xs:h-8 sm:h-8.5 md:h-9 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs font-semibold px-2 xs:px-2.5 rounded-lg xs:rounded-xl sm:rounded-2xl bg-background text-foreground border border-border/70 hover:border-border focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-2xs transition-all cursor-pointer"
                   >
                     <option value="all">All Statuses</option>
                     <option value="under_review">Under Review</option>
@@ -7740,7 +7742,7 @@ export default function AdminControlPanel() {
                     return (
                       <div
                         key={r.id}
-                        className={`p-5 rounded-3xl bg-card border transition-all hover:border-border/90 hover:shadow-md ${
+                        className={`p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border transition-all hover:border-border/90 hover:shadow-md overflow-hidden ${
                           isCritical
                             ? "border-red-500/30 bg-gradient-to-r from-red-500/[0.03] to-transparent"
                             : "border-border/80"
@@ -7858,17 +7860,17 @@ export default function AdminControlPanel() {
                         )}
 
                         {/* Card Action Controls */}
-                        <div className="flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-border/80">
-                          <div className="text-[11px] text-muted-foreground font-mono">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-border/80">
+                          <div className="text-[10px] sm:text-[11px] text-muted-foreground font-mono truncate">
                             Entity ID: {r.targetId}
                           </div>
 
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => setSelectedReportForDetail(r)}
-                              className="text-xs font-bold h-7 gap-1"
+                              className="text-[10px] sm:text-xs font-bold h-7 px-2 xs:px-2.5 gap-1 shrink-0"
                             >
                               <Eye className="w-3 h-3 text-primary" />
                               Inspect Dossier
@@ -7901,7 +7903,7 @@ export default function AdminControlPanel() {
                                       toast.error("Failed to dismiss report");
                                     }
                                   }}
-                                  className="text-xs h-7 text-muted-foreground hover:text-foreground"
+                                  className="text-[10px] sm:text-xs h-7 px-2 xs:px-2.5 text-muted-foreground hover:text-foreground shrink-0"
                                 >
                                   Dismiss
                                 </Button>
@@ -7931,7 +7933,7 @@ export default function AdminControlPanel() {
                                       toast.error("Failed to resolve report");
                                     }
                                   }}
-                                  className="text-xs font-bold h-7"
+                                  className="text-[10px] sm:text-xs font-bold h-7 px-2.5 xs:px-3 shrink-0"
                                 >
                                   Resolve & Strike
                                 </Button>
@@ -8150,7 +8152,7 @@ export default function AdminControlPanel() {
                   <select
                     value={notifTypeFilter}
                     onChange={(e) => { setNotifTypeFilter(e.target.value); setNotifPage(1); }}
-                    className="h-9 rounded-xl border border-border bg-background px-3 text-xs text-foreground"
+                    className="h-7.5 xs:h-8 sm:h-8.5 md:h-9 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs font-semibold px-2 xs:px-2.5 rounded-lg xs:rounded-xl bg-background text-foreground border border-border/70 hover:border-border focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-2xs transition-all cursor-pointer"
                   >
                     <option value="all">All Types</option>
                     <option value="system">System</option>
@@ -8164,7 +8166,7 @@ export default function AdminControlPanel() {
                   <select
                     value={notifPriorityFilter}
                     onChange={(e) => { setNotifPriorityFilter(e.target.value); setNotifPage(1); }}
-                    className="h-9 rounded-xl border border-border bg-background px-3 text-xs text-foreground"
+                    className="h-7.5 xs:h-8 sm:h-8.5 md:h-9 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs font-semibold px-2 xs:px-2.5 rounded-lg xs:rounded-xl bg-background text-foreground border border-border/70 hover:border-border focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-2xs transition-all cursor-pointer"
                   >
                     <option value="all">All Priorities</option>
                     <option value="critical">🔴 Critical</option>
@@ -8176,7 +8178,7 @@ export default function AdminControlPanel() {
                     size="sm"
                     variant="outline"
                     onClick={() => { setNotifPage(1); fetchNotifications(1); }}
-                    className="h-9 text-xs font-bold px-4"
+                    className="h-7.5 xs:h-8 sm:h-8.5 md:h-9 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs font-bold px-2.5 sm:px-4 rounded-lg xs:rounded-xl"
                   >
                     Apply Filter
                   </Button>
@@ -8635,7 +8637,7 @@ export default function AdminControlPanel() {
                       setTicketPriorityFilter(e.target.value);
                       setTicketPage(1);
                     }}
-                    className="h-9 px-3 rounded-xl bg-background border border-border text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="h-7.5 xs:h-8 sm:h-8.5 md:h-9 text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs font-semibold px-2 xs:px-2.5 rounded-lg xs:rounded-xl bg-background text-foreground border border-border/70 hover:border-border focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-2xs transition-all cursor-pointer"
                   >
                     <option value="all">All Priorities</option>
                     <option value="critical">🚨 Critical SLA</option>

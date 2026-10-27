@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@clerk/nextjs";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
+
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { useSavedBusinesses } from "@/hooks/useSavedBusinesses";
 
@@ -355,12 +355,7 @@ export default function ProfilePage() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="text-[10px] sm:text-xs font-bold text-foreground block mb-1.5">
-                    Theme Preference
-                  </label>
-                  <ThemeToggle variant="pill" className="w-full justify-between" />
-                </div>
+
               </div>
 
               <Button

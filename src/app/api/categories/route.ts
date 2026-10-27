@@ -4,6 +4,7 @@ import { CategoryModel } from "@/lib/db/models/Category";
 import { BusinessModel } from "@/lib/db/models/Business";
 import { SEED_CATEGORIES } from "@/lib/db/seed-data/categories";
 import { globalCityRegistry, CityCategoryBreakdown } from "@/lib/data/city-business-registry";
+import { isBusinessInCategory } from "@/lib/utils/category-matcher";
 
 export async function GET(request: Request) {
   try {
@@ -161,7 +162,7 @@ export async function GET(request: Request) {
           const matchCatId = b.categoryId === id || b.subcategoryId === id;
           const matchCatName = b.categoryName?.toLowerCase() === name.toLowerCase() ||
                                b.subcategoryName?.toLowerCase() === name.toLowerCase();
-          return matchCatId || matchCatName;
+          return matchCatId || matchCatName || isBusinessInCategory(b, id) || isBusinessInCategory(b, name);
         }).length;
 
         return {
