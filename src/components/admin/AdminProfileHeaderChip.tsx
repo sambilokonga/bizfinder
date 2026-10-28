@@ -143,27 +143,27 @@ export function AdminProfileHeaderChip({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`flex items-center gap-2 pl-2 border-l border-border hover:bg-accent/50 p-1.5 rounded-2xl transition-all cursor-pointer text-left group ${className}`}
+        className={`flex items-center gap-2 pl-2 border-l border-border hover:bg-accent/50 p-1.5 rounded-2xl transition-all cursor-pointer text-left group shrink-0 whitespace-nowrap ${className}`}
         title={`View Profile: ${displayName} (${roleTitle})`}
       >
         {avatarUrl ? (
           <img
             src={avatarUrl}
             alt={displayName}
-            className="w-8 h-8 rounded-full object-cover shadow-sm ring-2 ring-indigo-500/30 group-hover:ring-indigo-500/60 transition-all"
+            className="w-8 h-8 rounded-full object-cover shadow-sm ring-2 ring-indigo-500/30 group-hover:ring-indigo-500/60 transition-all shrink-0"
           />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white text-xs font-black shadow-sm ring-2 ring-purple-500/30 group-hover:ring-purple-500/60 transition-all">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white text-xs font-black shadow-sm ring-2 ring-purple-500/30 group-hover:ring-purple-500/60 transition-all shrink-0">
             {singleInitial}
           </div>
         )}
 
-        <div className="text-left hidden lg:block leading-tight">
-          <div className="text-xs font-bold leading-tight text-foreground group-hover:text-primary transition-colors flex items-center gap-1">
-            <span className="truncate max-w-[130px] xl:max-w-[160px]">{displayName}</span>
-            <ChevronDown className="w-3 h-3 text-muted-foreground opacity-60 group-hover:opacity-100 transition-opacity" />
+        <div className="text-left hidden lg:block leading-tight shrink-0 whitespace-nowrap">
+          <div className="text-xs font-bold leading-tight text-foreground group-hover:text-primary transition-colors flex items-center gap-1 whitespace-nowrap">
+            <span className="truncate max-w-[120px] xl:max-w-[160px] whitespace-nowrap">{displayName}</span>
+            <ChevronDown className="w-3 h-3 text-muted-foreground opacity-60 group-hover:opacity-100 transition-opacity shrink-0" />
           </div>
-          <div className="text-[10px] text-muted-foreground font-medium">{roleTitle}</div>
+          <div className="text-[10px] text-muted-foreground font-medium whitespace-nowrap">{roleTitle}</div>
         </div>
       </button>
 
