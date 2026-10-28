@@ -114,6 +114,7 @@ import { GeoAdminRecord } from "@/app/api/admin/geo-admins/route";
 import { CategoryIconBadge } from "@/lib/utils/category-icon-helper";
 import { isBusinessInCategory } from "@/lib/utils/category-matcher";
 import { TerritoryAdministrationView } from "@/components/admin/TerritoryAdministrationView";
+import { AdminProfileHeaderChip } from "@/components/admin/AdminProfileHeaderChip";
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 
@@ -2165,28 +2166,14 @@ export default function CityAdminDashboard() {
             )}
 
 
-            {/* Admin Avatar Chip */}
-            <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-border">
-              {currentUser?.avatarUrl ? (
-                <img
-                  src={currentUser.avatarUrl}
-                  alt={currentUser.name}
-                  className="w-8 h-8 rounded-full object-cover shadow-sm ring-2 ring-sky-500/30"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                  {currentUser?.name
-                    ? currentUser.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
-                    : "CA"}
-                </div>
-              )}
-              <div className="text-left hidden lg:block">
-                <div className="text-xs font-bold leading-tight">
-                  {currentUser?.name || "City Admin"}
-                </div>
-                <div className="text-[10px] text-muted-foreground">Municipal Lead</div>
-              </div>
-            </div>
+            {/* Functional Admin Avatar Chip */}
+            <AdminProfileHeaderChip
+              currentRole="city_admin"
+              currentUser={currentUser}
+              assignedCountry={selectedCountry}
+              assignedCity={selectedCity}
+              onOpenBroadcast={() => setIsBroadcastModalOpen(true)}
+            />
           </div>
         </div>
       </header>

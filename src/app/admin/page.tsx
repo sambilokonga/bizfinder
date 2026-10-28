@@ -153,6 +153,7 @@ import { SecurityWorkstation } from "@/components/security/SecurityWorkstation";
 import { GlobalVisitorsMatrix } from "@/components/admin/GlobalVisitorsMatrix";
 import { CountryCityAdminsHub } from "@/components/admin/CountryCityAdminsHub";
 import { globalCityRegistry, CityCategoryBreakdown, CityCategoryPetition } from "@/lib/data/city-business-registry";
+import { AdminProfileHeaderChip } from "@/components/admin/AdminProfileHeaderChip";
 
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
@@ -2504,8 +2505,39 @@ export default function AdminControlPanel() {
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Dark / Light Theme Toggle removed — handled by Navbar/Footer */}
+          {/* Quick Scope Selector Indicator */}
+          {isCountryAdmin && (
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-indigo-500/30 bg-indigo-500/5 text-xs">
+              <Globe className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+              <span className="text-[11px] font-semibold text-muted-foreground">Country:</span>
+              <span className="font-bold text-foreground text-xs">{geoSelectedCountry === "all" ? (currentUser?.assignedCountry || "Ethiopia") : geoSelectedCountry}</span>
+            </div>
+          )}
 
+          {isCityAdmin && (
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-sky-500/30 bg-sky-500/5 text-xs">
+              <Compass className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+              <span className="text-[11px] font-semibold text-muted-foreground">City:</span>
+              <span className="font-bold text-foreground text-xs">{geoSelectedCity === "all" ? (currentUser?.assignedCity || "Addis Ababa") : geoSelectedCity}</span>
+            </div>
+          )}
+
+          {/* Quick Broadcast Notice CTA */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setActiveNav("notifications");
+              setActiveSubnav("send");
+            }}
+            className="h-7 sm:h-8 px-2 sm:px-2.5 gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-semibold border-sky-500/30 text-sky-600 dark:text-sky-400 hover:bg-sky-500/10 hidden sm:inline-flex"
+            title="Compose and broadcast notice"
+          >
+            <Megaphone className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <span className="hidden md:inline">Broadcast Notice</span>
+          </Button>
+
+          {/* System Health */}
           <Button
             size="sm"
             variant="outline"
@@ -2516,6 +2548,7 @@ export default function AdminControlPanel() {
             <span className="hidden xs:inline">System Health:</span> 99.98%
           </Button>
 
+          {/* Super Admin: New Admin */}
           {isSuperAdmin && (
             <Button
               size="sm"
@@ -2528,6 +2561,32 @@ export default function AdminControlPanel() {
               New Admin
             </Button>
           )}
+
+          {/* Country Admin: Appoint City Admin */}
+          {isCountryAdmin && (
+            <Button
+              size="sm"
+              variant="gradient"
+              onClick={() => setIsAssignGeoModalOpen(true)}
+              className="h-7 sm:h-8 px-2.5 sm:px-3 gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-bold shadow-md shadow-indigo-500/20 hidden sm:inline-flex"
+              title="Appoint a City Admin for this territory"
+            >
+              <UserPlus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              Appoint Admin
+            </Button>
+          )}
+
+          {/* Functional User Profile Header Chip */}
+          <AdminProfileHeaderChip
+            currentRole={isSuperAdmin ? "super_admin" : isCountryAdmin ? "country_admin" : isCityAdmin ? "city_admin" : "admin"}
+            currentUser={currentUser}
+            assignedCountry={geoSelectedCountry === "all" ? (currentUser?.assignedCountry || "Ethiopia") : geoSelectedCountry}
+            assignedCity={geoSelectedCity === "all" ? (currentUser?.assignedCity || "Addis Ababa") : geoSelectedCity}
+            onOpenBroadcast={() => {
+              setActiveNav("notifications");
+              setActiveSubnav("send");
+            }}
+          />
         </div>
       </div>
 
@@ -3101,6 +3160,139 @@ export default function AdminControlPanel() {
                     <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">🛡️ Platform Operations</span>
                     <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">🏢 Global Verification Queue</span>
                     <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">🌐 International Visitor Telemetry</span>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Country Admin: National Governance Lead Profile Card ── */}
+              {isCountryAdmin && (
+                <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-indigo-500/30 shadow-sm space-y-3.5 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-sky-500 flex items-center justify-center text-white text-base font-black shadow-md shadow-indigo-500/20">
+                        {currentUser?.avatarUrl ? (
+                          <img src={currentUser.avatarUrl} alt={currentUser.name} className="w-full h-full rounded-2xl object-cover" />
+                        ) : (
+                          currentUser?.name ? currentUser.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() : "NA"
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-sm sm:text-base font-bold text-foreground">
+                            {currentUser?.name || `${geoSelectedCountry} National Lead`}
+                          </h3>
+                          <Badge className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 text-[10px] font-bold">
+                            National Governance Lead
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground font-mono mt-0.5">
+                          {currentUser?.email || "country.lead@bizfinder.et"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+                        ● Active & On Duty
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIsAssignGeoModalOpen(true)}
+                        className="h-7 text-xs font-bold border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10"
+                      >
+                        <UserPlus className="w-3.5 h-3.5 mr-1" />
+                        Appoint City Admin
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
+                    <div className="p-2.5 rounded-xl bg-muted/40 border border-border/50">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">National Scope</span>
+                      <span className="font-bold text-foreground">{geoSelectedCountry} Territory</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-muted/40 border border-border/50">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">Municipal Districts</span>
+                      <span className="font-bold text-amber-600 dark:text-amber-400">30 Designated Cities</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-muted/40 border border-border/50">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">Appointed Admins</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">{(dashboardStats?.totalCityAdmins ?? 4)} Active Leads</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-muted/40 border border-border/50">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">Clerk Sync</span>
+                      <span className="font-bold text-sky-600 dark:text-sky-400">publicMetadata Verified</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Operational Admin: Platform Operations Lead Profile Card ── */}
+              {isOperationsAdmin && (
+                <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-card border border-emerald-500/30 shadow-sm space-y-3.5 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-indigo-600 flex items-center justify-center text-white text-base font-black shadow-md shadow-emerald-500/20">
+                        {currentUser?.avatarUrl ? (
+                          <img src={currentUser.avatarUrl} alt={currentUser.name} className="w-full h-full rounded-2xl object-cover" />
+                        ) : (
+                          currentUser?.name ? currentUser.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() : "OP"
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-sm sm:text-base font-bold text-foreground">
+                            {currentUser?.name || "Platform Operations Director"}
+                          </h3>
+                          <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">
+                            Operations Director
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground font-mono mt-0.5">
+                          {currentUser?.email || "admin@bizfinder.et"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+                        ● Active & On Duty
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setActiveNav("businesses");
+                          setActiveSubnav("pending");
+                        }}
+                        className="h-7 text-xs font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                        Verification Queue
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
+                    <div className="p-2.5 rounded-xl bg-muted/40 border border-border/50">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">Operational Scope</span>
+                      <span className="font-bold text-foreground">Global Directory</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-muted/40 border border-border/50">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">Moderation Queue</span>
+                      <span className="font-bold text-amber-600 dark:text-amber-400">{bizCounts.pending} Pending</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-muted/40 border border-border/50">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">System Health</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">99.98% Operational</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-muted/40 border border-border/50">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">Authority Level</span>
+                      <span className="font-bold text-indigo-600 dark:text-indigo-400">Verification & Moderation</span>
+                    </div>
                   </div>
                 </div>
               )}
