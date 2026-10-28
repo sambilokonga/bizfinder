@@ -40,6 +40,7 @@ import { AssignGeoAdminModal } from "@/components/admin/AssignGeoAdminModal";
 import { GeoAdminRecord } from "@/app/api/admin/geo-admins/route";
 import { TerritoryMap, TerritoryMapPin } from "@/components/admin/TerritoryMap";
 import { toast } from "sonner";
+import { ETHIOPIA_CITY_COORDINATES } from "@/lib/data/cbe-branches-generator";
 
 export interface TerritoryNodeRecord {
   id: string;
@@ -319,12 +320,22 @@ export function TerritoryAdministrationView({
         return false;
       });
 
+      // Also include any node whose parent is one of the matched subcities (districts, woredas)
+      const matchedIds = new Set(directMatches.map((d) => d.id || (d as any)._id).filter(Boolean));
+      territoriesList.forEach((t) => {
+        if (t.parentId && matchedIds.has(t.parentId) && !matchedIds.has(t.id)) {
+          directMatches.push(t);
+          matchedIds.add(t.id);
+        }
+      });
+
       // Include all subcities from SUBCITIES_DATABASE if not already in LocationModel
       const knownSubList = SUBCITIES_DATABASE[currentCountry]?.[currentCity] || [];
       const presentNames = new Set(directMatches.map((d) => d.name.toLowerCase()));
       const synthesized: TerritoryNodeRecord[] = [];
-      const baseLat = currentCityNode?.latitude || 9.010793;
-      const baseLng = currentCityNode?.longitude || 38.761252;
+      const cityCoords = ETHIOPIA_CITY_COORDINATES[currentCity || "Addis Ababa"];
+      const baseLat = currentCityNode?.latitude || cityCoords?.lat || 9.010793;
+      const baseLng = currentCityNode?.longitude || cityCoords?.lng || 38.761252;
 
       knownSubList.forEach((subName, i) => {
         if (!presentNames.has(subName.toLowerCase())) {
@@ -376,6 +387,8 @@ export function TerritoryAdministrationView({
       if (currentCityNode?.latitude && currentCityNode?.longitude) {
         return [currentCityNode.latitude, currentCityNode.longitude];
       }
+      const coords = ETHIOPIA_CITY_COORDINATES[currentCity || "Addis Ababa"];
+      if (coords) return [coords.lat, coords.lng];
       return [9.010793, 38.761252];
     }
     if (isCountryAdmin) {
@@ -385,7 +398,7 @@ export function TerritoryAdministrationView({
       return [9.010793, 38.761252];
     }
     return [9.010793, 38.761252];
-  }, [isCityAdmin, isCountryAdmin, currentCityNode, currentCountryNode]);
+  }, [isCityAdmin, isCountryAdmin, currentCityNode, currentCountryNode, currentCity]);
 
   const mapZoom = useMemo<number>(() => {
     if (isCityAdmin) return 12;
@@ -443,8 +456,23 @@ export function TerritoryAdministrationView({
     setNodeFormType(type);
     const parent = defaultParent || (isCityAdmin ? (currentCityNode?.id || currentCityNode?._id || "") : isCountryAdmin ? (currentCountryNode?.id || currentCountryNode?._id || "") : "");
     setNodeFormParentId(parent);
-    setNodeFormLatitude(isCityAdmin && currentCityNode ? currentCityNode.latitude : isCountryAdmin && currentCountryNode ? currentCountryNode.latitude : 9.010793);
-    setNodeFormLongitude(isCityAdmin && currentCityNode ? currentCityNode.longitude : isCountryAdmin && currentCountryNode ? currentCountryNode.longitude : 38.761252);
+    const cityCoords = ETHIOPIA_CITY_COORDINATES[currentCity || "Addis Ababa"];
+    const defaultLat = isCityAdmin && currentCityNode
+      ? currentCityNode.latitude
+      : isCityAdmin && cityCoords
+      ? cityCoords.lat
+      : isCountryAdmin && currentCountryNode
+      ? currentCountryNode.latitude
+      : 9.010793;
+    const defaultLng = isCityAdmin && currentCityNode
+      ? currentCityNode.longitude
+      : isCityAdmin && cityCoords
+      ? cityCoords.lng
+      : isCountryAdmin && currentCountryNode
+      ? currentCountryNode.longitude
+      : 38.761252;
+    setNodeFormLatitude(defaultLat);
+    setNodeFormLongitude(defaultLng);
     setNodeFormCountryCode(currentCountryNode?.countryCode || (currentCountry === "Ethiopia" ? "ET" : "GLOBAL"));
     setIsNodeModalOpen(true);
   };
@@ -452,7 +480,7 @@ export function TerritoryAdministrationView({
   // React to external activeSubnav if passed from dashboard sidebar
   useEffect(() => {
     if (!activeSubnav) return;
-    if (activeSubnav === "map_radar") {
+    if (activeSubnav === "map_radar" || activeSubnav === "coverage") {
       setActiveTab("map_radar");
     } else if (activeSubnav === "subcities") {
       setActiveTab("hierarchy_tree");
@@ -876,7 +904,10 @@ export function TerritoryAdministrationView({
             {/* Tab 1: Map Radar */}
             <button
               type="button"
-              onClick={() => setActiveTab("map_radar")}
+              onClick={() => {
+                setActiveTab("map_radar");
+                onSubnavChange?.("map_radar");
+              }}
               className={`px-4 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all ${
                 activeTab === "map_radar"
                   ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
@@ -893,7 +924,10 @@ export function TerritoryAdministrationView({
             {/* Tab 2: Hierarchy Tree (Full Real CRUD) */}
             <button
               type="button"
-              onClick={() => setActiveTab("hierarchy_tree")}
+              onClick={() => {
+                setActiveTab("hierarchy_tree");
+                onSubnavChange?.(filterType === "district" ? "districts" : "subcities");
+              }}
               className={`px-4 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all ${
                 activeTab === "hierarchy_tree"
                   ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
@@ -1874,7 +1908,7 @@ export function TerritoryAdministrationView({
                 className="mt-1 w-full h-9 rounded-xl border border-input bg-background px-3 text-xs font-semibold"
               >
                 <option value="">None (Top-Level Sovereign Node)</option>
-                {territoriesList.map((t) => (
+                {(isCityAdmin ? scopedTerritoriesList : territoriesList).map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.type.toUpperCase()}: {t.name}
                   </option>

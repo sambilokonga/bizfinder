@@ -398,49 +398,63 @@ export async function getGlobalVisitorsTelemetry(options: {
   try {
     const conn = await connectToDatabase();
     if (conn && mongoVisitorsCount > 0) {
-      const query: Record<string, any> = {};
+      const andClauses: any[] = [];
+
       if (visitorType) {
-        query.visitorType = visitorType;
+        andClauses.push({ visitorType });
+      }
+      if (targetCountry) {
+        andClauses.push({
+          $or: [
+            { targetBusinessCountry: new RegExp(`^${targetCountry}$`, "i") },
+            { visitorCountry: new RegExp(`^${targetCountry}$`, "i") },
+            { registeredBy: new RegExp(targetCountry, "i") },
+          ],
+        });
       }
       if (targetCity) {
-        query.$or = [
-          { targetBusinessCity: new RegExp(`^${targetCity}$`, "i") },
-          { visitorCity: new RegExp(`^${targetCity}$`, "i") },
-        ];
-      } else if (targetCountry) {
-        query.$or = [
-          { targetBusinessCountry: new RegExp(`^${targetCountry}$`, "i") },
-          { visitorCountry: new RegExp(`^${targetCountry}$`, "i") },
-        ];
+        andClauses.push({
+          $or: [
+            { targetBusinessCity: new RegExp(`^${targetCity}$`, "i") },
+            { visitorCity: new RegExp(`^${targetCity}$`, "i") },
+            { registeredBy: new RegExp(targetCity, "i") },
+          ],
+        });
       }
       if (status) {
-        query.status = status;
+        andClauses.push({ status });
       }
       if (escalatedOnly) {
-        query.escalatedTo = { $ne: "none" };
+        andClauses.push({ escalatedTo: { $ne: "none" } });
+      }
+      if (continent) {
+        const originMatch = GLOBAL_VISITOR_ORIGINS.filter((o) => o.continent === continent).map((o) => o.country);
+        andClauses.push({ visitorCountry: { $in: originMatch } });
       }
       if (search) {
-        query.$or = [
-          { visitorName: { $regex: search, $options: "i" } },
-          { visitorCountry: { $regex: search, $options: "i" } },
-          { visitorCity: { $regex: search, $options: "i" } },
-          { targetBusinessName: { $regex: search, $options: "i" } },
-          { purpose: { $regex: search, $options: "i" } },
-          { id: { $regex: search, $options: "i" } },
-        ];
+        andClauses.push({
+          $or: [
+            { visitorName: { $regex: search, $options: "i" } },
+            { visitorCountry: { $regex: search, $options: "i" } },
+            { visitorCity: { $regex: search, $options: "i" } },
+            { targetBusinessName: { $regex: search, $options: "i" } },
+            { purpose: { $regex: search, $options: "i" } },
+            { id: { $regex: search, $options: "i" } },
+          ],
+        });
       }
+
+      const query = andClauses.length > 0 ? { $and: andClauses } : {};
 
       mongoTotal = await GlobalVisitorModel.countDocuments(query);
       const skip = (page - 1) * limit;
 
       const docs = await GlobalVisitorModel.find(query)
         .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
         .lean();
 
       if (docs && docs.length > 0) {
-        mongoItems = docs.map((d: any) => ({
+        const allMapped = docs.map((d: any) => ({
           id: d.id,
           visitorType: d.visitorType || "actual",
           visitorName: d.visitorName,
@@ -472,54 +486,61 @@ export async function getGlobalVisitorsTelemetry(options: {
             : "Recently active",
           referrer: d.referrer || "Global Business Directory Network",
         }));
+        mongoItems = allMapped.slice(skip, skip + limit);
+        filtered = allMapped;
       }
     }
   } catch (err: any) {
     console.warn("[GlobalVisitors] MongoDB find fallback to memory:", err.message);
   }
 
-  // Filter in-memory fallback
-  if (targetCity) {
-    filtered = filtered.filter(
-      (s) =>
-        s.targetBusinessCity.toLowerCase() === targetCity.toLowerCase() ||
-        s.visitorCity.toLowerCase() === targetCity.toLowerCase()
-    );
-  } else if (targetCountry) {
-    filtered = filtered.filter(
-      (s) =>
-        s.targetBusinessCountry.toLowerCase() === targetCountry.toLowerCase() ||
-        s.visitorCountry.toLowerCase() === targetCountry.toLowerCase()
-    );
-  }
+  // Filter in-memory fallback if Mongo wasn't used
+  if (mongoItems === null) {
+    if (targetCountry) {
+      filtered = filtered.filter(
+        (s) =>
+          s.targetBusinessCountry.toLowerCase() === targetCountry.toLowerCase() ||
+          s.visitorCountry.toLowerCase() === targetCountry.toLowerCase() ||
+          (s.registeredBy && s.registeredBy.toLowerCase().includes(targetCountry.toLowerCase()))
+      );
+    }
+    if (targetCity) {
+      filtered = filtered.filter(
+        (s) =>
+          s.targetBusinessCity.toLowerCase() === targetCity.toLowerCase() ||
+          s.visitorCity.toLowerCase() === targetCity.toLowerCase() ||
+          (s.registeredBy && s.registeredBy.toLowerCase().includes(targetCity.toLowerCase()))
+      );
+    }
 
-  if (visitorType) {
-    filtered = filtered.filter((s) => s.visitorType === visitorType);
-  }
+    if (visitorType) {
+      filtered = filtered.filter((s) => s.visitorType === visitorType);
+    }
 
-  if (status) {
-    filtered = filtered.filter((s) => s.status === status);
-  }
+    if (status) {
+      filtered = filtered.filter((s) => s.status === status);
+    }
 
-  if (escalatedOnly) {
-    filtered = filtered.filter((s) => s.escalatedTo && s.escalatedTo !== "none");
-  }
+    if (escalatedOnly) {
+      filtered = filtered.filter((s) => s.escalatedTo && s.escalatedTo !== "none");
+    }
 
-  if (continent) {
-    const originMatch = GLOBAL_VISITOR_ORIGINS.filter((o) => o.continent === continent).map((o) => o.country.toLowerCase());
-    filtered = filtered.filter((s) => originMatch.includes(s.visitorCountry.toLowerCase()));
-  }
+    if (continent) {
+      const originMatch = GLOBAL_VISITOR_ORIGINS.filter((o) => o.continent === continent).map((o) => o.country.toLowerCase());
+      filtered = filtered.filter((s) => originMatch.includes(s.visitorCountry.toLowerCase()));
+    }
 
-  if (search) {
-    filtered = filtered.filter(
-      (s) =>
-        s.visitorName?.toLowerCase().includes(search) ||
-        s.visitorCountry.toLowerCase().includes(search) ||
-        s.visitorCity.toLowerCase().includes(search) ||
-        s.targetBusinessName.toLowerCase().includes(search) ||
-        s.purpose.toLowerCase().includes(search) ||
-        s.id.toLowerCase().includes(search)
-    );
+    if (search) {
+      filtered = filtered.filter(
+        (s) =>
+          s.visitorName?.toLowerCase().includes(search) ||
+          s.visitorCountry.toLowerCase().includes(search) ||
+          s.visitorCity.toLowerCase().includes(search) ||
+          s.targetBusinessName.toLowerCase().includes(search) ||
+          s.purpose.toLowerCase().includes(search) ||
+          s.id.toLowerCase().includes(search)
+      );
+    }
   }
 
   const total = mongoItems !== null ? mongoTotal : filtered.length;
@@ -532,53 +553,117 @@ export async function getGlobalVisitorsTelemetry(options: {
     : filtered.slice(startIndex, startIndex + limit);
 
   // Future delegations separate subset
-  const futureDelegations = inMemoryGlobalVisitors.filter((s) => s.visitorType === "future").slice(0, 10);
+  const futureDelegations = filtered.filter((s) => s.visitorType === "future").slice(0, 15);
 
-  // Calculate volume & summary
-  const baseVolume = Math.max(4890, totalEventsInDb > 0 ? totalEventsInDb * 14 : 4890);
-  const scaling = targetCity ? 0.48 : targetCountry ? 0.88 : 1.0;
-  const totalGlobalViews = Math.round(baseVolume * scaling);
-  const uniqueGlobalVisitors = Math.round(totalGlobalViews * 0.74);
-  const internationalSharePercent = 81.2;
+  // ── 100% ACTUAL COUNTS COMPUTED FROM REAL DATABASE RECORDS ──
+  // 1. Actual Visitors vs Future Delegations
+  const actualCount = filtered.filter((s) => s.visitorType === "actual").length;
+  const futureCount = filtered.filter((s) => s.visitorType === "future").length;
+  const escalatedCount = filtered.filter((s) => s.escalatedTo && s.escalatedTo !== "none").length;
 
-  // Build visitor countries distribution
-  const visitorCountries: GlobalVisitorCountry[] = GLOBAL_VISITOR_ORIGINS.map((item, idx) => {
-    const count = Math.max(15, Math.round(totalGlobalViews * item.weight));
-    const pct = Number(((count / totalGlobalViews) * 100).toFixed(1));
-    const trendValues = ["+26.4%", "+21.2%", "+17.8%", "+14.3%", "+11.5%", "+8.9%", "+6.2%", "+4.8%"];
+  // 2. Actual Total Global Views (real analytics events recorded in DB + actual visitor sessions)
+  const totalGlobalViews = totalEventsInDb > 0 ? (totalEventsInDb + actualCount) : (actualCount || filtered.length);
+
+  // 3. Actual Unique Foreign Visitors (count of distinct IPs / devices)
+  const distinctIps = new Set(filtered.map((s) => s.visitorIp || s.id));
+  const uniqueGlobalVisitors = distinctIps.size;
+
+  // 4. Actual Countries Distribution (aggregated directly from real sessions)
+  const countryMap = new Map<string, { count: number; code: string; flag: string; continent: string; cities: Set<string> }>();
+  for (const s of filtered) {
+    const c = (s.visitorCountry || "").trim() || "Unknown";
+    if (!countryMap.has(c)) {
+      const originInfo = GLOBAL_VISITOR_ORIGINS.find((o) => o.country.toLowerCase() === c.toLowerCase());
+      countryMap.set(c, {
+        count: 0,
+        code: s.visitorCountryCode || originInfo?.code || getCountryCode(c),
+        flag: s.visitorFlag || originInfo?.flag || getCountryFlag(c),
+        continent: originInfo?.continent || "International",
+        cities: new Set(),
+      });
+    }
+    const item = countryMap.get(c)!;
+    item.count++;
+    if (s.visitorCity) item.cities.add(s.visitorCity);
+  }
+
+  const totalForPct = Math.max(1, filtered.length);
+  const visitorCountries: GlobalVisitorCountry[] = Array.from(countryMap.entries())
+    .map(([country, info]) => {
+      const pct = Number(((info.count / totalForPct) * 100).toFixed(1));
+      return {
+        country,
+        countryCode: info.code,
+        flag: info.flag,
+        continent: info.continent,
+        visitorCount: info.count,
+        percentage: pct,
+        topOriginCities: Array.from(info.cities).slice(0, 5),
+        trend: "Verified Live",
+      };
+    })
+    .sort((a, b) => b.visitorCount - a.visitorCount);
+
+  // 5. Actual Top Origin Country
+  const topOriginCountry = visitorCountries[0]?.country || "None recorded";
+  const topOriginFlag = visitorCountries[0]?.flag || "🌐";
+
+  // 6. Actual International Share Percentage
+  const domesticCountryName = (targetCountry || "ethiopia").toLowerCase();
+  const foreignCount = filtered.filter(
+    (s) => (s.visitorCountry || "").toLowerCase() !== domesticCountryName
+  ).length;
+  const internationalSharePercent = filtered.length > 0
+    ? Number(((foreignCount / filtered.length) * 100).toFixed(1))
+    : 100;
+
+  // 7. Actual Cities Breakdown
+  const cityMap = new Map<string, number>();
+  for (const s of filtered) {
+    const city = s.targetBusinessCity || s.visitorCity || (targetCity || "Addis Ababa");
+    cityMap.set(city, (cityMap.get(city) || 0) + 1);
+  }
+  const cityBreakdown = Array.from(cityMap.entries())
+    .map(([city, views]) => ({
+      city,
+      views,
+      percentage: filtered.length > 0 ? Math.round((views / filtered.length) * 100) : 0,
+    }))
+    .sort((a, b) => b.views - a.views);
+
+  // 8. Actual Peak Hour from recorded timestamps
+  const hourCounts = new Array(24).fill(0);
+  for (const s of filtered) {
+    if (s.timestamp) {
+      const h = new Date(s.timestamp).getHours();
+      if (!isNaN(h)) hourCounts[h]++;
+    }
+  }
+  const peakH = hourCounts.indexOf(Math.max(...hourCounts));
+  const peakHour = peakH >= 0 && Math.max(...hourCounts) > 0
+    ? `${String(peakH).padStart(2, "0")}:00 - ${String((peakH + 2) % 24).padStart(2, "0")}:00 GMT+3`
+    : "Live Real-Time Activity";
+
+  // 9. Actual Time Series from records over last 7 days
+  const timeSeries = Array.from({ length: 7 }).map((_, idx) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - idx));
+    const dateStr = d.toISOString().split("T")[0];
+    const daySessions = filtered.filter((s) => s.timestamp && s.timestamp.startsWith(dateStr));
+    const intlViews = daySessions.filter(
+      (s) => (s.visitorCountry || "").toLowerCase() !== domesticCountryName
+    ).length;
+    const domViews = daySessions.length - intlViews;
     return {
-      country: item.country,
-      countryCode: item.code,
-      flag: item.flag,
-      continent: item.continent,
-      visitorCount: count,
-      percentage: pct,
-      topOriginCities: item.cities,
-      trend: trendValues[idx % trendValues.length],
-    };
-  }).sort((a, b) => b.visitorCount - a.visitorCount);
-
-  // Top viewed cities in the admin's territory
-  const cityNames = targetCity
-    ? [targetCity]
-    : targetCountry?.toLowerCase() === "ethiopia" || !targetCountry
-    ? ["Addis Ababa", "Hawassa", "Dire Dawa", "Bahir Dar", "Bishoftu", "Mekelle", "Adama", "Gondar"]
-    : [targetCity || "Capital Central", "North Coast", "Metro Hub", "Commerce District"];
-
-  const cityBreakdown = cityNames.map((c, i) => {
-    const share = i === 0 ? 0.64 : i === 1 ? 0.16 : i === 2 ? 0.08 : 0.04;
-    return {
-      city: c,
-      views: Math.round(totalGlobalViews * share),
-      percentage: Math.round(share * 100),
+      date: dateStr,
+      internationalViews: intlViews,
+      domesticViews: domViews,
     };
   });
 
-  // Aggregate counts
-  const actualCount = inMemoryGlobalVisitors.filter((s) => s.visitorType === "actual").length;
-  const futureCount = inMemoryGlobalVisitors.filter((s) => s.visitorType === "future").length;
-  const escalatedCount = inMemoryGlobalVisitors.filter((s) => s.escalatedTo && s.escalatedTo !== "none").length;
-
+  // 10. Actual Activity Growth / Status
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const recentWeekCount = filtered.filter((s) => s.timestamp && new Date(s.timestamp) >= sevenDaysAgo).length;
   const jurisdictionType: "country" | "city" | "global" = targetCity
     ? "city"
     : targetCountry
@@ -591,20 +676,7 @@ export async function getGlobalVisitorsTelemetry(options: {
     ? targetCountry
     : "Worldwide (195 Countries)";
 
-  // Time series
-  const timeSeries = Array.from({ length: 7 }).map((_, idx) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - idx));
-    const dateStr = d.toISOString().split("T")[0];
-    const dayFactor = 0.82 + Math.sin(idx * 1.1) * 0.22;
-    const intlViews = Math.round((totalGlobalViews / 7) * dayFactor);
-    const domViews = Math.round(intlViews * 0.26);
-    return {
-      date: dateStr,
-      internationalViews: intlViews,
-      domesticViews: domViews,
-    };
-  });
+  const growthRate = recentWeekCount > 0 ? `${recentWeekCount} visits this week` : "Live Database";
 
   return {
     success: true,
@@ -613,13 +685,13 @@ export async function getGlobalVisitorsTelemetry(options: {
       jurisdictionName,
       totalGlobalViews,
       uniqueGlobalVisitors,
-      countriesRepresentedCount: visitorCountries.length + 18,
-      topOriginCountry: visitorCountries[0]?.country || "United States",
-      topOriginFlag: visitorCountries[0]?.flag || "🇺🇸",
+      countriesRepresentedCount: visitorCountries.length,
+      topOriginCountry,
+      topOriginFlag,
       internationalSharePercent,
       topViewedCity: cityBreakdown[0]?.city || targetCity || "Addis Ababa",
-      peakHour: "18:00 - 22:30 GMT+3 (Diaspora Peak)",
-      growthRate: "+24.6% vs last month",
+      peakHour,
+      growthRate,
       actualVisitorsCount: actualCount,
       futureVisitorsCount: futureCount,
       escalatedCount,
@@ -809,4 +881,60 @@ export async function updateGlobalVisitorStatus(
   }
 
   return visitorIndex !== -1 ? inMemoryGlobalVisitors[visitorIndex] : null;
+}
+
+/**
+ * Update visitor full details (notes, contact, status, purpose, delegationSize, etc.)
+ */
+export async function updateGlobalVisitorDetails(
+  visitorId: string,
+  updates: Partial<GlobalUserSession>
+): Promise<GlobalUserSession | null> {
+  const visitorIndex = inMemoryGlobalVisitors.findIndex((v) => v.id === visitorId);
+  if (visitorIndex !== -1) {
+    inMemoryGlobalVisitors[visitorIndex] = {
+      ...inMemoryGlobalVisitors[visitorIndex],
+      ...updates,
+    };
+  }
+
+  try {
+    const conn = await connectToDatabase();
+    if (conn) {
+      const sanitizedUpdates: any = { ...updates, updatedAt: new Date() };
+      delete sanitizedUpdates.id;
+      delete sanitizedUpdates._id;
+      if (sanitizedUpdates.scheduledDate) {
+        sanitizedUpdates.scheduledDate = new Date(sanitizedUpdates.scheduledDate);
+      }
+      await GlobalVisitorModel.findOneAndUpdate(
+        { id: visitorId },
+        { $set: sanitizedUpdates }
+      );
+    }
+  } catch (err: any) {
+    console.warn("[GlobalVisitors] MongoDB update details error:", err.message);
+  }
+
+  return visitorIndex !== -1 ? inMemoryGlobalVisitors[visitorIndex] : null;
+}
+
+/**
+ * Delete a global visitor from memory and database
+ */
+export async function deleteGlobalVisitor(visitorId: string): Promise<boolean> {
+  const initialLength = inMemoryGlobalVisitors.length;
+  inMemoryGlobalVisitors = inMemoryGlobalVisitors.filter((v) => v.id !== visitorId);
+  const deletedFromMemory = inMemoryGlobalVisitors.length < initialLength;
+
+  try {
+    const conn = await connectToDatabase();
+    if (conn) {
+      await GlobalVisitorModel.deleteOne({ id: visitorId });
+    }
+  } catch (err: any) {
+    console.warn("[GlobalVisitors] MongoDB delete error:", err.message);
+  }
+
+  return deletedFromMemory;
 }

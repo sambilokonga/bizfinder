@@ -110,7 +110,7 @@ let GEO_ADMINS_ROSTER: GeoAdminRecord[] = [
   },
   {
     id: "geo-adm-city-addis",
-    name: "Elena Vance",
+    name: "Selamawit Nega",
     email: "addis.admin@bizfinder.et",
     role: "city_admin",
     assignedCountry: "Ethiopia",

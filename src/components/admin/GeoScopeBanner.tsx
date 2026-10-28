@@ -241,7 +241,7 @@ export function GeoScopeBanner({
               <select
                 value={selectedCity}
                 onChange={(e) => onCityChange(e.target.value)}
-                className="h-6 xs:h-7 sm:h-7.5 md:h-8 max-w-[110px] xs:max-w-[130px] sm:max-w-[155px] md:max-w-[180px] lg:max-w-[210px] rounded-md xs:rounded-lg sm:rounded-xl bg-slate-800 border border-white/20 px-1.5 xs:px-2 sm:px-2.5 text-[9px] xs:text-[10px] sm:text-[11px] md:text-xs font-semibold text-white focus:ring-2 focus:ring-indigo-400 cursor-pointer truncate"
+                className="h-7 xs:h-8 sm:h-8 md:h-9 min-w-[100px] xs:min-w-[120px] sm:min-w-[140px] max-w-[140px] xs:max-w-[160px] sm:max-w-[185px] md:max-w-[210px] lg:max-w-[240px] rounded-lg xs:rounded-lg sm:rounded-xl bg-slate-800 border border-white/20 px-2 xs:px-2.5 sm:px-3 text-[11px] xs:text-xs sm:text-xs md:text-sm font-semibold text-white focus:ring-2 focus:ring-indigo-400 cursor-pointer"
               >
                 {!isCityAdmin && (
                   <option value="all">🏙️ All Cities</option>

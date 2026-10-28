@@ -44,8 +44,8 @@ let ADMIN_ROSTER: AdminAccount[] = [
   },
   {
     id: "adm-2",
-    name: "Elena Vance",
-    email: "elena.vance@bizfinder.et",
+    name: "Selamawit Nega",
+    email: "selamawit.nega@bizfinder.et",
     role: "admin",
     status: "active",
     departments: ["Business Operations", "Content Moderation"],

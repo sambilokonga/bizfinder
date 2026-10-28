@@ -3,6 +3,7 @@ import { SEED_BUSINESSES } from "@/lib/db/seed-data/businesses";
 import { SUBCITIES_DATABASE, getSubcitiesForCity } from "@/lib/data/subcities-database";
 import { COUNTRIES_WITH_CITIES, getCitiesForCountry } from "@/lib/data/countries-cities";
 import { CURATED_CITY_SECTORS, CuratedSectorItem } from "@/lib/data/curated-city-sectors";
+import { isBusinessInCategory } from "@/lib/utils/category-matcher";
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 
@@ -2348,7 +2349,15 @@ class GlobalCityBusinessStore {
       for (const sec of SECTOR_DEFS) {
         const sName = sec.name.toLowerCase();
         const sSlug = sec.slug.toLowerCase();
-        if (bCat === sName || bCatId === sec.id || bCatId === sSlug || bCat.includes(sName) || sName.includes(bCat)) {
+        if (
+          bCat === sName ||
+          bCatId === sec.id ||
+          bCatId === sSlug ||
+          bCat.includes(sName) ||
+          sName.includes(bCat) ||
+          isBusinessInCategory(b, sec.name) ||
+          isBusinessInCategory(b, sec.id)
+        ) {
           const arr = matchingRealBizMap.get(sec.id) || [];
           arr.push(b);
           matchingRealBizMap.set(sec.id, arr);
@@ -2397,25 +2406,14 @@ class GlobalCityBusinessStore {
       const realRejected = realMatches.filter(b => b.approvalStatus === "rejected").length;
       const realSuspended = realMatches.filter(b => b.approvalStatus === "suspended").length;
 
-      const baseCount = sectorVolumes[i];
+      // Real business counts strictly from registered businesses for this city/jurisdiction
+      const count = realCount;
+      const verified = realVerified;
+      const pending = realPending;
+      const rejected = realRejected;
+      const suspended = realSuspended;
 
-      // Verification health varies deterministically per sector per city
-      const verifyRate = 0.55 + this.seededRand(seed, i + 100) * 0.35; // 55%–90%
-      const pendingRate = 0.05 + this.seededRand(seed, i + 200) * 0.15;
-      const rejectRate = this.seededRand(seed, i + 300) * 0.08;
-
-      const baseVerified = Math.max(0, Math.round(baseCount * verifyRate));
-      const basePending = Math.max(0, Math.min(baseCount - baseVerified, Math.round(baseCount * pendingRate)));
-      const baseRejected = Math.max(0, Math.min(baseCount - baseVerified - basePending, Math.round(baseCount * rejectRate)));
-      const baseSuspended = baseCount - baseVerified - basePending - baseRejected;
-
-      const count = realCount > 0 ? (realCount + baseCount) : baseCount;
-      const verified = realCount > 0 ? (realVerified + baseVerified) : baseVerified;
-      const pending = realCount > 0 ? (realPending + basePending) : basePending;
-      const rejected = realCount > 0 ? (realRejected + baseRejected) : baseRejected;
-      const suspended = realCount > 0 ? (realSuspended + Math.max(0, baseSuspended)) : Math.max(0, baseSuspended);
-
-      // Top businesses: real registered businesses first, then fallback to name pool
+      // Top businesses: real registered businesses
       const realTop = realMatches.map((b) => ({
         id: b.id,
         name: b.name,
@@ -2424,21 +2422,11 @@ class GlobalCityBusinessStore {
         districtName: b.districtName || b.cityName || geoLabel,
       }));
 
-      const namePool = bizNames[sec.name] || [`${geoLabel} ${sec.name} Enterprise`, `${geoLabel} Metro ${sec.name}`, `${geoLabel} Premier ${sec.name}`];
-      const topCount = Math.max(0, Math.min(4 - realTop.length, count));
-      const syntheticTop = Array.from({ length: topCount }, (_, j) => ({
-        id: `${sec.id}-${geoLabel.toLowerCase().replace(/[^a-z0-9]/g, "")}-${j}`,
-        name: namePool[j % namePool.length],
-        isVerified: j < verified,
-        ratingAvg: Number((4.0 + this.seededRand(seed, i * 10 + j) * 0.9).toFixed(1)),
-        districtName: `${geoLabel} ${["Central", "Downtown", "Westside", "North Quarter", "Business District"][j % 5]}`,
-      }));
-
-      const topBusinesses = [...realTop, ...syntheticTop].slice(0, 4);
+      const topBusinesses = realTop.slice(0, 4);
 
       // Sector status
       const statusLabel: "Core Sector" | "Active Sector" | "Emerging" =
-        count >= 8 * countMultiplier ? "Core Sector" :
+        count >= 5 ? "Core Sector" :
         count > 0 ? "Active Sector" :
         "Emerging";
 

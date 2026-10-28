@@ -4,6 +4,8 @@ import {
   registerGlobalVisitor,
   escalateGlobalVisitor,
   updateGlobalVisitorStatus,
+  updateGlobalVisitorDetails,
+  deleteGlobalVisitor,
 } from "@/lib/analytics/globalVisitors";
 
 export async function GET(request: Request) {
@@ -71,7 +73,7 @@ export async function POST(request: Request) {
       contactPhone,
       notes,
       registeredBy,
-      jurisdictionLevel = "city",
+      jurisdictionLevel,
       escalatedTo = "none",
       escalationNotes,
       referrer,
@@ -108,8 +110,8 @@ export async function POST(request: Request) {
       contactEmail,
       contactPhone,
       notes,
-      registeredBy: registeredBy || "City Admin",
-      jurisdictionLevel,
+      registeredBy: registeredBy || "Super Admin",
+      jurisdictionLevel: jurisdictionLevel || (registeredBy?.toLowerCase().includes("super") ? "global" : "city"),
       escalatedTo,
       escalationNotes,
       referrer,
@@ -132,7 +134,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { visitorId, actionType, targetLevel, status, notes, adminName } = body;
+    const { visitorId, actionType, targetLevel, status, notes, adminName, updates } = body;
 
     if (!visitorId) {
       return NextResponse.json(
@@ -173,14 +175,57 @@ export async function PATCH(request: Request) {
       });
     }
 
+    if (actionType === "update_details") {
+      const updated = await updateGlobalVisitorDetails(visitorId, updates || {});
+      return NextResponse.json({
+        success: true,
+        data: updated,
+        message: "Visitor details successfully updated",
+      });
+    }
+
     return NextResponse.json(
-      { success: false, error: "Invalid actionType. Must be 'escalate' or 'update_status'." },
+      { success: false, error: "Invalid actionType. Must be 'escalate', 'update_status', or 'update_details'." },
       { status: 400 }
     );
   } catch (error: any) {
     console.error("[API /admin/global-visitors PATCH] Error:", error);
     return NextResponse.json(
       { success: false, error: error.message || "Failed to update global visitor" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    let visitorId = searchParams.get("visitorId");
+
+    if (!visitorId) {
+      try {
+        const body = await request.json();
+        visitorId = body.visitorId;
+      } catch (_) {}
+    }
+
+    if (!visitorId) {
+      return NextResponse.json(
+        { success: false, error: "Missing required parameter: visitorId" },
+        { status: 400 }
+      );
+    }
+
+    const deleted = await deleteGlobalVisitor(visitorId);
+    return NextResponse.json({
+      success: true,
+      deleted,
+      message: `Global visitor record ${visitorId} deleted successfully`,
+    });
+  } catch (error: any) {
+    console.error("[API /admin/global-visitors DELETE] Error:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to delete global visitor" },
       { status: 500 }
     );
   }

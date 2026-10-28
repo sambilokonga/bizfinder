@@ -92,6 +92,7 @@ import { Business } from "@/types/business";
 import { SEED_BUSINESSES } from "@/lib/db/seed-data/businesses";
 import { SEED_CATEGORIES } from "@/lib/db/seed-data/categories";
 import { COUNTRIES_WITH_CITIES, getCitiesForCountry } from "@/lib/data/countries-cities";
+import { globalCityRegistry } from "@/lib/data/city-business-registry";
 import { SUBCITIES_DATABASE } from "@/lib/data/subcities-database";
 import { exportUsersToCSV, exportUsersToJSON } from "@/lib/utils/export-users";
 import { exportBusinessesToCSV, exportBusinessesToJSON } from "@/lib/utils/export-businesses";
@@ -112,6 +113,7 @@ import { AssignGeoAdminModal } from "@/components/admin/AssignGeoAdminModal";
 import { GeoAdminRecord } from "@/app/api/admin/geo-admins/route";
 import { CategoryIconBadge } from "@/lib/utils/category-icon-helper";
 import { isBusinessInCategory } from "@/lib/utils/category-matcher";
+import { TerritoryAdministrationView } from "@/components/admin/TerritoryAdministrationView";
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 
@@ -554,7 +556,7 @@ const INITIAL_CITY_AUDIT_LOGS: MunicipalAuditLog[] = [
     action: "Listing Approved & Verified",
     targetName: "Kategna Ethiopian Restaurant",
     targetType: "Business",
-    adminName: "Elena Vance (City Admin)",
+    adminName: "Selamawit Nega (City Admin)",
     ipAddress: "197.156.104.18",
     status: "success",
   },
@@ -564,7 +566,7 @@ const INITIAL_CITY_AUDIT_LOGS: MunicipalAuditLog[] = [
     action: "Ownership Claim Certified",
     targetName: "Tomoca Coffee (Bole)",
     targetType: "Claim",
-    adminName: "Elena Vance (City Admin)",
+    adminName: "Selamawit Nega (City Admin)",
     ipAddress: "197.156.104.18",
     status: "success",
   },
@@ -574,7 +576,7 @@ const INITIAL_CITY_AUDIT_LOGS: MunicipalAuditLog[] = [
     action: "Citizen Dispute Resolved",
     targetName: "Bole Tech Hub (#rep-aa-101)",
     targetType: "Business",
-    adminName: "Elena Vance (City Admin)",
+    adminName: "Selamawit Nega (City Admin)",
     ipAddress: "197.156.104.18",
     status: "success",
   },
@@ -584,7 +586,7 @@ const INITIAL_CITY_AUDIT_LOGS: MunicipalAuditLog[] = [
     action: "Broadcasted City Notice",
     targetName: "Annual Commercial License Renewal",
     targetType: "Bulletin",
-    adminName: "Elena Vance (City Admin)",
+    adminName: "Selamawit Nega (City Admin)",
     ipAddress: "197.156.104.18",
     status: "success",
   },
@@ -594,7 +596,7 @@ const INITIAL_CITY_AUDIT_LOGS: MunicipalAuditLog[] = [
     action: "Commercial Zone Registered",
     targetName: "Bole Medhanialem Corridor",
     targetType: "District",
-    adminName: "Elena Vance (City Admin)",
+    adminName: "Selamawit Nega (City Admin)",
     ipAddress: "197.156.104.18",
     status: "success",
   },
@@ -604,7 +606,7 @@ const INITIAL_CITY_AUDIT_LOGS: MunicipalAuditLog[] = [
     action: "Flagged Policy Violation Review",
     targetName: "Competitor Account (#rev-aa-03)",
     targetType: "Review",
-    adminName: "Elena Vance (City Admin)",
+    adminName: "Selamawit Nega (City Admin)",
     ipAddress: "197.156.104.18",
     status: "warning",
   },
@@ -976,12 +978,13 @@ export default function CityAdminDashboard() {
   }, [selectedCountry, selectedCity]);
 
   // ── Fetch City Businesses ─────────────────────────────────────────────────
-  const fetchBusinesses = useCallback(async (page = 1, status = "all") => {
+  const fetchBusinesses = useCallback(async (page = 1, status = "all", categoryOverride?: string) => {
     setIsLoadingBiz(true);
     try {
+      const effectiveCategory = categoryOverride !== undefined ? categoryOverride : selectedCategoryFilter;
       const q = businessSearch.trim() ? `&q=${encodeURIComponent(businessSearch.trim())}` : "";
-      const catParam = selectedCategoryFilter && selectedCategoryFilter !== "all"
-        ? `&category=${encodeURIComponent(selectedCategoryFilter)}`
+      const catParam = effectiveCategory && effectiveCategory !== "all"
+        ? `&category=${encodeURIComponent(effectiveCategory)}`
         : "";
       const statusParam = status && status !== "all" && status !== "overview" ? status : "all";
       const res = await fetch(
@@ -994,22 +997,37 @@ export default function CityAdminDashboard() {
         setBizTotalPages(data.totalPages ?? Math.max(1, Math.ceil((data.total ?? data.businesses.length) / BIZ_PAGE_LIMIT)));
         setBizTotal(data.total ?? data.businesses.length);
       } else {
-        const filtered = SEED_BUSINESSES.filter(
-          (b) =>
-            b.cityName?.toLowerCase() === selectedCity.toLowerCase() ||
-            b.countryName?.toLowerCase() === selectedCountry.toLowerCase()
-        );
-        const fallback = filtered.length > 0 ? filtered : SEED_BUSINESSES.slice(0, 15);
-        setBusinesses(fallback.slice((page - 1) * BIZ_PAGE_LIMIT, page * BIZ_PAGE_LIMIT));
-        setBizTotalPages(Math.max(1, Math.ceil(fallback.length / BIZ_PAGE_LIMIT)));
-        setBizTotal(fallback.length);
+        const fromRegistry = globalCityRegistry.getBusinessesForCity(selectedCity, selectedCountry);
+        const cityList = fromRegistry.length > 0
+          ? fromRegistry
+          : SEED_BUSINESSES.filter(
+              (b) =>
+                (b.cityName || "").toLowerCase() === selectedCity.toLowerCase() &&
+                (!selectedCountry || selectedCountry === "all" || (b.countryName || "").toLowerCase() === selectedCountry.toLowerCase())
+            );
+        let filtered = cityList;
+        if (effectiveCategory && effectiveCategory !== "all") {
+          filtered = filtered.filter(
+            (b) =>
+              isBusinessInCategory(b, effectiveCategory) ||
+              (b.categoryName || "").toLowerCase() === effectiveCategory.toLowerCase()
+          );
+        }
+        setBusinesses(filtered.slice((page - 1) * BIZ_PAGE_LIMIT, page * BIZ_PAGE_LIMIT));
+        setBizTotalPages(Math.max(1, Math.ceil(filtered.length / BIZ_PAGE_LIMIT)));
+        setBizTotal(filtered.length);
         setBizPage(page);
       }
     } catch (e) {
       console.warn("Failed to fetch city businesses, falling back to seed:", e);
-      setBusinesses(SEED_BUSINESSES.slice(0, BIZ_PAGE_LIMIT));
-      setBizTotalPages(1);
-      setBizTotal(SEED_BUSINESSES.length);
+      const fromRegistry = globalCityRegistry.getBusinessesForCity(selectedCity, selectedCountry);
+      let list = fromRegistry.length > 0 ? fromRegistry : SEED_BUSINESSES;
+      if (selectedCategoryFilter && selectedCategoryFilter !== "all") {
+        list = list.filter((b) => isBusinessInCategory(b, selectedCategoryFilter));
+      }
+      setBusinesses(list.slice(0, BIZ_PAGE_LIMIT));
+      setBizTotalPages(Math.max(1, Math.ceil(list.length / BIZ_PAGE_LIMIT)));
+      setBizTotal(list.length);
     } finally {
       setIsLoadingBiz(false);
     }
@@ -1484,7 +1502,7 @@ export default function CityAdminDashboard() {
     const f = fetchersRef.current;
     f.fetchCityStats();
     if (activeNav === "dashboard" || activeNav === "businesses") {
-      f.fetchBusinesses(1, activeSubnav);
+      f.fetchBusinesses(1, activeSubnav, selectedCategoryFilter);
     } else if (activeNav === "users") {
       f.fetchCityUsers(1, activeSubnav);
     } else if (activeNav === "categories") {
@@ -1516,6 +1534,7 @@ export default function CityAdminDashboard() {
     activeSubnav,
     selectedCountry,
     selectedCity,
+    selectedCategoryFilter,
     userRoleFilter,
     userSearch,
     payStatusFilter,
@@ -1525,6 +1544,18 @@ export default function CityAdminDashboard() {
     supportStatusFilter,
     supportSearch,
   ]);
+
+  // ── All businesses for the selected city (used for accurate per-category counts)
+  const cityAllSeedBusinesses = useMemo(() => {
+    const fromRegistry = globalCityRegistry.getBusinessesForCity(selectedCity, selectedCountry);
+    if (fromRegistry.length > 0) return fromRegistry;
+    const matched = SEED_BUSINESSES.filter(
+      (b) =>
+        (b.cityName || "").toLowerCase() === selectedCity.toLowerCase() &&
+        (!selectedCountry || selectedCountry === "all" || (b.countryName || "").toLowerCase() === selectedCountry.toLowerCase())
+    );
+    return matched;
+  }, [selectedCity, selectedCountry]);
 
   // ── Filtered Businesses in this City ──────────────────────────────────────
   const filteredBusinesses = useMemo(() => {
@@ -1549,8 +1580,8 @@ export default function CityAdminDashboard() {
       if (activeNav === "businesses") {
         if (activeSubnav === "pending" && b.isVerified) return false;
         if (activeSubnav === "verified" && !b.isVerified) return false;
-        if (activeSubnav === "rejected" && bAny.adminStatus !== "rejected") return false;
-        if (activeSubnav === "suspended" && bAny.adminStatus !== "suspended") return false;
+        if (activeSubnav === "rejected" && bAny.adminStatus !== "rejected" && bAny.approvalStatus !== "rejected") return false;
+        if (activeSubnav === "suspended" && bAny.adminStatus !== "suspended" && bAny.approvalStatus !== "suspended") return false;
         if (activeSubnav === "claimed" && !bAny.isClaimed && !bAny.claimedByUserId) return false;
       }
 
@@ -2263,9 +2294,10 @@ export default function CityAdminDashboard() {
                   ])}
 
                   {renderSidebarItem("locations", "Locations", <MapPin className="w-4 h-4 text-rose-500" />, false, [
+                    { key: "map_radar", label: "Geographic Radar Map" },
                     { key: "subcities", label: "Sub-Cities & Woredas", count: activeSubcitiesList.length },
                     { key: "districts", label: "Commercial Corridors" },
-                    { key: "coverage", label: "Density & Coverage" },
+                    { key: "register", label: "+ Register Location" },
                   ])}
                 </div>
               )}
@@ -2572,30 +2604,14 @@ export default function CityAdminDashboard() {
                 </div>
               </div>
 
-              {/* ─── Global Visitors Telemetry Snippet ─── */}
-              <div className="p-5 rounded-3xl bg-card border border-border shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-5 h-5 text-cyan-400" />
-                    <h3 className="text-sm font-bold text-foreground">
-                      International Visitor Telemetry for {selectedCity}
-                    </h3>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Track diaspora and international consumers viewing storefronts, restaurants, and medical centers in {selectedCity}.
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setActiveNav("global_visitors");
-                    setActiveSubnav("overview");
-                  }}
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs gap-1.5 shrink-0"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  Open Global Visitors Matrix →
-                </Button>
+              {/* ─── Global Visitors Telemetry Matrix ─── */}
+              <div className="pt-2">
+                <GlobalVisitorsMatrix
+                  currentRole="city_admin"
+                  targetCountry={selectedCountry}
+                  targetCity={selectedCity}
+                  businessesList={businesses.map((b) => ({ id: b.id, name: b.name }))}
+                />
               </div>
 
               {/* Charts Grid */}
@@ -2761,41 +2777,12 @@ export default function CityAdminDashboard() {
                 </p>
               </div>
 
-              {renderSubnavTabs([
-                { key: "overview", label: "City Reach & Matrix" },
-                { key: "origins", label: "Top Visitor Countries" },
-                { key: "inquiries", label: "International Leads" },
-              ])}
-
-              {/* International Reach KPI Summary */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-4 rounded-2xl bg-card border border-border">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase">🌍 Global Views</div>
-                  <div className="text-xl font-black text-cyan-500 mt-1">14,890</div>
-                  <div className="text-[10px] text-emerald-500 font-bold mt-0.5">+28.4% this month</div>
-                </div>
-                <div className="p-4 rounded-2xl bg-card border border-border">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase">🏳️ Countries Represented</div>
-                  <div className="text-xl font-black text-foreground mt-1">42 Nations</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Top: USA, UK, UAE</div>
-                </div>
-                <div className="p-4 rounded-2xl bg-card border border-border">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase">💼 Business Inquiries</div>
-                  <div className="text-xl font-black text-indigo-500 mt-1">312 Leads</div>
-                  <div className="text-[10px] text-indigo-400 mt-0.5">Direct merchant contacts</div>
-                </div>
-                <div className="p-4 rounded-2xl bg-card border border-border">
-                  <div className="text-[10px] font-bold text-muted-foreground uppercase">🏨 Hospitality & Tourism</div>
-                  <div className="text-xl font-black text-amber-500 mt-1">68% Share</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Dominant sector viewed</div>
-                </div>
-              </div>
-
-              {/* Interactive Global Visitors Matrix */}
+              {/* Interactive Global Visitors Matrix with Live Telemetry */}
               <GlobalVisitorsMatrix
                 currentRole="city_admin"
                 targetCountry={selectedCountry}
                 targetCity={selectedCity}
+                businessesList={businesses.map((b) => ({ id: b.id, name: b.name }))}
               />
             </div>
           )}
@@ -3163,8 +3150,10 @@ export default function CityAdminDashboard() {
                       <select
                         value={selectedCategoryFilter}
                         onChange={(e) => {
-                          setSelectedCategoryFilter(e.target.value);
+                          const val = e.target.value;
+                          setSelectedCategoryFilter(val);
                           setBizPage(1);
+                          fetchBusinesses(1, activeSubnav, val);
                         }}
                         className="h-10 px-3 rounded-2xl bg-background border border-border text-xs font-semibold text-foreground focus:outline-none max-w-[155px] truncate"
                       >
@@ -3186,7 +3175,7 @@ export default function CityAdminDashboard() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => fetchBusinesses(bizPage)}
+                        onClick={() => fetchBusinesses(bizPage, activeSubnav, selectedCategoryFilter)}
                         disabled={isLoadingBiz}
                         className="text-xs font-bold gap-1.5 h-10 rounded-2xl shrink-0"
                       >
@@ -3204,6 +3193,7 @@ export default function CityAdminDashboard() {
                           onClick={() => {
                             setSelectedCategoryFilter("all");
                             setBizPage(1);
+                            fetchBusinesses(1, activeSubnav, "all");
                           }}
                           className="hover:text-purple-800 ml-1 rounded-full p-0.5"
                           title="Clear category filter"
@@ -3378,17 +3368,11 @@ export default function CityAdminDashboard() {
                     const matchCount = typeof cat.businessCount === "number"
                       ? cat.businessCount
                       : (() => {
-                          const topMatch = topCategories.find(
-                            (t) =>
-                              t.name?.toLowerCase() === cat.name?.toLowerCase() ||
-                              t.name?.toLowerCase().includes(cat.name?.toLowerCase()) ||
-                              cat.name?.toLowerCase().includes(t.name?.toLowerCase())
-                          );
-                          if (topMatch && typeof topMatch.count === "number") return topMatch.count;
-
-                          return businesses.filter((b) =>
-                            isBusinessInCategory(b, cat.id || cat.name || cat.slug) ||
-                            b.categoryName?.toLowerCase() === cat.name?.toLowerCase() ||
+                          // Fallback: scan the city businesses dataset using exact filter matcher
+                          return cityAllSeedBusinesses.filter((b) =>
+                            isBusinessInCategory(b, cat.name) ||
+                            isBusinessInCategory(b, cat.id || cat.slug) ||
+                            (b.categoryName || "").toLowerCase() === (cat.name || "").toLowerCase() ||
                             b.categoryId === cat.id
                           ).length;
                         })();
@@ -3468,7 +3452,7 @@ export default function CityAdminDashboard() {
                               setBusinessSearch("");
                               setActiveNav("businesses");
                               setActiveSubnav("all");
-                              fetchBusinesses(1, "all");
+                              fetchBusinesses(1, "all", cat.name);
                             }}
                             className="h-6 text-[11px] font-bold text-purple-600 hover:text-purple-700 shrink-0 px-2"
                           >
@@ -3496,109 +3480,19 @@ export default function CityAdminDashboard() {
           )}
 
           {/* ════════════════════════════════════════════════════════════════
-              6. 🗺️ LOCATIONS & DISTRICTS
+              6. 🗺️ LOCATIONS & TERRITORY HIERARCHY
              ════════════════════════════════════════════════════════════════ */}
           {activeNav === "locations" && (
-            <div className="space-y-6 animate-in fade-in duration-200">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-xl font-black text-foreground flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-rose-500" />
-                    {selectedCity} — Sub-Cities, Districts & Commercial Corridors
-                  </h1>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Manage administrative subdivisions, commercial zones, and geographic density boundaries.
-                  </p>
-                </div>
-
-                <Button
-                  size="sm"
-                  onClick={() => setIsAddDistrictModalOpen(true)}
-                  className="bg-primary text-primary-foreground font-bold text-xs gap-1.5 shadow-md shadow-primary/20"
-                >
-                  <Plus className="w-4 h-4" />
-                  + Add Sub-City / Commercial Zone
-                </Button>
-              </div>
-
-              {renderSubnavTabs([
-                { key: "subcities", label: "Sub-Cities & Woredas", count: activeSubcitiesList.length },
-                { key: "districts", label: "Commercial Corridors" },
-                { key: "coverage", label: "Density & Coverage" },
-              ])}
-
-              {/* Sub-Cities Grid Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {(locationsList.length > 0 ? locationsList : activeSubcitiesList)
-                  .slice((locPage - 1) * LOC_PAGE_LIMIT, locPage * LOC_PAGE_LIMIT)
-                  .map((sc: any, idx: number) => {
-                    const locName = sc.name || `Zone ${idx + 1}`;
-                    const locCount = sc.count ?? 5;
-                    const focus = sc.commercialFocus || sc.type || "Primary commercial corridor and municipal market center.";
-                    const density = sc.densityIndex || (sc.type ? sc.type.toUpperCase() : "Active Zone");
-
-                    return (
-                      <div
-                        key={sc.id || sc.name || idx}
-                        className="p-5 rounded-3xl bg-card border border-border space-y-3 shadow-sm hover:border-rose-500/40 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-rose-500" />
-                            <h3 className="font-bold text-foreground text-sm">{locName}</h3>
-                          </div>
-                          <Badge variant="outline" className="text-[10px] font-bold border-rose-500/30 text-rose-600 bg-rose-500/10">
-                            {density}
-                          </Badge>
-                        </div>
-
-                        <p className="text-xs text-muted-foreground leading-relaxed">{focus}</p>
-
-                        <div className="space-y-1.5 pt-2 border-t border-border">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">Establishments:</span>
-                            <span className="font-bold font-mono text-foreground">{locCount} Listed</span>
-                          </div>
-                          <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-                            <div
-                              className="h-full bg-gradient-to-r from-rose-500 to-sky-500 rounded-full"
-                              style={{ width: `${Math.min(100, Math.max(15, locCount * 7))}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="pt-2 flex items-center justify-between">
-                          <span className="text-[10px] text-emerald-500 font-semibold">✓ Municipal Certified</span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setSelectedSubcityFilter(locName);
-                              setActiveNav("businesses");
-                              setActiveSubnav("all");
-                            }}
-                            className="h-7 text-xs font-bold text-sky-600 hover:text-sky-700"
-                          >
-                            Inspect Zone →
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-
-              {renderPaginationBar(
-                locPage,
-                locTotalPages,
-                locTotal || locationsList.length || activeSubcitiesList.length,
-                LOC_PAGE_LIMIT,
-                (p) => {
-                  setLocPage(p);
-                  fetchCityLocations(p);
-                },
-                isLocationsLoading,
-                "sub-cities & districts"
-              )}
+            <div className="space-y-6 max-w-7xl mx-auto">
+              <TerritoryAdministrationView
+                currentRole="city_admin"
+                currentCountry={selectedCountry}
+                currentCity={selectedCity}
+                onCountryChange={setSelectedCountry}
+                onCityChange={setSelectedCity}
+                activeSubnav={activeSubnav}
+                onSubnavChange={setActiveSubnav}
+              />
             </div>
           )}
 

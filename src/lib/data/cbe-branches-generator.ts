@@ -379,7 +379,7 @@ export const generateAll1969CBEBranches = generateAll500CBEBranches;
  * 30 City Admins for Ethiopia
  */
 export const ETHIOPIA_30_CITY_ADMINS = [
-  { city: "Addis Ababa", name: "Elena Vance", email: "addis.admin@bizfinder.et", phone: "+251 911 234 501" },
+  { city: "Addis Ababa", name: "Selamawit Nega", email: "addis.admin@bizfinder.et", phone: "+251 911 234 501" },
   { city: "Dire Dawa", name: "Abdi Mohammed", email: "diredawa.admin@bizfinder.et", phone: "+251 915 234 502" },
   { city: "Hawassa", name: "Kidus Assefa", email: "hawassa.admin@bizfinder.et", phone: "+251 916 234 503" },
   { city: "Bahir Dar", name: "Mulat Alemayehu", email: "bahirdar.admin@bizfinder.et", phone: "+251 918 234 504" },

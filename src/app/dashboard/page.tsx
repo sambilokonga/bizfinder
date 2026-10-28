@@ -132,7 +132,7 @@ import {
   requestDesktopNotificationPermission,
   showDesktopNotification,
 } from "@/hooks/useNotifications";
-import { NotificationBell } from "@/components/notifications/NotificationBell";
+
 import { RegisterAnalyticsModal } from "@/components/admin/RegisterAnalyticsModal";
 import { IAnalyticsEvent, AnalyticsStats } from "@/types/analytics";
 import { RegisterReportModal } from "@/components/admin/RegisterReportModal";
@@ -2849,10 +2849,6 @@ export default function OwnerDashboardPage() {
               ))}
             </select>
           </div>
-
-          {/* Real-time Notification Bell */}
-          <NotificationBell />
-
 
           {/* Quick Preview Profile */}
           <Link href={`/business/${selectedBusiness?.id || "biz-1"}`} target="_blank">

@@ -35,7 +35,7 @@ export const DEMO_USERS: Record<UserRole, DemoUser> = {
   },
   city_admin: {
     id: "user-city-admin-1",
-    name: "Elena Vance (City Admin)",
+    name: "Selamawit Nega (City Admin)",
     email: "cityadmin@bizfinder.et",
     role: "city_admin",
     avatarUrl: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=120&q=80",

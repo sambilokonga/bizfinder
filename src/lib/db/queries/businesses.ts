@@ -5,7 +5,7 @@ import { MediaModel } from "@/lib/db/models/Media";
 import { Business } from "@/types/business";
 import { BusinessSearchParams } from "@/types/api";
 import { extractYoutubeVideoId, getYoutubeThumbnail, isYoutubeUrl } from "@/lib/utils/youtube";
-import { getCategoryMongoCondition } from "@/lib/utils/category-matcher";
+import { getCategoryMongoCondition, isBusinessInCategory } from "@/lib/utils/category-matcher";
 import { resolveBusinessLocation } from "@/lib/utils/business-location";
 import { ensureBusinessLocationRegistered } from "@/lib/db/queries/locations";
 
@@ -223,8 +223,10 @@ export async function searchBusinesses(params: BusinessSearchParams) {
     if (params.category && params.category !== "all") {
       results = results.filter(
         (b) =>
+          isBusinessInCategory(b, params.category!) ||
           b.categoryId === params.category ||
           b.subcategoryId === params.category ||
+          (b.categoryName && b.categoryName.toLowerCase() === params.category!.toLowerCase()) ||
           b.slug.includes(params.category!)
       );
     }

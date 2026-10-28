@@ -2821,9 +2821,22 @@ export default function AdminControlPanel() {
           {activeNav === "global_visitors" && (
             <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto">
               <GlobalVisitorsMatrix
-                currentRole={geoScopeRole}
-                targetCountry={geoSelectedCountry}
-                targetCity={geoSelectedCity !== "all" ? geoSelectedCity : undefined}
+                currentRole={isCityAdmin ? "city_admin" : isCountryAdmin ? "country_admin" : isSuperAdmin ? "super_admin" : isOperationsAdmin ? "admin" : geoScopeRole}
+                targetCountry={
+                  geoSelectedCountry !== "all"
+                    ? geoSelectedCountry
+                    : (isCountryAdmin || isCityAdmin)
+                    ? (currentUser?.assignedCountry || "Ethiopia")
+                    : undefined
+                }
+                targetCity={
+                  geoSelectedCity !== "all"
+                    ? geoSelectedCity
+                    : isCityAdmin
+                    ? (currentUser?.assignedCity || "Addis Ababa")
+                    : undefined
+                }
+                businessesList={businesses.map((b) => ({ id: b.id, name: b.name }))}
               />
             </div>
           )}
@@ -2902,117 +2915,192 @@ export default function AdminControlPanel() {
 
               {/* ─── Role-Tailored Leadership & Jurisdiction Banner ─── */}
               {isSuperAdmin ? (
-                <div className="p-4 sm:p-5 lg:p-6 rounded-2xl sm:rounded-3xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/90 via-slate-900 to-purple-950/90 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-5">
-                  <div className="space-y-1.5 max-w-2xl">
-                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                      <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
-                      <h3 className="text-sm sm:text-base lg:text-lg font-black tracking-tight text-white">
-                        Super Admin Role Delegation & Clerk Dashboard Integration
-                      </h3>
-                      <Badge className="bg-amber-400/20 text-amber-300 border-amber-400/30 text-[9px] sm:text-[10px] font-bold py-0 sm:py-0.5">
-                        Super Admin Exclusive
-                      </Badge>
+                <div className="p-4 sm:p-5 lg:p-6 rounded-2xl sm:rounded-3xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/90 via-slate-900 to-purple-950/90 text-white shadow-xl space-y-3.5 sm:space-y-4">
+                  <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sm:gap-5">
+                    <div className="space-y-1.5 max-w-2xl">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                        <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+                        <h3 className="text-sm sm:text-base lg:text-lg font-black tracking-tight text-white">
+                          Super Admin Role Delegation & Clerk Dashboard Integration
+                        </h3>
+                        <Badge className="bg-amber-400/20 text-amber-300 border-amber-400/30 text-[9px] sm:text-[10px] font-bold py-0 sm:py-0.5">
+                          Super Admin Exclusive
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
+                        Appoint <strong>Country Main Admins</strong> (195 nations) and <strong>City Admins</strong> (30 cities per country). All assignments are instantly synchronized to your <strong>Clerk Dashboard publicMetadata</strong> and MongoDB.
+                      </p>
                     </div>
-                    <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
-                      Appoint <strong>Country Main Admins</strong> (195 nations) and <strong>City Admins</strong> (30 cities per country). All assignments are instantly synchronized to your <strong>Clerk Dashboard publicMetadata</strong> and MongoDB.
-                    </p>
-                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-1 text-[10px] sm:text-[11px] font-medium text-slate-300">
-                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">👑 Worldwide Super Admin</span>
-                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">🌍 195 Country Leads</span>
-                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">🏙️ 5,850 City Admins</span>
-                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">🔐 Clerk PublicMetadata Sync</span>
+
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
+                      <Button
+                        size="sm"
+                        onClick={() => setIsAssignGeoModalOpen(true)}
+                        className="h-7 sm:h-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-[11px] sm:text-xs gap-1 sm:gap-1.5 px-2.5 sm:px-3 shadow-lg shadow-indigo-500/30"
+                      >
+                        <UserPlus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        Appoint Territory Admin
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setActiveNav("geo_admins")}
+                        className="border-white/20 bg-white/10 hover:bg-white/20 text-white text-xs font-bold"
+                      >
+                        Manage 195 Nations →
+                      </Button>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
-                    <Button
-                      size="sm"
-                      onClick={() => setIsAssignGeoModalOpen(true)}
-                      className="h-7 sm:h-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-[11px] sm:text-xs gap-1 sm:gap-1.5 px-2.5 sm:px-3 shadow-lg shadow-indigo-500/30"
-                    >
-                      <UserPlus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                      Appoint Territory Admin
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setActiveNav("geo_admins")}
-                      className="border-white/20 bg-white/10 hover:bg-white/20 text-white text-xs font-bold"
-                    >
-                      Manage 195 Nations →
-                    </Button>
+                  <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 pt-2.5 border-t border-white/10 text-[10px] sm:text-[11px] font-medium text-slate-300 flex-wrap lg:flex-nowrap">
+                    <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">👑 Worldwide Super Admin</span>
+                    <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">🌍 195 Country Leads</span>
+                    <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">🏙️ 5,850 City Admins</span>
+                    <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">🔐 Clerk PublicMetadata Sync</span>
                   </div>
                 </div>
               ) : isCountryAdmin ? (
-                <div className="p-4 sm:p-5 lg:p-6 rounded-2xl sm:rounded-3xl border border-indigo-500/30 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-5">
-                  <div className="space-y-1.5 max-w-2xl">
-                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                      <span className="text-xl sm:text-2xl">🌍</span>
-                      <h3 className="text-sm sm:text-base lg:text-lg font-black tracking-tight text-white">
-                        {geoSelectedCountry} National Governance & Municipal Leadership
-                      </h3>
-                      <Badge className="bg-indigo-500/20 text-indigo-300 border-indigo-500/40 text-[9px] sm:text-[10px] font-bold py-0 sm:py-0.5">
-                        National Lead Admin
-                      </Badge>
+                <div className="p-4 sm:p-5 lg:p-6 rounded-2xl sm:rounded-3xl border border-indigo-500/30 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 text-white shadow-xl space-y-3.5 sm:space-y-4">
+                  <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sm:gap-5">
+                    <div className="space-y-1.5 max-w-2xl">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                        <span className="text-xl sm:text-2xl">🌍</span>
+                        <h3 className="text-sm sm:text-base lg:text-lg font-black tracking-tight text-white">
+                          {geoSelectedCountry} National Governance & Municipal Leadership
+                        </h3>
+                        <Badge className="bg-indigo-500/20 text-indigo-300 border-indigo-500/40 text-[9px] sm:text-[10px] font-bold py-0 sm:py-0.5">
+                          National Lead Admin
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
+                        You have national administrative authority for <strong>{geoSelectedCountry}</strong>. You can appoint and oversee <strong>City Admins</strong> across all 30 cities, verify national listings, and monitor global visitors viewing your country&apos;s businesses.
+                      </p>
                     </div>
-                    <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
-                      You have national administrative authority for <strong>{geoSelectedCountry}</strong>. You can appoint and oversee <strong>City Admins</strong> across all 30 cities, verify national listings, and monitor global visitors viewing your country&apos;s businesses.
-                    </p>
-                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-1 text-[10px] sm:text-[11px] font-medium text-slate-300">
-                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">🌍 {geoSelectedCountry} National Territory</span>
-                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">🏙️ 30 Municipal Districts</span>
-                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">🌐 International Visitor Tracking</span>
+
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
+                      <Button
+                        size="sm"
+                        onClick={() => setActiveNav("global_visitors")}
+                        className="h-7 sm:h-8 bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-bold text-[11px] sm:text-xs gap-1 sm:gap-1.5 px-2.5 sm:px-3 shadow-lg shadow-cyan-500/30"
+                      >
+                        <Globe className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        Global Visitors ({geoSelectedCountry === "all" ? (currentUser?.assignedCountry || "Ethiopia") : geoSelectedCountry})
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => setIsAssignGeoModalOpen(true)}
+                        className="h-7 sm:h-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-[11px] sm:text-xs gap-1 sm:gap-1.5 px-2.5 sm:px-3 shadow-lg shadow-indigo-500/30"
+                      >
+                        <UserPlus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        Appoint City Admin
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setActiveNav("geo_admins")}
+                        className="h-7 sm:h-8 border-white/20 bg-white/10 hover:bg-white/20 text-white text-[11px] sm:text-xs font-bold px-2.5 sm:px-3"
+                      >
+                        Manage City Admins →
+                      </Button>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
-                    <Button
-                      size="sm"
-                      onClick={() => setIsAssignGeoModalOpen(true)}
-                      className="h-7 sm:h-8 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-[11px] sm:text-xs gap-1 sm:gap-1.5 px-2.5 sm:px-3 shadow-lg shadow-indigo-500/30"
-                    >
-                      <UserPlus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                      Appoint City Admin
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setActiveNav("geo_admins")}
-                      className="h-7 sm:h-8 border-white/20 bg-white/10 hover:bg-white/20 text-white text-[11px] sm:text-xs font-bold px-2.5 sm:px-3"
-                    >
-                      Manage City Admins →
-                    </Button>
+                  <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 pt-2.5 border-t border-white/10 text-[10px] sm:text-[11px] font-medium text-slate-300 flex-wrap lg:flex-nowrap">
+                    <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">
+                      🌍 {geoSelectedCountry} National Territory
+                    </span>
+                    <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">
+                      🏙️ 30 Municipal Districts
+                    </span>
+                    <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">
+                      🌐 International Visitor Tracking
+                    </span>
+                  </div>
+                </div>
+              ) : isCityAdmin ? (
+                <div className="p-4 sm:p-5 lg:p-6 rounded-2xl sm:rounded-3xl border border-sky-500/30 bg-gradient-to-r from-slate-950 via-sky-950 to-slate-900 text-white shadow-xl space-y-3.5 sm:space-y-4">
+                  <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sm:gap-5">
+                    <div className="space-y-1.5 max-w-2xl">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                        <span className="text-xl sm:text-2xl">🏙️</span>
+                        <h3 className="text-sm sm:text-base lg:text-lg font-black tracking-tight text-white">
+                          {geoSelectedCity || "City"} Municipal Command Center
+                        </h3>
+                        <Badge className="bg-sky-500/20 text-sky-300 border-sky-500/40 text-[9px] sm:text-[10px] font-bold py-0 sm:py-0.5">
+                          Municipal Admin
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
+                        Municipal authority for <strong>{geoSelectedCity || "Addis Ababa"}</strong>, {geoSelectedCountry}. Manage business verification queues, local citizen claims, and track international users viewing listings in your city.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
+                      <Button
+                        size="sm"
+                        onClick={() => setActiveNav("global_visitors")}
+                        className="h-7 sm:h-8 bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-bold text-[11px] sm:text-xs gap-1 sm:gap-1.5 px-2.5 sm:px-3 shadow-lg shadow-cyan-500/30"
+                      >
+                        <Globe className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        Global Visitors ({geoSelectedCity !== "all" ? geoSelectedCity : (currentUser?.assignedCity || "Addis Ababa")})
+                      </Button>
+                      <a
+                        href="/city-admin"
+                        className="h-7 sm:h-8 px-2.5 sm:px-3.5 rounded-lg sm:rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-[11px] sm:text-xs gap-1 sm:gap-1.5 shadow-lg shadow-sky-500/30 inline-flex items-center"
+                      >
+                        <span>Open Municipal Portal →</span>
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 pt-2.5 border-t border-white/10 text-[10px] sm:text-[11px] font-medium text-slate-300 flex-wrap lg:flex-nowrap">
+                    <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">🏙️ {geoSelectedCity || "Addis Ababa"} City</span>
+                    <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">🌍 {geoSelectedCountry} Jurisdiction</span>
+                    <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">⚡ Real-Time Local Activity</span>
                   </div>
                 </div>
               ) : (
-                <div className="p-4 sm:p-5 lg:p-6 rounded-2xl sm:rounded-3xl border border-sky-500/30 bg-gradient-to-r from-slate-950 via-sky-950 to-slate-900 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-5">
-                  <div className="space-y-1.5 max-w-2xl">
-                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                      <span className="text-xl sm:text-2xl">🏙️</span>
-                      <h3 className="text-sm sm:text-base lg:text-lg font-black tracking-tight text-white">
-                        {geoSelectedCity || "City"} Municipal Command Center
-                      </h3>
-                      <Badge className="bg-sky-500/20 text-sky-300 border-sky-500/40 text-[9px] sm:text-[10px] font-bold py-0 sm:py-0.5">
-                        Municipal Admin
-                      </Badge>
+                <div className="p-4 sm:p-5 lg:p-6 rounded-2xl sm:rounded-3xl border border-emerald-500/30 bg-gradient-to-r from-slate-950 via-slate-900 to-emerald-950/80 text-white shadow-xl space-y-3.5 sm:space-y-4">
+                  <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sm:gap-5">
+                    <div className="space-y-1.5 max-w-2xl">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                        <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
+                        <h3 className="text-sm sm:text-base lg:text-lg font-black tracking-tight text-white">
+                          Platform Operations & Directory Operations Center
+                        </h3>
+                        <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 text-[9px] sm:text-[10px] font-bold py-0 sm:py-0.5">
+                          Operations Admin
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
+                        Oversee worldwide business verification queues, platform moderation, user accounts, and international visitor telemetry across all directory territories.
+                      </p>
                     </div>
-                    <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
-                      Municipal authority for <strong>{geoSelectedCity || "Addis Ababa"}</strong>, {geoSelectedCountry}. Manage business verification queues, local citizen claims, and track international users viewing listings in your city.
-                    </p>
-                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-1 text-[10px] sm:text-[11px] font-medium text-slate-300">
-                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">🏙️ {geoSelectedCity || "Addis Ababa"} City</span>
-                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">🌍 {geoSelectedCountry} Jurisdiction</span>
-                      <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full">⚡ Real-Time Local Activity</span>
+
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
+                      <Button
+                        size="sm"
+                        onClick={() => setActiveNav("global_visitors")}
+                        className="h-7 sm:h-8 bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-black text-[11px] sm:text-xs gap-1 sm:gap-1.5 px-2.5 sm:px-3 shadow-lg shadow-cyan-500/30"
+                      >
+                        <Globe className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                        Global Visitors Matrix
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setActiveNav("businesses")}
+                        className="h-7 sm:h-8 border-white/20 bg-white/10 hover:bg-white/20 text-white text-[11px] sm:text-xs font-bold px-2.5 sm:px-3"
+                      >
+                        Operations Queue →
+                      </Button>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
-                    <a
-                      href="/city-admin"
-                      className="h-7 sm:h-8 px-2.5 sm:px-3.5 rounded-lg sm:rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-[11px] sm:text-xs gap-1 sm:gap-1.5 shadow-lg shadow-sky-500/30 inline-flex items-center"
-                    >
-                      <span>Open Municipal Portal →</span>
-                    </a>
+                  <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 pt-2.5 border-t border-white/10 text-[10px] sm:text-[11px] font-medium text-slate-300 flex-wrap lg:flex-nowrap">
+                    <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">🛡️ Platform Operations</span>
+                    <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">🏢 Global Verification Queue</span>
+                    <span className="bg-white/10 px-2 sm:px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-flex items-center gap-1.5">🌐 International Visitor Telemetry</span>
                   </div>
                 </div>
               )}
@@ -3184,9 +3272,22 @@ export default function AdminControlPanel() {
               {/* ─── Global Users & International Visitor Reach Matrix ─── */}
               <div className="pt-2">
                 <GlobalVisitorsMatrix
-                  currentRole={geoScopeRole}
-                  targetCountry={geoSelectedCountry}
-                  targetCity={geoSelectedCity !== "all" ? geoSelectedCity : undefined}
+                  currentRole={isCityAdmin ? "city_admin" : isCountryAdmin ? "country_admin" : isSuperAdmin ? "super_admin" : isOperationsAdmin ? "admin" : geoScopeRole}
+                  targetCountry={
+                    geoSelectedCountry !== "all"
+                      ? geoSelectedCountry
+                      : (isCountryAdmin || isCityAdmin)
+                      ? (currentUser?.assignedCountry || "Ethiopia")
+                      : undefined
+                  }
+                  targetCity={
+                    geoSelectedCity !== "all"
+                      ? geoSelectedCity
+                      : isCityAdmin
+                      ? (currentUser?.assignedCity || "Addis Ababa")
+                      : undefined
+                  }
+                  businessesList={businesses.map((b) => ({ id: b.id, name: b.name }))}
                 />
               </div>
 

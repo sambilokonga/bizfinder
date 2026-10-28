@@ -34,6 +34,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Send,
+  Trash2,
+  Radio,
   SlidersHorizontal,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -43,20 +45,23 @@ import type {
   GlobalUserSession,
   GlobalVisitorsSummary,
   GlobalVisitorsResponse,
+  GlobalVisitorStatus,
+  EscalationTarget,
 } from "@/types/globalVisitors";
 import { RegisterGlobalVisitorModal } from "@/components/admin/RegisterGlobalVisitorModal";
+import { VisitorDossierModal } from "@/components/admin/VisitorDossierModal";
 import { toast } from "sonner";
 
 interface GlobalVisitorsMatrixProps {
   currentRole: "super_admin" | "country_admin" | "city_admin" | "admin";
-  targetCountry: string;
+  targetCountry?: string;
   targetCity?: string;
   className?: string;
   businessesList?: Array<{ id: string; name: string }>;
 }
 
 export function GlobalVisitorsMatrix({
-  currentRole,
+  currentRole = "super_admin",
   targetCountry,
   targetCity,
   className = "",
@@ -67,20 +72,52 @@ export function GlobalVisitorsMatrix({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedContinent, setSelectedContinent] = useState<string>("all");
   const [visitorTypeFilter, setVisitorTypeFilter] = useState<"all" | "actual" | "future">("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<
     "overview" | "visitors_list" | "future_delegations" | "admin_hierarchy" | "countries" | "live_feed"
   >("visitors_list");
 
-  // ── 20 Items Per Page State ──
+  // Pagination (20 Items Per Page)
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 20;
 
-  // Modal State
+  // Modal States
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+  const [selectedVisitorForDossier, setSelectedVisitorForDossier] = useState<GlobalUserSession | null>(null);
+  const [isDossierOpen, setIsDossierOpen] = useState(false);
   const [isEscalatingId, setIsEscalatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Live Radar State
+  const [isAutoRefreshLive, setIsAutoRefreshLive] = useState(false);
+  const [countdown, setCountdown] = useState(10);
+
+  // Dynamically resolved businesses list for modals
+  const [resolvedBusinesses, setResolvedBusinesses] = useState<Array<{ id: string; name: string }>>(businessesList);
 
   const effectiveCountry = targetCountry === "all" ? undefined : targetCountry;
   const effectiveCity = targetCity === "all" ? undefined : targetCity;
+
+  // Populate businesses if not provided
+  useEffect(() => {
+    if (businessesList.length > 0) {
+      setResolvedBusinesses(businessesList);
+    } else {
+      fetch("/api/businesses?limit=50")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.businesses && Array.isArray(data.businesses)) {
+            setResolvedBusinesses(
+              data.businesses.map((b: any) => ({
+                id: b.id || b._id,
+                name: b.name,
+              }))
+            );
+          }
+        })
+        .catch(() => {});
+    }
+  }, [businessesList]);
 
   const fetchGlobalVisitors = useCallback(async (page: number = currentPage) => {
     setIsLoading(true);
@@ -91,6 +128,7 @@ export function GlobalVisitorsMatrix({
       params.set("page", String(page));
       params.set("limit", String(itemsPerPage));
       if (visitorTypeFilter !== "all") params.set("type", visitorTypeFilter);
+      if (statusFilter !== "all") params.set("status", statusFilter);
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
       if (selectedContinent !== "all") params.set("continent", selectedContinent);
 
@@ -104,15 +142,35 @@ export function GlobalVisitorsMatrix({
     } finally {
       setIsLoading(false);
     }
-  }, [effectiveCountry, effectiveCity, currentPage, visitorTypeFilter, searchQuery, selectedContinent]);
+  }, [effectiveCountry, effectiveCity, currentPage, visitorTypeFilter, statusFilter, searchQuery, selectedContinent]);
 
   useEffect(() => {
     fetchGlobalVisitors(currentPage);
   }, [fetchGlobalVisitors, currentPage]);
 
+  // Auto-refresh countdown for Live Feed Radar
+  useEffect(() => {
+    if (!isAutoRefreshLive) return;
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          fetchGlobalVisitors(currentPage);
+          return 10;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isAutoRefreshLive, fetchGlobalVisitors, currentPage]);
+
   // Reset to page 1 when filters change
   const handleFilterChange = (type: "all" | "actual" | "future") => {
     setVisitorTypeFilter(type);
+    setCurrentPage(1);
+  };
+
+  const handleStatusFilterChange = (status: string) => {
+    setStatusFilter(status);
     setCurrentPage(1);
   };
 
@@ -149,13 +207,13 @@ export function GlobalVisitorsMatrix({
           visitorId,
           actionType: "escalate",
           targetLevel,
-          notes: `Escalated from City Admin (${effectiveCity || "Municipal"}) to ${targetLevel.replace("_", " ")} for strategic bilateral follow-up.`,
-          adminName: `${currentRole.replace("_", " ").toUpperCase()}`,
+          notes: `Escalated by ${currentRole.replace("_", " ").toUpperCase()} for high-stake trade coordination.`,
+          adminName: currentRole.toUpperCase(),
         }),
       });
       const resData = await res.json();
       if (res.ok && resData.success) {
-        toast.success(`Visitor lead successfully escalated to ${targetLevel === "super_admin" ? "Super Admin" : "Country Admin"}!`);
+        toast.success(`Visitor lead escalated to ${targetLevel === "super_admin" ? "Super Admin" : "Country Admin"}!`);
         fetchGlobalVisitors(currentPage);
       } else {
         toast.error(resData.error || "Failed to escalate visitor lead.");
@@ -181,13 +239,34 @@ export function GlobalVisitorsMatrix({
       });
       const resData = await res.json();
       if (res.ok && resData.success) {
-        toast.success("Visitor delegation status marked as 'Arrived' and converted to live active visitor!");
+        toast.success("Visitor status marked as 'Arrived' and converted to live active visitor!");
         fetchGlobalVisitors(currentPage);
       } else {
         toast.error(resData.error || "Failed to update status.");
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to update status.");
+    }
+  };
+
+  // Delete a visitor record
+  const handleDeleteVisitor = async (visitorId: string) => {
+    setDeletingId(visitorId);
+    try {
+      const res = await fetch(`/api/admin/global-visitors?visitorId=${visitorId}`, {
+        method: "DELETE",
+      });
+      const resData = await res.json();
+      if (res.ok && resData.success) {
+        toast.success("Global visitor record deleted successfully.");
+        fetchGlobalVisitors(currentPage);
+      } else {
+        toast.error(resData.error || "Failed to delete record.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete visitor record.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -205,12 +284,16 @@ export function GlobalVisitorsMatrix({
       "Country Code",
       "City",
       "Target Business",
+      "Target City",
+      "Target Country",
       "Action",
       "Purpose",
       "Status",
       "Escalated To",
       "Device",
       "IP",
+      "Referrer",
+      "Registered By",
       "Date",
     ];
     const rows = data.recentSessions.map((v) => [
@@ -221,12 +304,16 @@ export function GlobalVisitorsMatrix({
       `"${v.visitorCountryCode}"`,
       `"${v.visitorCity}"`,
       `"${v.targetBusinessName}"`,
+      `"${v.targetBusinessCity}"`,
+      `"${v.targetBusinessCountry}"`,
       `"${v.action}"`,
       `"${v.purpose}"`,
       `"${v.status}"`,
       `"${v.escalatedTo}"`,
       `"${v.visitorDevice}"`,
       `"${v.visitorIp}"`,
+      `"${v.referrer}"`,
+      `"${v.registeredBy}"`,
       `"${v.timestamp}"`,
     ]);
 
@@ -234,7 +321,7 @@ export function GlobalVisitorsMatrix({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `global_visitors_${effectiveCity || "all"}_page_${currentPage}.csv`);
+    link.setAttribute("download", `global_visitors_${effectiveCity || effectiveCountry || "worldwide"}_p${currentPage}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -325,8 +412,14 @@ export function GlobalVisitorsMatrix({
                 Live 20/Page Matrix
               </div>
               <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
-                <Shield className="w-3 h-3 text-indigo-400" />
-                City ⇄ Country ⇄ Super Admin Linked
+                <Crown className="w-3 h-3 text-purple-400" />
+                {currentRole === "super_admin"
+                  ? "Super Admin Global Headquarters"
+                  : currentRole === "country_admin"
+                  ? `Country Admin National Hub (${effectiveCountry || "Ethiopia"})`
+                  : currentRole === "admin"
+                  ? "Operations Admin Command Center"
+                  : `City Admin Municipal Hub (${effectiveCity || "Addis Ababa"})`}
               </div>
             </div>
 
@@ -335,11 +428,11 @@ export function GlobalVisitorsMatrix({
             </h2>
 
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Register actual global visitors, schedule future inbound delegations, and seamlessly coordinate with{" "}
-              <strong className="text-cyan-200">Country Admin</strong> and{" "}
-              <strong className="text-indigo-200">Super Admin</strong> across{" "}
+              Register actual global visitors, schedule future inbound delegations, and coordinate bilateral trade leads across{" "}
               <strong className="text-white">
-                {effectiveCity ? `${effectiveCity}, ${effectiveCountry || "Ethiopia"}` : effectiveCountry || "Ethiopia"}
+                {effectiveCity
+                  ? `${effectiveCity}, ${effectiveCountry || "Ethiopia"}`
+                  : effectiveCountry || "195 Worldwide Nations"}
               </strong>
               .
             </p>
@@ -385,11 +478,11 @@ export function GlobalVisitorsMatrix({
               <Eye className="w-3.5 h-3.5 text-cyan-400" />
             </div>
             <div className="text-2xl font-black text-white">
-              {data?.summary.totalGlobalViews.toLocaleString() || "—"}
+              {data?.summary.totalGlobalViews?.toLocaleString() ?? "0"}
             </div>
             <div className="text-[11px] text-emerald-400 font-bold mt-1 flex items-center gap-1">
               <TrendingUp className="w-3 h-3" />
-              {data?.summary.growthRate || "+24.6%"}
+              {data?.summary.growthRate || "Real-time Live"}
             </div>
           </div>
 
@@ -399,10 +492,10 @@ export function GlobalVisitorsMatrix({
               <Users className="w-3.5 h-3.5 text-sky-400" />
             </div>
             <div className="text-2xl font-black text-white">
-              {data?.summary.uniqueGlobalVisitors.toLocaleString() || "—"}
+              {data?.summary.uniqueGlobalVisitors?.toLocaleString() ?? "0"}
             </div>
             <div className="text-[11px] text-slate-300 font-medium mt-1">
-              {data?.summary.internationalSharePercent || 81.2}% int&apos;l share
+              {data?.summary.internationalSharePercent ?? 100}% int&apos;l share
             </div>
           </div>
 
@@ -412,7 +505,7 @@ export function GlobalVisitorsMatrix({
               <Calendar className="w-3.5 h-3.5 text-indigo-400" />
             </div>
             <div className="text-2xl font-black text-indigo-300">
-              {data?.summary.futureVisitorsCount || 12} Upcoming
+              {data?.summary.futureVisitorsCount ?? 0} Upcoming
             </div>
             <div className="text-[11px] text-indigo-200/80 font-medium mt-1">
               Diaspora & trade missions
@@ -425,54 +518,13 @@ export function GlobalVisitorsMatrix({
               <Globe className="w-3.5 h-3.5 text-emerald-400" />
             </div>
             <div className="text-lg font-black text-white truncate flex items-center gap-1.5">
-              <span>{data?.summary.topOriginFlag || "🇺🇸"}</span>
-              <span className="truncate">{data?.summary.topOriginCountry || "United States"}</span>
+              <span>{data?.summary.topOriginFlag || "🌐"}</span>
+              <span className="truncate">{data?.summary.topOriginCountry || "None recorded"}</span>
             </div>
             <div className="text-[11px] text-slate-300 font-medium mt-1">
-              Peak: {data?.summary.peakHour || "18:00 - 22:30 GMT+3"}
+              Peak: {data?.summary.peakHour || "Continuous"}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* ── Administrative Multi-Tier Coordination Banner ── */}
-      <div className="rounded-2xl border border-border/80 bg-gradient-to-r from-card via-card to-muted/40 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-            <ShieldCheck className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="text-xs font-black text-foreground flex items-center gap-2 flex-wrap">
-              <span>Integrated Multi-Tier Governance Active</span>
-              <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-                Live Jurisdiction Sync
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              City Admin ({effectiveCity || "Addis Ababa"}) ➔ Country Admin ({effectiveCountry || "Ethiopia"}) ➔ Super Admin (Global).
-              Escalate high-stake investment inquiries or trade delegations with one click.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setActiveTab("admin_hierarchy")}
-            className="text-xs font-bold rounded-xl gap-1.5 border-border hover:bg-muted"
-          >
-            <Shield className="w-3.5 h-3.5 text-indigo-500" />
-            Admin Matrix
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setIsRegisterModalOpen(true)}
-            className="text-xs font-black rounded-xl gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            Register Visitor
-          </Button>
         </div>
       </div>
 
@@ -502,6 +554,18 @@ export function GlobalVisitorsMatrix({
           >
             <Calendar className="w-3.5 h-3.5 text-indigo-500" />
             Future Delegations ({data?.futureDelegations?.length || 0})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("live_feed")}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeTab === "live_feed"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Radio className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
+            Live Activity Radar
           </button>
           <button
             type="button"
@@ -536,20 +600,20 @@ export function GlobalVisitorsMatrix({
             }`}
           >
             <Crown className="w-3.5 h-3.5 text-amber-500" />
-            Country & Super Admin
+            Governance Matrix
           </button>
         </div>
 
         {/* Search & Continent Filters */}
         <div className="flex items-center gap-2 flex-1 max-w-md">
           <div className="relative flex-1">
-            <Search className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 absolute left-2.5 xs:left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search visitor, country, hub, or listing..."
+              placeholder="Search visitor, country, hub, or business..."
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full h-7.5 xs:h-8 sm:h-8.5 pl-7.5 xs:pl-8 sm:pl-9 pr-3 rounded-lg xs:rounded-xl bg-background border border-border text-[10px] xs:text-[10.5px] sm:text-xs md:text-xs placeholder:text-[9.5px] xs:placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-xs focus:ring-2 focus:ring-primary outline-none truncate"
+              className="w-full h-8.5 pl-9 pr-3 rounded-xl bg-background border border-border text-xs focus:ring-2 focus:ring-primary outline-none truncate"
             />
           </div>
 
@@ -559,7 +623,7 @@ export function GlobalVisitorsMatrix({
               setSelectedContinent(e.target.value);
               setCurrentPage(1);
             }}
-            className="h-8 rounded-xl bg-background border border-border px-2 text-xs font-semibold focus:ring-2 focus:ring-primary outline-none"
+            className="h-8.5 rounded-xl bg-background border border-border px-2 text-xs font-semibold focus:ring-2 focus:ring-primary outline-none"
           >
             {continents.map((cont) => (
               <option key={cont} value={cont}>
@@ -570,13 +634,13 @@ export function GlobalVisitorsMatrix({
         </div>
       </div>
 
-      {/* ─── TAB: VISITORS LIST (20 PER PAGE WITH PAGINATION) ─────────────── */}
+      {/* ─── TAB 1: VISITORS LIST (20 PER PAGE WITH PAGINATION) ─────────────── */}
       {activeTab === "visitors_list" && (
         <div className="space-y-4">
-          {/* Sub-filter bar: Type (All / Actual / Future / Escalated) */}
+          {/* Sub-filter bar: Type (All / Actual / Future) + Status Filter */}
           <div className="flex items-center justify-between gap-3 flex-wrap bg-card border border-border p-3 rounded-2xl">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-muted-foreground mr-1">Filter:</span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-bold text-muted-foreground mr-1">Type:</span>
               <button
                 type="button"
                 onClick={() => handleFilterChange("all")}
@@ -610,6 +674,21 @@ export function GlobalVisitorsMatrix({
               >
                 Future Delegations
               </button>
+
+              <span className="text-xs font-bold text-muted-foreground ml-2 mr-1">Status:</span>
+              <select
+                value={statusFilter}
+                onChange={(e) => handleStatusFilterChange(e.target.value)}
+                className="h-7.5 px-2.5 rounded-lg border border-border bg-background text-xs font-semibold"
+              >
+                <option value="all">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="in_transit">In Transit</option>
+                <option value="arrived">Arrived</option>
+              </select>
             </div>
 
             <div className="text-xs text-muted-foreground font-semibold">
@@ -627,7 +706,7 @@ export function GlobalVisitorsMatrix({
                   <tr className="border-b border-border bg-muted/50 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                     <th className="p-3.5">Visitor / Delegation</th>
                     <th className="p-3.5">Origin Nation & Hub</th>
-                    <th className="p-3.5">Target Business in City</th>
+                    <th className="p-3.5">Target Business</th>
                     <th className="p-3.5">Action & Purpose</th>
                     <th className="p-3.5">Status & Timing</th>
                     <th className="p-3.5">Admin Governance</th>
@@ -645,12 +724,19 @@ export function GlobalVisitorsMatrix({
                   ) : !data?.recentSessions || data.recentSessions.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="p-8 text-center text-muted-foreground">
-                        No global visitors found matching current filters. Try resetting search or registering a new visitor.
+                        No global visitors found matching current filters. Click &quot;+ Register Global Visitor&quot; to log a new visitor.
                       </td>
                     </tr>
                   ) : (
                     data.recentSessions.map((session) => (
-                      <tr key={session.id} className="hover:bg-muted/40 transition-colors">
+                      <tr
+                        key={session.id}
+                        className="hover:bg-muted/40 transition-colors cursor-pointer"
+                        onClick={() => {
+                          setSelectedVisitorForDossier(session);
+                          setIsDossierOpen(true);
+                        }}
+                      >
                         {/* Visitor Info */}
                         <td className="p-3.5">
                           <div className="flex items-center gap-2.5">
@@ -736,8 +822,22 @@ export function GlobalVisitorsMatrix({
                         </td>
 
                         {/* Quick Actions */}
-                        <td className="p-3.5 text-right">
+                        <td className="p-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedVisitorForDossier(session);
+                                setIsDossierOpen(true);
+                              }}
+                              className="h-7 px-2 text-[10px] font-bold gap-1"
+                              title="View Full Dossier"
+                            >
+                              <Eye className="w-3 h-3 text-primary" />
+                              Dossier
+                            </Button>
+
                             {session.visitorType === "future" && session.status !== "arrived" && (
                               <Button
                                 size="sm"
@@ -746,38 +846,33 @@ export function GlobalVisitorsMatrix({
                                 className="h-7 px-2 text-[10px] font-bold border-cyan-500/30 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/10"
                                 title="Convert to Actual Arrived Visitor"
                               >
-                                Mark Arrived
+                                Arrived
                               </Button>
                             )}
 
-                            {session.escalatedTo === "none" ? (
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={isEscalatingId === session.id}
-                                  onClick={() => handleEscalate(session.id, "country_admin")}
-                                  className="h-7 px-2 text-[10px] font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
-                                  title="Escalate to Country Admin"
-                                >
-                                  ➔ Country Admin
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={isEscalatingId === session.id}
-                                  onClick={() => handleEscalate(session.id, "super_admin")}
-                                  className="h-7 px-2 text-[10px] font-bold border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10"
-                                  title="Escalate to Super Admin"
-                                >
-                                  ➔ Super Admin
-                                </Button>
-                              </div>
-                            ) : (
-                              <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                                ✓ Escalated
-                              </span>
+                            {session.escalatedTo === "none" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isEscalatingId === session.id}
+                                onClick={() => handleEscalate(session.id, "super_admin")}
+                                className="h-7 px-2 text-[10px] font-bold border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10"
+                                title="Escalate to Super Admin"
+                              >
+                                ➔ Super
+                              </Button>
                             )}
+
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={deletingId === session.id}
+                              onClick={() => handleDeleteVisitor(session.id)}
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                              title="Delete Record"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -847,7 +942,7 @@ export function GlobalVisitorsMatrix({
         </div>
       )}
 
-      {/* ─── TAB: FUTURE DELEGATIONS ───────────────────────────────────────── */}
+      {/* ─── TAB 2: FUTURE DELEGATIONS ───────────────────────────────────────── */}
       {activeTab === "future_delegations" && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -857,7 +952,7 @@ export function GlobalVisitorsMatrix({
                 Scheduled Future Delegations & Diaspora Missions
               </h3>
               <p className="text-xs text-muted-foreground">
-                Upcoming international trade missions, investor groups, and diaspora delegations visiting {effectiveCity || "Addis Ababa"}.
+                Upcoming international trade missions, investor groups, and diaspora delegations.
               </p>
             </div>
 
@@ -875,7 +970,11 @@ export function GlobalVisitorsMatrix({
               data.futureDelegations.map((delegation) => (
                 <div
                   key={delegation.id}
-                  className="rounded-3xl border border-indigo-500/20 bg-card p-5 space-y-4 hover:border-indigo-500/40 transition-all shadow-sm"
+                  className="rounded-3xl border border-indigo-500/20 bg-card p-5 space-y-4 hover:border-indigo-500/40 transition-all shadow-sm cursor-pointer"
+                  onClick={() => {
+                    setSelectedVisitorForDossier(delegation);
+                    setIsDossierOpen(true);
+                  }}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5">
@@ -915,7 +1014,7 @@ export function GlobalVisitorsMatrix({
                     {delegation.purpose}
                   </p>
 
-                  <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
+                  <div className="pt-2 border-t border-border flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
                     <Button
                       size="sm"
                       variant="outline"
@@ -925,20 +1024,17 @@ export function GlobalVisitorsMatrix({
                       Mark Arrived
                     </Button>
 
-                    {delegation.escalatedTo === "none" ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEscalate(delegation.id, "country_admin")}
-                        className="text-[11px] font-bold rounded-xl h-8 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
-                      >
-                        Escalate Lead
-                      </Button>
-                    ) : (
-                      <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                        ✓ Escalated to {delegation.escalatedTo.replace("_", " ")}
-                      </span>
-                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedVisitorForDossier(delegation);
+                        setIsDossierOpen(true);
+                      }}
+                      className="text-[11px] font-bold rounded-xl h-8"
+                    >
+                      View Dossier
+                    </Button>
                   </div>
                 </div>
               ))
@@ -951,7 +1047,253 @@ export function GlobalVisitorsMatrix({
         </div>
       )}
 
-      {/* ─── TAB: COUNTRY & SUPER ADMIN INTEGRATION ───────────────────────── */}
+      {/* ─── TAB 3: LIVE ACTIVITY RADAR ─────────────────────────────────────── */}
+      {activeTab === "live_feed" && (
+        <div className="space-y-6">
+          <div className="rounded-3xl border border-border bg-card p-6 space-y-5 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-black text-foreground flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-rose-500 animate-ping shrink-0" />
+                  Live Real-Time Activity Stream
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Streaming incoming visitor requests, live page views, phone calls, and international inquiries.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Button
+                  size="sm"
+                  variant={isAutoRefreshLive ? "default" : "outline"}
+                  onClick={() => setIsAutoRefreshLive(!isAutoRefreshLive)}
+                  className={`text-xs font-bold rounded-xl gap-2 ${
+                    isAutoRefreshLive ? "bg-emerald-600 text-white" : ""
+                  }`}
+                >
+                  <Radio className={`w-3.5 h-3.5 ${isAutoRefreshLive ? "animate-pulse" : ""}`} />
+                  {isAutoRefreshLive ? `Auto-Refresh (${countdown}s)` : "Enable Live Polling"}
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => fetchGlobalVisitors(currentPage)}
+                  disabled={isLoading}
+                  className="text-xs font-bold rounded-xl gap-1.5"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+                  Refresh Feed
+                </Button>
+              </div>
+            </div>
+
+            {/* Live Ticker */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+                <div className="text-[11px] font-bold text-rose-500">Live Active Streams</div>
+                <div className="text-2xl font-black text-foreground mt-1">
+                  {data?.recentSessions?.length || 0}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">Realtime sessions tracked</div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20">
+                <div className="text-[11px] font-bold text-cyan-500">Top Inbound Origin</div>
+                <div className="text-2xl font-black text-foreground mt-1">
+                  {data?.summary?.topOriginCountry || "United States"}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">Largest international volume</div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
+                <div className="text-[11px] font-bold text-indigo-500">Peak Request Rate</div>
+                <div className="text-2xl font-black text-foreground mt-1">42 / min</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">Diaspora evening traffic</div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+                <div className="text-[11px] font-bold text-emerald-500">Platform Health</div>
+                <div className="text-2xl font-black text-foreground mt-1">99.98%</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">Telemetry telemetry sync</div>
+              </div>
+            </div>
+
+            {/* Live Stream List */}
+            <div className="space-y-2 pt-2">
+              <h4 className="text-xs font-black uppercase text-foreground">Recent Inbound Events</h4>
+              <div className="divide-y divide-border rounded-2xl border border-border bg-background/50 overflow-hidden">
+                {data?.recentSessions?.slice(0, 10).map((session, idx) => (
+                  <div
+                    key={session.id}
+                    className="p-3.5 flex items-center justify-between gap-4 hover:bg-muted/40 transition-colors cursor-pointer text-xs"
+                    onClick={() => {
+                      setSelectedVisitorForDossier(session);
+                      setIsDossierOpen(true);
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                      <span className="text-xl">{session.visitorFlag}</span>
+                      <div>
+                        <div className="font-bold text-foreground flex items-center gap-1.5">
+                          <span>{session.visitorName}</span>
+                          <span className="text-[10px] text-muted-foreground">from</span>
+                          <span className="text-primary font-semibold">
+                            {session.visitorCity}, {session.visitorCountry}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          Target: <strong className="text-foreground">{session.targetBusinessName}</strong> • {session.purpose}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div>{getActionBadge(session.action)}</div>
+                      <div className="text-[10px] text-muted-foreground font-mono mt-1">
+                        {session.relativeTime}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── TAB 4: OVERVIEW ─────────────────────────────────────────────────── */}
+      {activeTab === "overview" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 rounded-3xl border border-border bg-card p-6 shadow-sm space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-black text-foreground">Top Foreign Visitor Markets</h3>
+                <p className="text-xs text-muted-foreground">
+                  Where users viewing your businesses are browsing from globally.
+                </p>
+              </div>
+              <Badge variant="outline" className="text-xs font-bold">
+                12 Key Hubs
+              </Badge>
+            </div>
+
+            <div className="space-y-3.5">
+              {data?.visitorCountries.slice(0, 8).map((item) => (
+                <div
+                  key={item.countryCode}
+                  className="rounded-2xl border border-border/60 bg-muted/30 p-3.5 hover:bg-muted/60 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-2xl">{item.flag}</span>
+                      <div>
+                        <div className="text-xs font-black text-foreground flex items-center gap-1.5">
+                          {item.country}
+                          <span className="text-[10px] font-semibold text-muted-foreground">
+                            ({item.continent})
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          Hubs: {item.topOriginCities.join(", ")}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="text-xs font-black text-foreground">
+                        {item.visitorCount.toLocaleString()} views
+                      </div>
+                      <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        {item.trend} vs last month
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="bg-cyan-500 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, item.percentage * 2.8)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Target Cities Breakdown */}
+          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm space-y-5">
+            <h3 className="text-base font-black text-foreground">Target Jurisdiction Breakdown</h3>
+            <div className="space-y-3">
+              {data?.cityBreakdown?.map((city) => (
+                <div key={city.city} className="p-3 rounded-2xl bg-muted/40 border border-border text-xs space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-foreground">{city.city}</span>
+                    <strong className="text-primary">{city.views.toLocaleString()} views</strong>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="bg-indigo-500 h-full rounded-full"
+                      style={{ width: `${city.percentage}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── TAB 5: ORIGIN NATIONS ───────────────────────────────────────────── */}
+      {activeTab === "countries" && (
+        <div className="rounded-3xl border border-border bg-card overflow-hidden shadow-sm">
+          <div className="p-5 border-b border-border bg-muted/30 flex items-center justify-between">
+            <h3 className="text-base font-black text-foreground">
+              All Represented Origin Nations ({data?.visitorCountries?.length || 0})
+            </h3>
+            <Badge variant="outline" className="text-xs font-bold">
+              Global Dispersion Index: 92.4%
+            </Badge>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-border bg-muted/50 text-[11px] font-bold text-muted-foreground uppercase">
+                  <th className="p-4">Nation & Region</th>
+                  <th className="p-4">Continent</th>
+                  <th className="p-4">Total Visitors</th>
+                  <th className="p-4">Share (%)</th>
+                  <th className="p-4">Top Origin Hubs</th>
+                  <th className="p-4">Growth Trend</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {data?.visitorCountries.map((item) => (
+                  <tr key={item.countryCode} className="hover:bg-muted/40 transition-colors">
+                    <td className="p-4 font-bold text-foreground flex items-center gap-2">
+                      <span className="text-xl">{item.flag}</span>
+                      <span>{item.country}</span>
+                    </td>
+                    <td className="p-4 text-muted-foreground">{item.continent}</td>
+                    <td className="p-4 font-mono font-bold text-foreground">
+                      {item.visitorCount.toLocaleString()}
+                    </td>
+                    <td className="p-4 font-bold text-primary">{item.percentage}%</td>
+                    <td className="p-4 text-muted-foreground">{item.topOriginCities.join(", ")}</td>
+                    <td className="p-4 font-bold text-emerald-600 dark:text-emerald-400">
+                      {item.trend}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ─── TAB 6: GOVERNANCE MATRIX ────────────────────────────────────────── */}
       {activeTab === "admin_hierarchy" && (
         <div className="space-y-6">
           <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 space-y-6 shadow-sm">
@@ -972,15 +1314,10 @@ export function GlobalVisitorsMatrix({
                   <Badge className="bg-cyan-500 text-white font-bold text-[10px]">Tier 1: Frontline</Badge>
                   <Building2 className="w-5 h-5 text-cyan-500" />
                 </div>
-                <div className="text-sm font-black text-foreground">
-                  City Admin ({effectiveCity || "Addis Ababa"})
-                </div>
+                <div className="text-sm font-black text-foreground">City Admin (Municipal)</div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Municipal reception, storefront pin routing, business matching, and registering live international visitors to city listings.
                 </p>
-                <div className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400">
-                  Authority: {effectiveCity || "Addis Ababa"} Municipality
-                </div>
               </div>
 
               <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5 space-y-3">
@@ -988,15 +1325,10 @@ export function GlobalVisitorsMatrix({
                   <Badge className="bg-emerald-600 text-white font-bold text-[10px]">Tier 2: National</Badge>
                   <Shield className="w-5 h-5 text-emerald-500" />
                 </div>
-                <div className="text-sm font-black text-foreground">
-                  Country Admin ({effectiveCountry || "Ethiopia"})
-                </div>
+                <div className="text-sm font-black text-foreground">Country Admin (National)</div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   National commerce oversight, inter-city trade delegations, diplomatic chamber alignment, and national trade portal routing.
                 </p>
-                <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                  Authority: National Directorate
-                </div>
               </div>
 
               <div className="rounded-2xl border border-purple-500/30 bg-purple-500/5 p-5 space-y-3">
@@ -1004,220 +1336,12 @@ export function GlobalVisitorsMatrix({
                   <Badge className="bg-purple-600 text-white font-bold text-[10px]">Tier 3: Global</Badge>
                   <Crown className="w-5 h-5 text-purple-500" />
                 </div>
-                <div className="text-sm font-black text-foreground">
-                  Super Admin (Worldwide)
-                </div>
+                <div className="text-sm font-black text-foreground">Super Admin (Worldwide)</div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Platform-wide global telemetry, 195-nation directory governance, diaspora marketing campaigns, and bilateral agreements.
                 </p>
-                <div className="text-[11px] font-bold text-purple-600 dark:text-purple-400">
-                  Authority: Worldwide Platform Root
-                </div>
               </div>
             </div>
-
-            {/* Escalated Leads Quick Roster */}
-            <div className="space-y-3 pt-4 border-t border-border">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-black uppercase text-foreground">
-                  Escalated Leads Synchronized with Country & Super Admin
-                </h4>
-                <Badge variant="outline" className="text-xs font-bold">
-                  {data?.summary.escalatedCount || 0} Escalated
-                </Badge>
-              </div>
-
-              <div className="divide-y divide-border">
-                {data?.recentSessions
-                  .filter((s) => s.escalatedTo && s.escalatedTo !== "none")
-                  .slice(0, 5)
-                  .map((lead) => (
-                    <div key={lead.id} className="py-3 flex items-center justify-between gap-4 text-xs">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-xl">{lead.visitorFlag}</span>
-                        <div>
-                          <div className="font-bold text-foreground">
-                            {lead.visitorName} ({lead.visitorCity}, {lead.visitorCountry})
-                          </div>
-                          <div className="text-[11px] text-muted-foreground">
-                            Target: {lead.targetBusinessName} • Purpose: {lead.purpose}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <Badge
-                          className={`text-[10px] font-bold ${
-                            lead.escalatedTo === "super_admin"
-                              ? "bg-purple-500/15 text-purple-600 dark:text-purple-300"
-                              : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"
-                          }`}
-                        >
-                          {lead.escalatedTo === "super_admin" ? "Super Admin" : "Country Admin"}
-                        </Badge>
-                        <div className="text-[10px] text-muted-foreground mt-0.5">
-                          {lead.relativeTime}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── TAB: OVERVIEW ─────────────────────────────────────────────────── */}
-      {activeTab === "overview" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 rounded-3xl border border-border bg-card p-6 shadow-sm space-y-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-black text-foreground">Top Foreign Visitor Markets</h3>
-                <p className="text-xs text-muted-foreground">
-                  Where users viewing your businesses are browsing from globally.
-                </p>
-              </div>
-              <Badge variant="outline" className="text-xs font-bold">
-                12 Key Hubs
-              </Badge>
-            </div>
-
-            <div className="space-y-3.5">
-              {data?.visitorCountries.slice(0, 6).map((item) => (
-                <div
-                  key={item.countryCode}
-                  className="rounded-2xl border border-border/60 bg-muted/30 p-3.5 hover:bg-muted/60 transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-2xl">{item.flag}</span>
-                      <div>
-                        <div className="text-xs font-black text-foreground flex items-center gap-1.5">
-                          {item.country}
-                          <span className="text-[10px] font-semibold text-muted-foreground">
-                            ({item.continent})
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-muted-foreground">
-                          Top Hubs: {item.topOriginCities.join(", ")}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <div className="text-xs font-black text-foreground">
-                        {item.visitorCount.toLocaleString()} views
-                      </div>
-                      <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                        {item.trend} ({item.percentage}%)
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-cyan-500 to-indigo-500 rounded-full"
-                      style={{ width: `${Math.min(100, item.percentage * 3)}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="rounded-3xl border border-border bg-card p-6 shadow-sm space-y-4">
-              <h3 className="text-base font-black text-foreground">Most Viewed Municipalities</h3>
-              <p className="text-xs text-muted-foreground">
-                Distribution of global views across cities in your jurisdiction.
-              </p>
-
-              <div className="space-y-3 pt-2">
-                {data?.cityBreakdown.map((city, idx) => (
-                  <div
-                    key={city.city}
-                    className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border border-border/50 text-xs"
-                  >
-                    <div className="flex items-center gap-2 font-bold text-foreground">
-                      <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px]">
-                        {idx + 1}
-                      </span>
-                      <span>{city.city}</span>
-                    </div>
-                    <div className="text-right font-black text-foreground">
-                      {city.views.toLocaleString()}{" "}
-                      <span className="text-[10px] text-muted-foreground font-normal">
-                        ({city.percentage}%)
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-indigo-950/20 to-sky-950/20 p-5 shadow-sm space-y-3">
-              <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs">
-                <TrendingUp className="w-4 h-4" />
-                <span>Diaspora & Tourism Growth Driver</span>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Over <strong className="text-foreground">81.2%</strong> of high-ticket calls, reservation requests,
-                and direction inquiries originate from international IPs in North America, Europe, and the Gulf.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── TAB: ORIGIN NATIONS TABLE ────────────────────────────────────── */}
-      {activeTab === "countries" && (
-        <div className="rounded-3xl border border-border bg-card overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-border bg-muted/50 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                  <th className="p-4">Visitor Country</th>
-                  <th className="p-4">Continent</th>
-                  <th className="p-4">Total Views</th>
-                  <th className="p-4">Global Share</th>
-                  <th className="p-4">Key Origin Cities</th>
-                  <th className="p-4">30-Day Trend</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {data?.visitorCountries.map((item) => (
-                  <tr key={item.countryCode} className="hover:bg-muted/40 transition-colors">
-                    <td className="p-4 font-bold text-foreground flex items-center gap-2.5">
-                      <span className="text-xl">{item.flag}</span>
-                      <span>{item.country}</span>
-                      <span className="text-[10px] text-muted-foreground font-mono">
-                        ({item.countryCode})
-                      </span>
-                    </td>
-                    <td className="p-4 text-muted-foreground font-medium">{item.continent}</td>
-                    <td className="p-4 font-black text-foreground">
-                      {item.visitorCount.toLocaleString()}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-foreground">{item.percentage}%</span>
-                        <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
-                          <div
-                            className="h-full bg-cyan-500 rounded-full"
-                            style={{ width: `${Math.min(100, item.percentage * 3)}%` }}
-                          />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4 text-muted-foreground">{item.topOriginCities.join(", ")}</td>
-                    <td className="p-4 font-bold text-emerald-600 dark:text-emerald-400">
-                      {item.trend}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </div>
       )}
@@ -1233,7 +1357,25 @@ export function GlobalVisitorsMatrix({
         targetCity={effectiveCity || "Addis Ababa"}
         targetCountry={effectiveCountry || "Ethiopia"}
         currentRole={currentRole}
-        businessesList={businessesList}
+        businessesList={resolvedBusinesses}
+      />
+
+      {/* ── Modal to View & Manage Visitor Dossier ── */}
+      <VisitorDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => {
+          setIsDossierOpen(false);
+          setSelectedVisitorForDossier(null);
+        }}
+        visitor={selectedVisitorForDossier}
+        onUpdate={(updated) => {
+          setSelectedVisitorForDossier(updated);
+          fetchGlobalVisitors(currentPage);
+        }}
+        onDelete={(deletedId) => {
+          fetchGlobalVisitors(currentPage);
+        }}
+        currentRole={currentRole}
       />
     </div>
   );
