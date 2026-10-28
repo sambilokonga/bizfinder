@@ -2472,8 +2472,8 @@ export default function AdminControlPanel() {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-background text-foreground flex flex-col">
       {/* ─── Top Admin Bar ────────────────────────────────────────────── */}
-      <div className="border-b border-border/80 bg-card/60 backdrop-blur-xl px-3 sm:px-4 lg:px-6 xl:px-8 py-2 sm:py-2.5 flex flex-wrap lg:flex-nowrap items-center justify-between gap-2 sm:gap-3 lg:gap-3 xl:gap-4 sticky top-16 z-30">
-        <div className="flex items-center gap-2 sm:gap-2.5 lg:gap-3 min-w-0 shrink-0 lg:shrink">
+      <div className="border-b border-border/80 bg-card/60 backdrop-blur-xl px-2.5 sm:px-4 lg:px-4 xl:px-6 py-2 sm:py-2.5 flex flex-nowrap items-center justify-between gap-2 sm:gap-3 lg:gap-3 xl:gap-4 sticky top-16 z-30 min-w-0 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-2 sm:gap-2.5 lg:gap-3 shrink-0">
           {/* Hamburger — mobile only */}
           <button
             onClick={() => setSidebarOpen(true)}
@@ -2489,16 +2489,16 @@ export default function AdminControlPanel() {
               className="w-full h-full object-contain drop-shadow-sm"
             />
           </div>
-          <div className="min-w-0">
+          <div className="shrink-0">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap">
-              <h1 className="text-xs sm:text-sm lg:text-base font-black tracking-tight text-foreground whitespace-nowrap shrink-0">
+              <h1 className="text-xs sm:text-sm lg:text-[15px] font-black tracking-tight text-foreground whitespace-nowrap">
                 Admin Ecosystem Control
               </h1>
               <Badge variant="outline" className="text-[9px] sm:text-[10px] uppercase font-bold border-indigo-500/30 text-indigo-600 dark:text-indigo-400 py-0 sm:py-0.5 whitespace-nowrap shrink-0">
                 {isSuperAdmin ? "👑 Super Admin" : isCountryAdmin ? "🌍 Country Admin" : isCityAdmin ? "🏙️ City Admin" : "🛡️ Operations Admin"}
               </Badge>
             </div>
-            <p className="text-[10px] sm:text-[11px] xl:text-xs text-muted-foreground truncate hidden md:block whitespace-nowrap max-w-[220px] xl:max-w-none">
+            <p className="text-[10px] xl:text-[11px] text-muted-foreground truncate hidden xl:block whitespace-nowrap max-w-[260px] 2xl:max-w-none">
               Universal Business Directory, Taxonomy & Platform Operations
             </p>
           </div>
@@ -2507,17 +2507,17 @@ export default function AdminControlPanel() {
         <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-2 xl:gap-2.5 shrink-0 flex-nowrap">
           {/* Quick Scope Selector Indicator */}
           {isCountryAdmin && (
-            <div className="hidden md:inline-flex items-center gap-1.5 px-2 py-1 xl:px-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/5 text-xs whitespace-nowrap shrink-0">
+            <div className="hidden sm:inline-flex items-center gap-1 xl:gap-1.5 px-2 py-1 xl:px-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/5 text-xs whitespace-nowrap shrink-0">
               <Globe className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-              <span className="text-[11px] font-semibold text-muted-foreground">Country:</span>
+              <span className="hidden xl:inline text-[11px] font-semibold text-muted-foreground">Country:</span>
               <span className="font-bold text-foreground text-xs">{geoSelectedCountry === "all" ? (currentUser?.assignedCountry || "Ethiopia") : geoSelectedCountry}</span>
             </div>
           )}
 
           {isCityAdmin && (
-            <div className="hidden md:inline-flex items-center gap-1.5 px-2 py-1 xl:px-2.5 rounded-xl border border-sky-500/30 bg-sky-500/5 text-xs whitespace-nowrap shrink-0">
+            <div className="hidden sm:inline-flex items-center gap-1 xl:gap-1.5 px-2 py-1 xl:px-2.5 rounded-xl border border-sky-500/30 bg-sky-500/5 text-xs whitespace-nowrap shrink-0">
               <Compass className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-              <span className="text-[11px] font-semibold text-muted-foreground">City:</span>
+              <span className="hidden xl:inline text-[11px] font-semibold text-muted-foreground">City:</span>
               <span className="font-bold text-foreground text-xs">{geoSelectedCity === "all" ? (currentUser?.assignedCity || "Addis Ababa") : geoSelectedCity}</span>
             </div>
           )}
@@ -2534,7 +2534,8 @@ export default function AdminControlPanel() {
             title="Compose and broadcast notice"
           >
             <Megaphone className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-            <span className="hidden md:inline">Broadcast Notice</span>
+            <span className="hidden xl:inline">Broadcast Notice</span>
+            <span className="hidden sm:inline xl:hidden">Notice</span>
           </Button>
 
           {/* System Health */}
@@ -2545,7 +2546,8 @@ export default function AdminControlPanel() {
             className="h-7 sm:h-8 px-2 sm:px-2.5 xl:px-3 gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 whitespace-nowrap shrink-0"
           >
             <Activity className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-500" />
-            <span className="hidden xs:inline">System Health:</span> 99.98%
+            <span className="hidden 2xl:inline">System Health:</span>
+            <span className="hidden sm:inline 2xl:hidden">Health:</span> 99.98%
           </Button>
 
           {/* Super Admin: New Admin */}
@@ -2568,11 +2570,12 @@ export default function AdminControlPanel() {
               size="sm"
               variant="gradient"
               onClick={() => setIsAssignGeoModalOpen(true)}
-              className="h-7 sm:h-8 px-2.5 sm:px-3 gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-bold shadow-md shadow-indigo-500/20 whitespace-nowrap shrink-0 hidden sm:inline-flex"
+              className="h-7 sm:h-8 px-2 sm:px-2.5 xl:px-3 gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-bold shadow-md shadow-indigo-500/20 whitespace-nowrap shrink-0 hidden sm:inline-flex"
               title="Appoint a City Admin for this territory"
             >
               <UserPlus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-              Appoint Admin
+              <span className="hidden xl:inline">Appoint Admin</span>
+              <span className="hidden sm:inline xl:hidden">Appoint</span>
             </Button>
           )}
 
