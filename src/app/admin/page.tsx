@@ -2843,6 +2843,44 @@ export default function AdminControlPanel() {
               <span className="text-[9px] sm:text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Live</span>
             </div>
           </div>
+          {/* ── Mobile Horizontal Tab Selector (xs/sm/md screens only) ── */}
+          <div className="lg:hidden flex items-center gap-1.5 overflow-x-auto px-3 py-2.5 border-b border-border/60 bg-card/60 backdrop-blur-sm no-scrollbar shrink-0">
+            {([
+              { id: "dashboard", label: "Command Center", icon: "⚡" },
+              { id: "global_visitors", label: "Global Visitors", icon: "🌐" },
+              { id: "users", label: "Users", icon: "👥" },
+              ...(isCountryAdmin ? [{ id: "city_admins_hub", label: "City Admins", icon: "🏛️" }] : []),
+              { id: "businesses", label: "Businesses", icon: "🏢" },
+              { id: "categories", label: "Categories", icon: "📂" },
+              { id: "locations", label: "Locations", icon: "🗺️" },
+              { id: "reviews", label: "Reviews", icon: "⭐" },
+              { id: "media", label: "Media", icon: "📸" },
+              { id: "advertisements", label: "Ads", icon: "📢" },
+              { id: "payments", label: "Payments", icon: "💳" },
+              { id: "analytics", label: "Analytics", icon: "📈" },
+              { id: "moderation", label: "Reports", icon: "🚨" },
+              { id: "notifications", label: "Notices", icon: "🔔" },
+              { id: "support", label: "Support", icon: "🎫" },
+              { id: "settings", label: "Settings", icon: "⚙️" },
+              ...(isSuperAdmin ? [
+                { id: "security", label: "Security", icon: "🔒" },
+                { id: "geo_admins", label: "Territory", icon: "🗺️" },
+              ] : []),
+            ] as { id: string; label: string; icon: string }[]).map((t) => (
+              <button
+                key={t.id}
+                onClick={() => { setActiveNav(t.id); setActiveSubnav("overview"); }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 flex items-center gap-1 transition-all ${
+                  activeNav === t.id
+                    ? "bg-indigo-600 text-white shadow"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                <span>{t.icon}</span>
+                <span>{t.label}</span>
+              </button>
+            ))}
+          </div>
           <div className="p-3.5 sm:p-6 lg:p-8">
           {/* Animated key wrapper — re-mounts and slides in on every nav change */}
           <div key={activeNav + "-" + activeSubnav} className="animate-page-enter">
@@ -3939,9 +3977,11 @@ export default function AdminControlPanel() {
                                     className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-border shrink-0"
                                   />
                                 ) : (
-                                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-primary/20 to-primary/5 text-primary font-black text-[11px] sm:text-xs flex items-center justify-center border border-primary/20 shrink-0">
-                                    {u.name.charAt(0).toUpperCase()}
-                                  </div>
+                                  <img
+                                    src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(u.name)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`}
+                                    alt={u.name}
+                                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-border shrink-0 bg-slate-100 dark:bg-slate-800"
+                                  />
                                 )}
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-1.5">
@@ -8188,7 +8228,7 @@ export default function AdminControlPanel() {
                                           actionTaken: "dismissed",
                                           resolutionNotes: "Quick dismissed by administrator.",
                                           resolvedBy: isSuperAdmin
-                                            ? "Alex Rivera (Super Admin)"
+                                            ? "Cala Wakuma (Super Admin)"
                                             : "Marcus Vance (Admin)",
                                         }),
                                       });
@@ -8218,7 +8258,7 @@ export default function AdminControlPanel() {
                                           actionTaken: "penalty_applied",
                                           resolutionNotes: "Violation confirmed and penalty strike recorded.",
                                           resolvedBy: isSuperAdmin
-                                            ? "Alex Rivera (Super Admin)"
+                                            ? "Cala Wakuma (Super Admin)"
                                             : "Marcus Vance (Admin)",
                                         }),
                                       });
@@ -8742,7 +8782,7 @@ export default function AdminControlPanel() {
               setActiveSubnav("all");
               fetchNotifications(1);
             }}
-            currentSenderName={isSuperAdmin ? "Alex Rivera (Super Admin)" : "Marcus Vance (Admin)"}
+            currentSenderName={isSuperAdmin ? "Cala Wakuma (Super Admin)" : "Marcus Vance (Admin)"}
             defaultTarget="global"
           />
 
@@ -9227,7 +9267,7 @@ export default function AdminControlPanel() {
             isOpen={!!selectedTicketForDetail}
             onClose={() => setSelectedTicketForDetail(null)}
             ticket={selectedTicketForDetail}
-            currentUserName={isSuperAdmin ? "Alex Rivera (Super Admin)" : "Marcus Vance (Admin)"}
+            currentUserName={isSuperAdmin ? "Cala Wakuma (Super Admin)" : "Marcus Vance (Admin)"}
             currentUserRole={isSuperAdmin ? "super_admin" : "admin"}
             onTicketUpdated={(updated) => {
               setSelectedTicketForDetail(updated);
@@ -9253,7 +9293,7 @@ export default function AdminControlPanel() {
             defaultUserId="admin_manual"
             defaultUserName={
               isSuperAdmin
-                ? "Alex Rivera (Super Admin)"
+                ? "Cala Wakuma (Super Admin)"
                 : isCountryAdmin
                 ? `${geoSelectedCountry !== "all" ? geoSelectedCountry : currentUser?.assignedCountry || "Country"} Admin Lead`
                 : isCityAdmin
@@ -9296,9 +9336,9 @@ export default function AdminControlPanel() {
               portalType={isSuperAdmin ? "super_admin" : "admin"}
               currentUserName={
                 isSuperAdmin
-                  ? "Alex Rivera (Super Admin)"
+                  ? "Cala Wakuma (Super Admin)"
                   : geoScopeRole === "country_admin"
-                  ? `${currentUser?.name || "Marcus Holloway"} (Country Lead)`
+                  ? `${currentUser?.name || "Hadush Geush"} (Country Lead)`
                   : "Marcus Vance (Admin)"
               }
               currentUserRole={geoScopeRole}
@@ -9471,9 +9511,11 @@ export default function AdminControlPanel() {
                     className="w-16 h-16 rounded-full object-cover border-2 border-primary/30 shrink-0"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-primary/30 to-primary/10 text-primary font-black text-xl flex items-center justify-center border border-primary/20 shrink-0">
-                    {viewingUser.name.charAt(0).toUpperCase()}
-                  </div>
+                  <img
+                    src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(viewingUser.name)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`}
+                    alt={viewingUser.name}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-primary/30 shrink-0 bg-slate-100 dark:bg-slate-800"
+                  />
                 )}
                 <div>
                   <div className="flex items-center gap-2">
@@ -9599,7 +9641,7 @@ export default function AdminControlPanel() {
         isOpen={isRegisterPaymentModalOpen}
         onClose={() => setIsRegisterPaymentModalOpen(false)}
         businessesList={businesses}
-        currentAdminName={isSuperAdmin ? "Alex Rivera (Super Admin)" : "Marcus Vance (Admin)"}
+        currentAdminName={isSuperAdmin ? "Cala Wakuma (Super Admin)" : "Marcus Vance (Admin)"}
         onPaymentRegistered={() => {
           fetchPayments(1);
           setPayPage(1);
@@ -9624,7 +9666,7 @@ export default function AdminControlPanel() {
         isOpen={isRegisterAnalyticsModalOpen}
         onClose={() => setIsRegisterAnalyticsModalOpen(false)}
         businessesList={businesses}
-        currentAdminName={isSuperAdmin ? "Alex Rivera (Super Admin)" : "Marcus Vance (Admin)"}
+        currentAdminName={isSuperAdmin ? "Cala Wakuma (Super Admin)" : "Marcus Vance (Admin)"}
         defaultCity={geoSelectedCity !== "all" ? geoSelectedCity : undefined}
         defaultCountry={geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || "Ethiopia")}
         onAnalyticsRegistered={() => {
@@ -9638,7 +9680,7 @@ export default function AdminControlPanel() {
         isOpen={isRegisterReportModalOpen}
         onClose={() => setIsRegisterReportModalOpen(false)}
         businessesList={businesses}
-        currentAdminName={isSuperAdmin ? "Alex Rivera (Super Admin)" : "Marcus Vance (Admin)"}
+        currentAdminName={isSuperAdmin ? "Cala Wakuma (Super Admin)" : "Marcus Vance (Admin)"}
         defaultCountry={geoSelectedCountry !== "all" ? geoSelectedCountry : (currentUser?.assignedCountry || "")}
         defaultCity={geoSelectedCity !== "all" ? geoSelectedCity : (currentUser?.assignedCity || "")}
         onReportRegistered={(newReport) => {
@@ -9652,7 +9694,7 @@ export default function AdminControlPanel() {
         isOpen={Boolean(selectedReportForDetail)}
         onClose={() => setSelectedReportForDetail(null)}
         report={selectedReportForDetail}
-        currentAdminName={isSuperAdmin ? "Alex Rivera (Super Admin)" : "Marcus Vance (Admin)"}
+        currentAdminName={isSuperAdmin ? "Cala Wakuma (Super Admin)" : "Marcus Vance (Admin)"}
         onStatusUpdated={(updated) => {
           setReportsList((prev) =>
             prev.map((r) => (r.id === updated.id ? updated : r))

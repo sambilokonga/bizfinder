@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import {
@@ -390,7 +390,7 @@ export function RegisterNotificationModal({
                 Sender Attribution
               </label>
               <Input
-                placeholder="e.g. Alex Rivera (Super Admin)"
+                placeholder="e.g. Cala Wakuma (Super Admin)"
                 value={sentBy}
                 onChange={(e) => setSentBy(e.target.value)}
                 className="text-xs"

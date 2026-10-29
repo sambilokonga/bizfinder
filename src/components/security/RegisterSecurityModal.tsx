@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import {
@@ -68,7 +68,7 @@ export function RegisterSecurityModal({
   businessesList = [],
   preselectedBusinessId,
   preselectedBusinessName,
-  currentAdminName = "Alex Rivera (Super Admin)",
+  currentAdminName = "Cala Wakuma (Super Admin)",
   currentAdminRole = "super_admin",
   defaultTargetResource = "/admin/security",
   defaultCity = "Addis Ababa",
@@ -568,7 +568,7 @@ export function RegisterSecurityModal({
               <Input
                 value={actorName}
                 onChange={(e) => setActorName(e.target.value)}
-                placeholder="e.g. Alex Rivera, Botnet Node #4"
+                placeholder="e.g. Cala Wakuma, Botnet Node #4"
                 className="h-9 text-xs"
               />
             </div>

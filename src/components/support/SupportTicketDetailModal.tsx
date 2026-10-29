@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef, useEffect } from "react";
 import {
@@ -709,7 +709,7 @@ export function SupportTicketDetailModal({
                       <option value="Unassigned">Unassigned</option>
                       <option value="Admin Elena">Admin Elena</option>
                       <option value="Admin Marcus">Admin Marcus</option>
-                      <option value="Alex Rivera (Super Admin)">Alex Rivera (Super Admin)</option>
+                      <option value="Cala Wakuma (Super Admin)">Cala Wakuma (Super Admin)</option>
                     </select>
                   </div>
                 </div>

@@ -10,6 +10,7 @@ export interface AdminAccount {
   email: string;
   role: "admin" | "super_admin" | "country_admin" | "city_admin";
   status: "active" | "suspended" | "pending";
+  avatarUrl?: string;
   assignedCountry?: string;
   assignedCity?: string;
   departments: string[];
@@ -23,10 +24,11 @@ export interface AdminAccount {
 let ADMIN_ROSTER: AdminAccount[] = [
   {
     id: "adm-1",
-    name: "Alex Rivera",
+    name: "Cala Wakuma",
     email: "superadmin@bizfinder.et",
     role: "super_admin",
     status: "active",
+    avatarUrl: "https://api.dicebear.com/9.x/avataaars/svg?seed=CalaWakuma&backgroundColor=ffd5dc&hairColor=2c1b18&skinColor=ae5d29",
     departments: ["Executive", "System Administration", "Security"],
     permissions: [
       "all",
@@ -48,6 +50,7 @@ let ADMIN_ROSTER: AdminAccount[] = [
     email: "selamawit.nega@bizfinder.et",
     role: "admin",
     status: "active",
+    avatarUrl: "https://api.dicebear.com/9.x/avataaars/svg?seed=SelamwitNega&backgroundColor=b6e3f4&hairColor=2c1b18&skinColor=ae5d29",
     departments: ["Business Operations", "Content Moderation"],
     permissions: [
       "business.read",
@@ -65,10 +68,11 @@ let ADMIN_ROSTER: AdminAccount[] = [
   },
   {
     id: "adm-3",
-    name: "Marcus Holloway",
-    email: "marcus.h@bizfinder.et",
+    name: "Hadush Geush",
+    email: "hadush.geush@bizfinder.et",
     role: "admin",
     status: "active",
+    avatarUrl: "https://api.dicebear.com/9.x/avataaars/svg?seed=HadushGeush&backgroundColor=c0aede&hairColor=2c1b18&skinColor=ae5d29",
     departments: ["Business Verification", "Reports & Compliance"],
     permissions: [
       "business.verify",
@@ -83,10 +87,11 @@ let ADMIN_ROSTER: AdminAccount[] = [
   },
   {
     id: "adm-4",
-    name: "Sara Connor",
-    email: "sara.c@bizfinder.et",
+    name: "Senayit Leul",
+    email: "senayit.leul@bizfinder.et",
     role: "admin",
     status: "active",
+    avatarUrl: "https://api.dicebear.com/9.x/avataaars/svg?seed=SenayitLeul&backgroundColor=d1d4f9&hairColor=4a312c&skinColor=d08b5b",
     departments: ["Customer Support", "User Moderation"],
     permissions: [
       "user.read",
@@ -117,6 +122,7 @@ export async function GET() {
         name: doc.name || "Administrator",
         email: doc.email || "",
         role: (doc.role as any) || "admin",
+        avatarUrl: doc.avatarUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(doc.name || "Admin")}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`,
         assignedCountry: doc.assignedCountry,
         assignedCity: doc.assignedCity,
         status: doc.isActive !== false ? "active" : "suspended",
@@ -260,6 +266,7 @@ export async function POST(req: Request) {
       assignedCountry: cleanCountry,
       assignedCity: cleanCity,
       status: "active",
+      avatarUrl: `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(cleanName)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`,
       departments: cleanDepartments,
       permissions: cleanPermissions,
       createdAt: new Date().toISOString().split("T")[0],

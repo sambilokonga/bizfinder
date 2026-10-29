@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+﻿import mongoose from "mongoose";
 // @ts-ignore
 import * as dotenv from "dotenv";
 import * as path from "path";
@@ -74,7 +74,7 @@ async function main() {
     clerkId: "usr_ethiopia_lead_cbe",
     id: "usr_ethiopia_lead_cbe",
     email: "ethiopia.lead@bizfinder.et",
-    name: "Marcus Holloway (Ethiopia National Lead)",
+    name: "Hadush Geush (Ethiopia National Lead)",
     role: "country_admin",
     assignedCountry: "Ethiopia",
     isActive: true,

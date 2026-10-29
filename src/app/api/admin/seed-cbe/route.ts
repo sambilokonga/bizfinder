@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { BusinessModel } from "@/lib/db/models/Business";
 import { UserModel } from "@/lib/db/models/User";
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       clerkId: "usr_ethiopia_lead_cbe",
       id: "usr_ethiopia_lead_cbe",
       email: "ethiopia.lead@bizfinder.et",
-      name: "Marcus Holloway (Ethiopia National Lead)",
+      name: "Hadush Geush (Ethiopia National Lead)",
       role: "country_admin",
       assignedCountry: "Ethiopia",
       isActive: true,

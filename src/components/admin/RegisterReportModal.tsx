@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -64,7 +64,7 @@ export function RegisterReportModal({
   const [reason, setReason] = useState("Fraud / Unlicensed Financial Scam");
   const [priority, setPriority] = useState<ReportPriority>("high");
   const [details, setDetails] = useState("");
-  const [reporterName, setReporterName] = useState(currentAdminName || "Alex Rivera (Super Admin)");
+  const [reporterName, setReporterName] = useState(currentAdminName || "Cala Wakuma (Super Admin)");
   const [reporterEmail, setReporterEmail] = useState("admin@bizfinder.et");
   const [city, setCity] = useState(defaultCity && defaultCity !== "all" ? defaultCity : "Addis Ababa");
   const [country, setCountry] = useState(defaultCountry && defaultCountry !== "all" ? defaultCountry : "Ethiopia");

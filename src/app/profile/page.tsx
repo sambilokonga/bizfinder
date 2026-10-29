@@ -93,9 +93,14 @@ export default function ProfilePage() {
           <div className="flex items-center gap-2.5 sm:gap-4">
             {/* Avatar */}
             <div className="relative shrink-0">
-              <div className="w-10 h-10 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-base sm:text-xl lg:text-2xl font-black shadow-lg">
-                {user?.firstName?.charAt(0) || "U"}
-              </div>
+              <img
+                src={
+                  user?.imageUrl ||
+                  `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(user?.fullName || user?.firstName || "BizUser")}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
+                }
+                alt={user?.fullName || "Profile avatar"}
+                className="w-10 h-10 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-xl sm:rounded-2xl object-cover shadow-lg border border-border bg-slate-100 dark:bg-slate-800"
+              />
               <button className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 sm:w-6 sm:h-6 rounded-md bg-primary text-primary-foreground flex items-center justify-center shadow-md">
                 <Pencil className="w-2 h-2 sm:w-2.5 sm:h-2.5" />
               </button>

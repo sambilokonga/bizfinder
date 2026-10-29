@@ -19,6 +19,7 @@ import {
   Globe,
   User,
   ExternalLink,
+  ChevronLeft,
   ChevronRight,
   ShieldCheck,
   Check,
@@ -43,15 +44,51 @@ import { cn } from "@/lib/utils/cn";
 interface FourMonthAuditHubProps {
   initialCountry?: string;
   initialCity?: string;
+  initialStatus?: "all" | "due" | "subscription_due" | "confirmed" | "unconfirmed";
 }
 
-export function FourMonthAuditHub({ initialCountry, initialCity }: FourMonthAuditHubProps) {
+function formatAuditDate(val?: Date | string | null): string {
+  if (!val) return "—";
+  const d = val instanceof Date ? val : new Date(val);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function getPageNumbers(current: number, total: number): (number | string)[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, "...", total];
+  }
+  if (current >= total - 3) {
+    return [1, "...", total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, "...", current - 1, current, current + 1, "...", total];
+}
+
+export function FourMonthAuditHub({ initialCountry, initialCity, initialStatus }: FourMonthAuditHubProps) {
   const [summary, setSummary] = useState<FourMonthAuditSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDispatching, setIsDispatching] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "due" | "subscription_due" | "confirmed" | "unconfirmed">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "due" | "subscription_due" | "confirmed" | "unconfirmed">(
+    initialStatus || "all"
+  );
   const [simulatedTestMode, setSimulatedTestMode] = useState(false);
+
+  // Pagination state: 20 listings per page default
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
 
   // Manual payment modal state
   const [paymentModalBiz, setPaymentModalBiz] = useState<BusinessAuditMetrics | null>(null);
@@ -67,6 +104,7 @@ export function FourMonthAuditHub({ initialCountry, initialCity }: FourMonthAudi
       if (forceTest) params.set("forceTest", "true");
       if (initialCountry && initialCountry !== "all") params.set("country", initialCountry);
       if (initialCity && initialCity !== "all") params.set("city", initialCity);
+      params.set("limit", "1000");
 
       const res = await fetch(`/api/admin/audit-cycle?${params.toString()}`);
       const data = await res.json();
@@ -212,6 +250,14 @@ export function FourMonthAuditHub({ initialCountry, initialCity }: FourMonthAudi
     if (statusFilter === "unconfirmed") return item.existenceStatus === "unconfirmed" || item.existenceStatus === "dormant";
     return true;
   });
+
+  // Calculate pagination window
+  const totalItems = filteredItems.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const paginatedItems = filteredItems.slice(startIndex, endIndex);
 
   return (
     <div className="space-y-6">
@@ -421,20 +467,11 @@ export function FourMonthAuditHub({ initialCountry, initialCity }: FourMonthAudi
                   </td>
                 </tr>
               ) : (
-                filteredItems.map((item) => {
+                paginatedItems.map((item) => {
                   const biz = item.business;
-                  const regDateStr = item.registeredAtDate.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  });
-                  const valDateStr = item.validationDateDate
-                    ? item.validationDateDate.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })
-                    : null;
+                  const regDateStr = formatAuditDate(item.registeredAtDate);
+                  const valDateStr = item.validationDateDate ? formatAuditDate(item.validationDateDate) : null;
+                  const nextReviewStr = formatAuditDate(item.nextAuditDate);
 
                   const progressPercent = Math.min(100, Math.round((item.daysSinceStart / 120) * 100));
 
@@ -493,7 +530,7 @@ export function FourMonthAuditHub({ initialCountry, initialCity }: FourMonthAudi
                             )}
                           </div>
                           <div className="text-[10px] text-muted-foreground">
-                            Next review: {item.nextAuditDate.toLocaleDateString()}
+                            Next review: {nextReviewStr}
                           </div>
                         </div>
                       </td>
@@ -634,6 +671,88 @@ export function FourMonthAuditHub({ initialCountry, initialCity }: FourMonthAudi
             </tbody>
           </table>
         </div>
+
+        {/* ── Pagination Controls ── */}
+        {totalItems > 0 && (
+          <div className="px-5 py-3.5 border-t border-border/60 bg-muted/20 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3 text-muted-foreground flex-wrap">
+              <span>
+                Showing <strong className="text-foreground font-bold">{startIndex + 1}</strong> to{" "}
+                <strong className="text-foreground font-bold">{endIndex}</strong> of{" "}
+                <strong className="text-foreground font-bold">{totalItems}</strong>{" "}
+                {statusFilter === "confirmed" ? "confirmed listings" : "listings"}
+              </span>
+              <span className="hidden sm:inline text-border">•</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px]">Show:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="h-7 px-2 text-xs rounded-lg bg-background border border-border text-foreground font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                >
+                  <option value={20}>20 per page</option>
+                  <option value={50}>50 per page</option>
+                  <option value={100}>100 per page</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className="h-8 px-2.5 text-xs font-semibold gap-1 border-border bg-background hover:bg-muted disabled:opacity-40"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Previous</span>
+              </Button>
+
+              <div className="flex items-center gap-1">
+                {getPageNumbers(safePage, totalPages).map((p, idx) => {
+                  if (p === "...") {
+                    return (
+                      <span key={`dots-${idx}`} className="w-7 text-center text-muted-foreground font-bold">
+                        …
+                      </span>
+                    );
+                  }
+                  const pageNum = Number(p);
+                  return (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={cn(
+                        "w-7 h-7 rounded-lg font-bold transition-all text-xs flex items-center justify-center",
+                        safePage === pageNum
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "bg-background text-muted-foreground border border-border hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                className="h-8 px-2.5 text-xs font-semibold gap-1 border-border bg-background hover:bg-muted disabled:opacity-40"
+              >
+                <span>Next</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Record Subscription Payment Modal ──────────────────────────────── */}

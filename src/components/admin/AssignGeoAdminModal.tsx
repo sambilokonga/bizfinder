@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import {
@@ -25,7 +25,7 @@ interface AssignGeoAdminModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAdminAssigned?: () => void;
-  initialRole?: "super_admin" | "country_admin" | "city_admin";
+  initialRole?: "super_admin" | "country_admin" | "city_admin" | "admin";
   initialCountry?: string;
   initialCity?: string;
   currentAdminRole?: "super_admin" | "country_admin" | "city_admin" | "admin";
@@ -49,7 +49,7 @@ export function AssignGeoAdminModal({
   const isCityAdminLocked = currentAdminRole === "city_admin";
   const isGeoRestricted = isCountryAdminLocked || isCityAdminLocked;
 
-  const [role, setRole] = useState<"super_admin" | "country_admin" | "city_admin">(
+  const [role, setRole] = useState<"super_admin" | "country_admin" | "city_admin" | "admin">(
     isGeoRestricted ? "city_admin" : initialRole
   );
   const [name, setName] = useState("");
@@ -95,6 +95,33 @@ export function AssignGeoAdminModal({
     }
   }, [assignedCountry, availableCities, assignedCity, isCityAdminLocked, currentAdminCity]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Lock body scroll and prevent double scrollbars / background scrolling
+    const originalOverflow = document.body.style.overflow;
+    const originalPaddingRight = document.body.style.paddingRight;
+    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.overflow = "hidden";
+    if (scrollBarWidth > 0) {
+      document.body.style.paddingRight = `${scrollBarWidth}px`;
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.paddingRight = originalPaddingRight;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -125,7 +152,7 @@ export function AssignGeoAdminModal({
           name: name.trim(),
           email: email.trim().toLowerCase(),
           role: isCountryAdminLocked ? "city_admin" : role,
-          assignedCountry: role === "super_admin" ? undefined : assignedCountry,
+          assignedCountry: (role === "super_admin" || (role === "admin" && !assignedCountry)) ? undefined : assignedCountry,
           assignedCity: (isCountryAdminLocked || role === "city_admin") ? assignedCity : undefined,
           password: password.trim() || undefined,
         }),
@@ -173,48 +200,61 @@ export function AssignGeoAdminModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in-50">
-      <div className="relative w-full max-w-lg rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-border">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in-50"
+    >
+      <div className="relative w-full max-w-lg rounded-3xl border border-border bg-card shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden">
+        {/* Header (Pinned) */}
+        <div className="flex items-center justify-between p-5 sm:p-6 pb-4 border-b border-border shrink-0 bg-card">
+          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
               {isCountryAdminLocked ? (
                 <Building2 className="w-5 h-5 text-indigo-500" />
               ) : role === "super_admin" ? (
                 <Crown className="w-5 h-5 text-amber-500" />
               ) : role === "country_admin" ? (
                 <Globe className="w-5 h-5 text-indigo-500" />
+              ) : role === "admin" ? (
+                <Shield className="w-5 h-5 text-emerald-500" />
               ) : (
                 <Building2 className="w-5 h-5 text-purple-500" />
               )}
             </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-black text-foreground">
+            <div className="min-w-0">
+              <h3 className="text-base sm:text-lg font-black text-foreground truncate">
                 {isCountryAdminLocked
                   ? "Nominate City Admin"
                   : role === "super_admin"
                   ? "Appoint Global Super Admin"
                   : role === "country_admin"
                   ? "Assign Country Main Admin"
+                  : role === "admin"
+                  ? "Assign Operational Admin"
                   : "Assign City Admin (Direct Post)"}
               </h3>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground line-clamp-1">
                 {isCountryAdminLocked
                   ? "Nominations are submitted to the Super Admin for verification and posting."
+                  : role === "admin"
+                  ? "Platform Operations & Moderation. Directly synced with Clerk & MongoDB."
                   : "Directly synchronized with your Clerk Dashboard & MongoDB database."}
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+            className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
           {/* Country Admin Role Banner (Locked) */}
           {isCountryAdminLocked ? (
             <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-between">
@@ -239,7 +279,7 @@ export function AssignGeoAdminModal({
               <label className="text-xs font-bold text-foreground block">
                 Administrative Authority Level <span className="text-destructive">*</span>
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button
                   type="button"
                   onClick={() => setRole("country_admin")}
@@ -288,6 +328,29 @@ export function AssignGeoAdminModal({
 
                 <button
                   type="button"
+                  onClick={() => setRole("admin")}
+                  className={`p-2.5 rounded-2xl border text-left transition-all flex flex-col gap-1 ${
+                    role === "admin"
+                      ? "border-emerald-500 bg-emerald-500/10 shadow-sm ring-1 ring-emerald-500/30"
+                      : "border-border hover:border-primary/40 bg-slate-50 dark:bg-slate-900"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-xs text-foreground flex items-center gap-1">
+                      <Shield className="w-3 h-3 text-emerald-500 shrink-0" />
+                      Operational Admin
+                    </span>
+                    {role === "admin" && (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    )}
+                  </div>
+                  <span className="text-[9px] text-muted-foreground line-clamp-1">
+                    Platform ops
+                  </span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setRole("super_admin")}
                   className={`p-2.5 rounded-2xl border text-left transition-all flex flex-col gap-1 ${
                     role === "super_admin"
@@ -318,10 +381,12 @@ export function AssignGeoAdminModal({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-indigo-500" />
-                  Territorial Jurisdiction
+                  {role === "admin" ? "Operational Scope / Headquarters" : "Territorial Jurisdiction"}
                 </span>
                 <Badge variant="outline" className="text-[10px] font-bold">
-                  {selectedCountryEntry?.flag} {assignedCountry}
+                  {role === "admin" && !assignedCountry
+                    ? "🌐 Worldwide Operations"
+                    : `${selectedCountryEntry?.flag || "🌍"} ${assignedCountry}`}
                 </Badge>
               </div>
 
@@ -329,7 +394,11 @@ export function AssignGeoAdminModal({
                 {/* Country Selection */}
                 <div>
                   <label className="text-[11px] font-bold text-foreground block mb-1">
-                    Country (Sovereign Nation) <span className="text-destructive">*</span>
+                    {role === "admin" ? (
+                      <>Operating Headquarters Country <span className="text-muted-foreground font-normal">(Optional)</span></>
+                    ) : (
+                      <>Country (Sovereign Nation) <span className="text-destructive">*</span></>
+                    )}
                   </label>
                   {isGeoRestricted ? (
                     <div className="h-9 px-3 rounded-xl border border-input bg-background flex items-center text-xs font-bold gap-2">
@@ -345,6 +414,9 @@ export function AssignGeoAdminModal({
                       onChange={(e) => setAssignedCountry(e.target.value)}
                       className="w-full h-9 rounded-xl border border-input bg-background px-3 text-xs font-semibold focus:ring-2 focus:ring-primary shadow-sm"
                     >
+                      {role === "admin" && (
+                        <option value="">🌐 Worldwide Operations (No country lock)</option>
+                      )}
                       {COUNTRIES_WITH_CITIES.map((c) => (
                         <option key={c.name} value={c.name}>
                           {c.flag} {c.name}
@@ -399,7 +471,7 @@ export function AssignGeoAdminModal({
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Marcus Holloway"
+                  placeholder="e.g. Hadush Geush"
                   className="pl-9 text-xs"
                 />
               </div>
@@ -416,7 +488,13 @@ export function AssignGeoAdminModal({
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder={`e.g. admin.${assignedCity ? assignedCity.toLowerCase().replace(/\s+/g, '') : 'city'}@bizfinder.et`}
+                  placeholder={
+                    role === "super_admin"
+                      ? "e.g. superadmin@bizfinder.et"
+                      : role === "admin"
+                      ? "e.g. operations.admin@bizfinder.et"
+                      : `e.g. admin.${assignedCity ? assignedCity.toLowerCase().replace(/\s+/g, '') : 'city'}@bizfinder.et`
+                  }
                   className="pl-9 text-xs"
                 />
               </div>
@@ -455,8 +533,10 @@ export function AssignGeoAdminModal({
             </span>
           </div>
 
-          {/* Modal Actions */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+          </div>
+
+          {/* Modal Actions (Pinned Footer) */}
+          <div className="flex items-center justify-end gap-2.5 p-4 sm:p-5 border-t border-border bg-card/95 backdrop-blur-sm shrink-0">
             <Button
               type="button"
               variant="outline"
@@ -483,6 +563,8 @@ export function AssignGeoAdminModal({
                 ? "Appoint Global Super Admin"
                 : role === "country_admin"
                 ? `Assign ${assignedCountry} Country Lead`
+                : role === "admin"
+                ? `Assign Operational Admin${assignedCountry ? ` (${assignedCountry})` : ""}`
                 : `Assign & Post ${assignedCity || "City"} Admin`}
             </Button>
           </div>

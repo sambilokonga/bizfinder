@@ -1,4 +1,4 @@
-import { IReport } from "@/types/report";
+﻿import { IReport } from "@/types/report";
 
 export const SEED_REPORTS: IReport[] = [
   {
@@ -229,7 +229,7 @@ export const SEED_REPORTS: IReport[] = [
     status: "resolved",
     priority: "medium",
     resolutionNotes: "Review deleted and sender account restricted from posting comments for 14 days.",
-    resolvedBy: "Alex Rivera (Super Admin)",
+    resolvedBy: "Cala Wakuma (Super Admin)",
     resolvedAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     actionTaken: "content_removed",
     city: "Addis Ababa",
@@ -279,7 +279,7 @@ export const SEED_REPORTS: IReport[] = [
     status: "resolved",
     priority: "high",
     resolutionNotes: "All 5 bot accounts suspended and 18 fake reviews purged from search index.",
-    resolvedBy: "Alex Rivera (Super Admin)",
+    resolvedBy: "Cala Wakuma (Super Admin)",
     resolvedAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
     actionTaken: "user_suspended",
     city: "Addis Ababa",
@@ -350,7 +350,7 @@ export const SEED_REPORTS: IReport[] = [
     status: "resolved",
     priority: "critical",
     resolutionNotes: "Asset immediately unlinked from CDN and permanently quarantined.",
-    resolvedBy: "Alex Rivera (Super Admin)",
+    resolvedBy: "Cala Wakuma (Super Admin)",
     resolvedAt: new Date(Date.now() - 1000 * 60 * 60 * 10).toISOString(),
     actionTaken: "content_removed",
     city: "Addis Ababa",

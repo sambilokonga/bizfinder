@@ -67,7 +67,7 @@ export function GeoScopeBanner({
     : undefined;
 
   return (
-    <div className="rounded-2xl sm:rounded-3xl border border-border bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-3.5 xs:p-4 sm:p-6 shadow-xl space-y-3 sm:space-y-4 overflow-hidden">
+    <div className="rounded-2xl sm:rounded-3xl border border-border bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-3 xs:p-3.5 sm:p-6 shadow-xl space-y-3 sm:space-y-4 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         {/* Left: Role Title & Territory Badge */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -80,21 +80,21 @@ export function GeoScopeBanner({
 
           <div className="space-y-0.5 sm:space-y-1 min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-              <span className="text-sm sm:text-base lg:text-lg font-black tracking-tight text-white leading-tight">
-                {isSuperAdmin && "Worldwide Super Admin Portal"}
-                {isCountryAdmin && `${selectedCountry} National Administration`}
-                {isCityAdmin && `${selectedCity || "City"} Municipal Portal`}
-                {currentRole === "admin" && "Operations Admin Portal"}
+              <span className="text-xs xs:text-sm sm:text-base lg:text-lg font-black tracking-tight text-white leading-tight truncate max-w-[160px] xs:max-w-[200px] sm:max-w-none">
+                {isSuperAdmin && "Super Admin Portal"}
+                {isCountryAdmin && `${selectedCountry} Admin`}
+                {isCityAdmin && `${selectedCity || "City"} Admin`}
+                {currentRole === "admin" && "Operations Admin"}
               </span>
 
               <Badge
                 variant="outline"
-                className="bg-white/10 text-white border-white/30 text-[9px] xs:text-[10px] sm:text-[11px] font-bold py-0 xs:py-0.5 px-1.5 xs:px-2 shrink-0"
+                className="bg-white/10 text-white border-white/30 text-[8px] xs:text-[9px] sm:text-[11px] font-bold py-0 px-1 xs:px-1.5 sm:px-2 shrink-0 max-w-[120px] xs:max-w-[150px] sm:max-w-none truncate"
               >
-                {isSuperAdmin && "👑 Global (195 Nations)"}
-                {isCountryAdmin && `🌍 National Lead (${countryEntry?.flag} ${selectedCountry})`}
-                {isCityAdmin && `🏙️ City Lead (${selectedCity || "City"})`}
-                {currentRole === "admin" && "🛡️ Operations"}
+                {isSuperAdmin && "👑 195 Nations"}
+                {isCountryAdmin && `🌍 ${countryEntry?.flag || ""} ${selectedCountry}`}
+                {isCityAdmin && `🏙️ ${selectedCity || "City"}`}
+                {currentRole === "admin" && "🛡️ Ops"}
               </Badge>
             </div>
 
@@ -112,7 +112,7 @@ export function GeoScopeBanner({
         </div>
 
         {/* Right: Instant Perspective Simulation Controls */}
-        <div className="flex flex-wrap items-center gap-1 xs:gap-1.5 sm:gap-2 bg-black/40 backdrop-blur-md p-1 xs:p-1.5 rounded-xl sm:rounded-2xl border border-white/10 text-xs w-full xs:w-auto">
+        <div className="flex flex-wrap items-center gap-1 xs:gap-1.5 sm:gap-2 bg-black/40 backdrop-blur-md p-1 xs:p-1.5 rounded-xl sm:rounded-2xl border border-white/10 text-xs w-full sm:w-auto">
           <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 pl-1 xs:pl-2 pr-0.5 xs:pr-1 hidden sm:inline">
             Simulate Role:
           </span>
@@ -193,65 +193,71 @@ export function GeoScopeBanner({
       </div>
 
       {/* ─── Territory Filter Bar ────────────────────────────────────────────── */}
-      <div className="pt-2 sm:pt-2.5 md:pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
+      <div className="pt-2 sm:pt-2.5 md:pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 sm:gap-3 text-xs">
         <div className="flex flex-wrap items-center gap-1.5 xs:gap-2 sm:gap-2.5 min-w-0 max-w-full">
           <div className="flex items-center gap-1 sm:gap-1.5 text-slate-300 font-bold shrink-0">
             <SlidersHorizontal className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-400 shrink-0" />
-            <span className="text-[9px] xs:text-[10px] sm:text-[11px] md:text-xs">Active Scope:</span>
+            <span className="text-[10px] xs:text-[11px] sm:text-xs">Active Scope:</span>
           </div>
 
           {/* Country Scope Dropdown — Super Admin sees all 195; Country/City Admin sees locked badge */}
           <div className="flex items-center gap-1 xs:gap-1.5 min-w-0">
-            <span className="text-[9px] xs:text-[10px] sm:text-[11px] text-slate-400 shrink-0">Country:</span>
+            <span className="text-[10px] xs:text-[11px] sm:text-xs text-slate-400 shrink-0">Country:</span>
             {isCountryLocked ? (
               /* Locked — show a read-only badge for country/city admins */
-              <div className="h-6 xs:h-7 sm:h-7.5 md:h-8 flex items-center gap-1 xs:gap-1.5 px-1.5 xs:px-2 sm:px-2.5 rounded-md xs:rounded-lg sm:rounded-xl bg-slate-800/80 border border-white/10 text-[9px] xs:text-[10px] sm:text-[11px] md:text-xs font-semibold text-white cursor-not-allowed select-none max-w-[130px] xs:max-w-[155px] sm:max-w-[185px] md:max-w-[210px] truncate">
+              <div className="h-7 sm:h-8 flex items-center gap-1 xs:gap-1.5 px-2 xs:px-2.5 rounded-lg sm:rounded-xl bg-slate-800/80 border border-white/10 text-[10px] xs:text-[11px] sm:text-xs font-semibold text-white cursor-not-allowed select-none min-w-0 max-w-[180px] xs:max-w-[210px] sm:max-w-[240px]">
                 <span>{lockedCountryEntry?.flag || "🌍"}</span>
                 <span className="truncate">{assignedCountry || selectedCountry}</span>
                 <span className="text-[8px] xs:text-[9px] text-slate-400 font-semibold ml-0.5 hidden xs:inline">🔒 Locked</span>
               </div>
             ) : (
               /* Super Admin — full 195-country dropdown */
-              <select
-                value={selectedCountry}
-                onChange={(e) => {
-                  onCountryChange(e.target.value);
-                  const cEntry = COUNTRIES_WITH_CITIES.find(
-                    (c) => c.name.toLowerCase() === e.target.value.toLowerCase()
-                  );
-                  const firstCity = cEntry?.cities[0] || "all";
-                  onCityChange(isCityAdmin ? firstCity : "all");
-                }}
-                className="h-6 xs:h-7 sm:h-7.5 md:h-8 max-w-[130px] xs:max-w-[155px] sm:max-w-[185px] md:max-w-[210px] lg:max-w-[250px] rounded-md xs:rounded-lg sm:rounded-xl bg-slate-800 border border-white/20 px-1.5 xs:px-2 sm:px-2.5 text-[9px] xs:text-[10px] sm:text-[11px] md:text-xs font-semibold text-white focus:ring-2 focus:ring-indigo-400 cursor-pointer truncate"
-              >
-                <option value="all">🌐 All 195 Countries</option>
-                {COUNTRIES_WITH_CITIES.map((c) => (
-                  <option key={c.name} value={c.name}>
-                    {c.flag} {c.name}
-                  </option>
-                ))}
-              </select>
+              <div className="relative min-w-0 w-full sm:w-auto inline-flex items-center">
+                <select
+                  value={selectedCountry}
+                  onChange={(e) => {
+                    onCountryChange(e.target.value);
+                    const cEntry = COUNTRIES_WITH_CITIES.find(
+                      (c) => c.name.toLowerCase() === e.target.value.toLowerCase()
+                    );
+                    const firstCity = cEntry?.cities[0] || "all";
+                    onCityChange(isCityAdmin ? firstCity : "all");
+                  }}
+                  className="h-7 sm:h-8 w-full min-w-0 sm:min-w-[190px] sm:max-w-[280px] rounded-lg sm:rounded-xl bg-slate-800/95 hover:bg-slate-800 border border-white/20 pl-2 xs:pl-2.5 pr-6 xs:pr-7 text-[10px] xs:text-[11px] sm:text-xs font-medium text-white focus:ring-2 focus:ring-indigo-400 focus:outline-none cursor-pointer appearance-none shadow-xs truncate transition-colors"
+                >
+                  <option value="all" className="bg-slate-900 text-white">🌐 All 195 Countries</option>
+                  {COUNTRIES_WITH_CITIES.map((c) => (
+                    <option key={c.name} value={c.name} className="bg-slate-900 text-white">
+                      {c.flag} {c.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3 h-3 xs:w-3.5 xs:h-3.5 absolute right-2 text-slate-400 pointer-events-none" />
+              </div>
             )}
           </div>
 
           {/* City Scope Dropdown */}
           {selectedCountry !== "all" && (
             <div className="flex items-center gap-1 xs:gap-1.5 min-w-0">
-              <span className="text-[9px] xs:text-[10px] sm:text-[11px] text-slate-400 shrink-0">City:</span>
-              <select
-                value={selectedCity}
-                onChange={(e) => onCityChange(e.target.value)}
-                className="h-7 xs:h-8 sm:h-8 md:h-9 min-w-[100px] xs:min-w-[120px] sm:min-w-[140px] max-w-[140px] xs:max-w-[160px] sm:max-w-[185px] md:max-w-[210px] lg:max-w-[240px] rounded-lg xs:rounded-lg sm:rounded-xl bg-slate-800 border border-white/20 px-2 xs:px-2.5 sm:px-3 text-[11px] xs:text-xs sm:text-xs md:text-sm font-semibold text-white focus:ring-2 focus:ring-indigo-400 cursor-pointer"
-              >
-                {!isCityAdmin && (
-                  <option value="all">🏙️ All Cities</option>
-                )}
-                {availableCities.map((city) => (
-                  <option key={city} value={city}>
-                    {city}
-                  </option>
-                ))}
-              </select>
+              <span className="text-[10px] xs:text-[11px] sm:text-xs text-slate-400 shrink-0">City:</span>
+              <div className="relative min-w-0 inline-flex items-center">
+                <select
+                  value={selectedCity}
+                  onChange={(e) => onCityChange(e.target.value)}
+                  className="h-7 sm:h-8 w-auto min-w-[115px] xs:min-w-[135px] sm:min-w-[155px] max-w-[170px] xs:max-w-[200px] sm:max-w-[240px] rounded-lg sm:rounded-xl bg-slate-800/95 hover:bg-slate-800 border border-white/20 pl-2 xs:pl-2.5 pr-6 xs:pr-7 text-[10px] xs:text-[11px] sm:text-xs font-medium text-white focus:ring-2 focus:ring-indigo-400 focus:outline-none cursor-pointer appearance-none shadow-xs truncate transition-colors"
+                >
+                  {!isCityAdmin && (
+                    <option value="all" className="bg-slate-900 text-white">🏙️ All Cities</option>
+                  )}
+                  {availableCities.map((city) => (
+                    <option key={city} value={city} className="bg-slate-900 text-white">
+                      {city}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3 h-3 xs:w-3.5 xs:h-3.5 absolute right-2 text-slate-400 pointer-events-none" />
+              </div>
             </div>
           )}
         </div>

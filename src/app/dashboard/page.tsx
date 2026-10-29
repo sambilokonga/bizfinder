@@ -3094,6 +3094,41 @@ export default function OwnerDashboardPage() {
               <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Live</span>
             </div>
           </div>
+          {/* ── Mobile Horizontal Tab Selector (xs/sm/md screens only) ── */}
+          <div className="lg:hidden flex items-center gap-1.5 overflow-x-auto px-3 py-2.5 border-b border-border/60 bg-card/60 backdrop-blur-sm no-scrollbar shrink-0">
+            {[
+              { id: "dashboard", label: "Dashboard", icon: "🏠" },
+              { id: "businesses", label: "My Businesses", icon: "🏢" },
+              { id: "management", label: "Management", icon: "⚙️" },
+              { id: "media", label: "Media", icon: "📸" },
+              { id: "territory", label: "Territory", icon: "🗺️" },
+              { id: "reviews", label: "Reviews", icon: "⭐" },
+              { id: "customers", label: "Customers", icon: "👥" },
+              { id: "messages", label: "Inquiries", icon: "💬" },
+              { id: "notifications", label: "Notices", icon: "🔔" },
+              { id: "analytics", label: "Analytics", icon: "📈" },
+              { id: "advertising", label: "Ads", icon: "📢" },
+              { id: "promotions", label: "Deals", icon: "🎁" },
+              { id: "billing", label: "Billing", icon: "💳" },
+              { id: "support", label: "Support", icon: "🎫" },
+              { id: "moderation", label: "Disputes", icon: "🚨" },
+              { id: "settings", label: "Settings", icon: "⚙️" },
+              { id: "security", label: "Security", icon: "🔒" },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => { setActiveNav(t.id as any); setActiveSubnav("overview"); }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 flex items-center gap-1 transition-all ${
+                  activeNav === t.id
+                    ? "bg-indigo-600 text-white shadow"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                <span>{t.icon}</span>
+                <span>{t.label}</span>
+              </button>
+            ))}
+          </div>
           {/* Animated key wrapper — re-mounts + slides in on every nav change */}
           <div key={activeNav + "-" + activeSubnav} className="animate-page-enter p-3 sm:p-6 lg:p-8">
           {/* ════════════════════════════════════════════════════════════════════

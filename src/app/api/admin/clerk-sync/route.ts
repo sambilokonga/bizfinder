@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { clerkClient } from "@clerk/nextjs/server";
 import { syncAdminToClerk, ClerkGeoAdminPayload } from "@/lib/auth/clerk-sync";
 import { connectToDatabase } from "@/lib/db/mongodb";
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
       // Ethiopia Country Main Admin
       const ethiopiaCountryAdmin: ClerkGeoAdminPayload = {
         email: "ethiopia.lead@bizfinder.et",
-        name: "Marcus Holloway (Ethiopia National Lead)",
+        name: "Hadush Geush (Ethiopia National Lead)",
         role: "country_admin",
         assignedCountry: "Ethiopia",
         permissions: ["city_admin.manage", "business.approve", "business.verify", "country.analytics.read"],

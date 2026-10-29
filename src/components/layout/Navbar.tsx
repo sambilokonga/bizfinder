@@ -361,9 +361,17 @@ export function Navbar() {
             {/* Brand header strip */}
             <div className="flex items-center justify-between px-1 pb-1 border-b border-border/50">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shadow-sm">
-                  <Crown className="w-3.5 h-3.5 text-white" />
-                </div>
+                {currentUser?.avatarUrl ? (
+                  <img
+                    src={currentUser.avatarUrl}
+                    alt={currentUser?.name || "User"}
+                    className="w-7 h-7 rounded-lg object-cover shadow-sm border border-border"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                    <Crown className="w-3.5 h-3.5 text-white" />
+                  </div>
+                )}
                 <div>
                   <div className="text-[11px] font-black text-foreground tracking-tight leading-none">
                     {currentUser?.name || "Guest Explorer"}

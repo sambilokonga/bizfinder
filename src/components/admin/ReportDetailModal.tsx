@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -41,7 +41,7 @@ export function ReportDetailModal({
   onClose,
   report,
   onStatusUpdated,
-  currentAdminName = "Alex Rivera (Super Admin)",
+  currentAdminName = "Cala Wakuma (Super Admin)",
 }: ReportDetailModalProps) {
   const [resolutionNotes, setResolutionNotes] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);

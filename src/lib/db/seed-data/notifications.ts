@@ -1,4 +1,4 @@
-import { INotification } from "@/types/notification";
+﻿import { INotification } from "@/types/notification";
 
 export const SEED_NOTIFICATIONS: INotification[] = [
   // ── 1. COMMON / GLOBAL NOTIFICATIONS (Visible to All Users & Roles) ───────────
@@ -11,7 +11,7 @@ export const SEED_NOTIFICATIONS: INotification[] = [
     actionType: "system",
     status: "delivered",
     priority: "medium",
-    sentBy: "Alex Rivera (Super Admin)",
+    sentBy: "Cala Wakuma (Super Admin)",
     type: "system",
     channels: ["in_app", "email"],
     channelStatus: { in_app: "delivered", email: "delivered" },
@@ -6048,7 +6048,7 @@ export const SEED_NOTIFICATIONS: INotification[] = [
   {
     id: "notif-ops-50",
     title: "👥 Administrative Role Elevation Audit: #USR-902",
-    body: "User account 'tadesse.k' was granted 'Country Admin' permissions by Super Admin Alex Rivera. Verify audit trail compliance record.",
+    body: "User account 'tadesse.k' was granted 'Country Admin' permissions by Super Admin Cala Wakuma. Verify audit trail compliance record.",
     target: "admin",
     targetRole: "admin",
     actionType: "privileged_role_changed",
@@ -6695,7 +6695,7 @@ export const SEED_NOTIFICATIONS: INotification[] = [
   {
     id: "notif-super-14",
     title: "🛡️ CRITICAL: New Super Admin Account Created: #ADM-SUP-909",
-    body: "A new Super Admin account ('alex.rivera.backup') was provisioned via Break-Glass CLI console. Multi-party verification signature required within 24 hours.",
+    body: "A new Super Admin account ('cala.wakuma.backup') was provisioned via Break-Glass CLI console. Multi-party verification signature required within 24 hours.",
     target: "super_admin",
     targetRole: "super_admin",
     actionType: "super_admin_created",
@@ -7530,7 +7530,7 @@ export const SEED_NOTIFICATIONS: INotification[] = [
   // No. 58 — Suspicious Super Admin login
   {
     id: "notif-super-58",
-    title: "🔐 CRITICAL: Anomalous Login on Super Admin Account 'Alex Rivera'",
+    title: "🔐 CRITICAL: Anomalous Login on Super Admin Account 'Cala Wakuma'",
     body: "Super Admin account accessed from unexpected Tor exit node with bypassed hardware security token. Immediate account lock and session kill initiated.",
     target: "super_admin",
     targetRole: "super_admin",

@@ -1,4 +1,4 @@
-const { MongoClient } = require("mongodb");
+﻿const { MongoClient } = require("mongodb");
 const fs = require("fs");
 const path = require("path");
 
@@ -213,7 +213,7 @@ async function run() {
       $set: {
         clerkId: "usr_ethiopia_lead_cbe",
         id: "usr_ethiopia_lead_cbe",
-        name: "Marcus Holloway (Ethiopia National Lead)",
+        name: "Hadush Geush (Ethiopia National Lead)",
         email: "ethiopia.lead@bizfinder.et",
         role: "country_admin",
         assignedCountry: "Ethiopia",
@@ -261,7 +261,7 @@ async function run() {
   console.log("\n================================================================================");
   console.log("  SUCCESS! 500 COMMERCIAL BANK OF ETHIOPIA BRANCHES INGESTED:");
   console.log(`  - Total CBE Branches in DB: ${finalBranchCount}`);
-  console.log(`  - Ethiopia Country Main Admin: Marcus Holloway (ethiopia.lead@bizfinder.et)`);
+  console.log(`  - Ethiopia Country Main Admin: Hadush Geush (ethiopia.lead@bizfinder.et)`);
   console.log(`  - Total City Admins Assigned: ${finalCityAdminCount} (30 Cities)`);
   console.log("================================================================================\n");
 

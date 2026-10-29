@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import { UserModel } from "@/lib/db/models/User";
 import { COUNTRIES_WITH_CITIES, getCitiesForCountry } from "@/lib/data/countries-cities";
@@ -33,7 +33,7 @@ export interface GeoAdminRecord {
 let GEO_ADMINS_ROSTER: GeoAdminRecord[] = [
   {
     id: "geo-adm-super-1",
-    name: "Alex Rivera",
+    name: "Cala Wakuma",
     email: "superadmin@bizfinder.et",
     role: "super_admin",
     status: "active",
@@ -689,6 +689,16 @@ export async function POST(req: Request) {
       permissions = ["all", "country_admin.manage", "city_admin.manage", "platform.manage"];
     } else if (role === "country_admin") {
       permissions = ["city_admin.manage", "business.approve", "business.verify", "country.analytics.read"];
+    } else if (role === "admin") {
+      permissions = [
+        "platform.operations",
+        "business.verify",
+        "business.approve",
+        "business.reject",
+        "review.moderate",
+        "support.manage",
+        "reports.read",
+      ];
     } else {
       // For city admin: only grant active permissions immediately if Super Admin approved!
       permissions = isNomination ? [] : ["business.approve", "business.verify", "review.moderate"];
@@ -801,7 +811,7 @@ export async function POST(req: Request) {
       admin: newRecord,
       message: isNomination
         ? `City Admin nomination for ${cleanCity} (${cleanCountry}) submitted successfully! Awaiting Super Admin approval before being posted live.`
-        : `${role === "country_admin" ? `${cleanCountry} Country Lead` : role === "city_admin" ? `City Admin for ${cleanCity}` : "Administrator"} assigned and posted live successfully!`,
+        : `${role === "country_admin" ? `${cleanCountry} Country Lead` : role === "city_admin" ? `City Admin for ${cleanCity}` : role === "admin" ? `Operational Admin (${cleanName})` : "Super Admin"} assigned and posted live successfully!`,
     });
   } catch (error: any) {
     console.error("[Geo Admins API POST Error]", error);

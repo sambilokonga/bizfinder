@@ -8,7 +8,7 @@ interface CreateAdminModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAdminCreated?: (admin: AdminAccount) => void;
-  initialRole?: "super_admin" | "country_admin" | "city_admin";
+  initialRole?: "super_admin" | "country_admin" | "city_admin" | "admin";
   initialCountry?: string;
   initialCity?: string;
 }

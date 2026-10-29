@@ -12,10 +12,10 @@ export const FOUR_MONTHS_DAYS = 120;
 
 export interface BusinessAuditMetrics {
   business: Business;
-  registeredAtDate: Date;
-  validationDateDate?: Date;
-  effectiveStartDate: Date;
-  nextAuditDate: Date;
+  registeredAtDate: Date | string;
+  validationDateDate?: Date | string;
+  effectiveStartDate: Date | string;
+  nextAuditDate: Date | string;
   daysSinceStart: number;
   monthsSinceStart: number;
   isDueForReview: boolean;
@@ -23,7 +23,7 @@ export interface BusinessAuditMetrics {
   daysOverdue: number;
   existenceStatus: "confirmed" | "pending_confirmation" | "unconfirmed" | "dormant";
   subscriptionStatus: "trial" | "active" | "due" | "past_due";
-  lastAuditAlertSentAt?: Date;
+  lastAuditAlertSentAt?: Date | string;
   auditAlertsCount: number;
 }
 
@@ -227,13 +227,22 @@ export async function collectAndDispatchFourMonthAlerts(options?: {
   for (const item of candidates) {
     const biz = item.business;
     const ownerId = biz.ownerId || "user_guest";
-    const regDateStr = item.registeredAtDate.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-    const valDateStr = item.validationDateDate
-      ? item.validationDateDate.toLocaleDateString("en-US", {
+    const regDate = item.registeredAtDate instanceof Date ? item.registeredAtDate : new Date(item.registeredAtDate);
+    const valDate = item.validationDateDate
+      ? item.validationDateDate instanceof Date
+        ? item.validationDateDate
+        : new Date(item.validationDateDate)
+      : null;
+
+    const regDateStr = !isNaN(regDate.getTime())
+      ? regDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : "";
+    const valDateStr = valDate && !isNaN(valDate.getTime())
+      ? valDate.toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
           year: "numeric",
@@ -267,8 +276,8 @@ export async function collectAndDispatchFourMonthAlerts(options?: {
             addressLine: biz.addressLine,
             cityName: biz.cityName,
             countryName: biz.countryName,
-            registeredAt: item.registeredAtDate.toISOString(),
-            validationDate: item.validationDateDate?.toISOString(),
+            registeredAt: !isNaN(regDate.getTime()) ? regDate.toISOString() : undefined,
+            validationDate: valDate && !isNaN(valDate.getTime()) ? valDate.toISOString() : undefined,
             daysSinceStart: item.daysSinceStart,
             actionRequired: "confirm_existence",
           },

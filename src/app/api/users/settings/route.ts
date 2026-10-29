@@ -28,7 +28,7 @@ const DEFAULT_SETTINGS_TEMPLATE = {
     email: "owner@bizfinder.et",
     phone: "+251 91 123 4567",
     jobTitle: "Managing Director & Founder",
-    avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    avatarUrl: "https://api.dicebear.com/9.x/avataaars/svg?seed=DawitSolomon&backgroundColor=b6e3f4&clothesColor=262e33&hairColor=2c1b18&skinColor=ae5d29",
     role: "owner",
   },
   localization: {

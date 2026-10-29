@@ -118,7 +118,7 @@ const DEFAULT_USER_SETTINGS: UserSettingsPayload = {
     email: "owner@bizfinder.et",
     phone: "+251 91 123 4567",
     jobTitle: "Managing Director & Founder",
-    avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    avatarUrl: "https://api.dicebear.com/9.x/avataaars/svg?seed=DawitSolomon&backgroundColor=b6e3f4&clothesColor=262e33&hairColor=2c1b18&skinColor=ae5d29",
     role: "owner",
   },
   localization: {
@@ -187,12 +187,12 @@ const DEFAULT_USER_SETTINGS: UserSettingsPayload = {
 };
 
 const AVATAR_PRESETS = [
-  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
+  "https://api.dicebear.com/9.x/avataaars/svg?seed=DawitSolomon&backgroundColor=b6e3f4&clothesColor=262e33&hairColor=2c1b18&skinColor=ae5d29",
+  "https://api.dicebear.com/9.x/avataaars/svg?seed=SolomonTadesse&backgroundColor=c0aede&clothesColor=3c4f5c&hairColor=2c1b18&skinColor=ae5d29",
+  "https://api.dicebear.com/9.x/avataaars/svg?seed=BethlehemAlemu&backgroundColor=ffd5dc&clothesColor=65c9ff&hairColor=4a312c&skinColor=d08b5b",
+  "https://api.dicebear.com/9.x/avataaars/svg?seed=AbebeBikila&backgroundColor=d1d4f9&clothesColor=25557c&hairColor=2c1b18&skinColor=ae5d29",
+  "https://api.dicebear.com/9.x/avataaars/svg?seed=SelamawitNega&backgroundColor=ffdfbf&clothesColor=929598&hairColor=2c1b18&skinColor=ae5d29",
+  "https://api.dicebear.com/9.x/avataaars/svg?seed=HadushGeush&backgroundColor=c0aede&clothesColor=3c4f5c&hairColor=2c1b18&skinColor=ae5d29",
 ];
 
 interface DashboardSettingsViewProps {

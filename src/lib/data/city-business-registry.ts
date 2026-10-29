@@ -1,11 +1,11 @@
-import { Business, BusinessStatus, BusinessApprovalStatus, BusinessType } from "@/types/business";
+﻿import { Business, BusinessStatus, BusinessApprovalStatus, BusinessType } from "@/types/business";
 import { SEED_BUSINESSES } from "@/lib/db/seed-data/businesses";
 import { SUBCITIES_DATABASE, getSubcitiesForCity } from "@/lib/data/subcities-database";
 import { COUNTRIES_WITH_CITIES, getCitiesForCountry } from "@/lib/data/countries-cities";
 import { CURATED_CITY_SECTORS, CuratedSectorItem } from "@/lib/data/curated-city-sectors";
 import { isBusinessInCategory } from "@/lib/utils/category-matcher";
 
-// ─── Interfaces ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Interfaces â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface CityClaim {
   id: string;
@@ -76,7 +76,7 @@ export interface CityReviewItem {
   dateFormatted?: string;
 }
 
-// ─── Calling Code & Currency Helpers ────────────────────────────────────────
+// â”€â”€â”€ Calling Code & Currency Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CALLING_CODES: Record<string, string> = {
   Ethiopia: "251",
@@ -115,7 +115,7 @@ export function getCallingCode(countryName: string): string {
   return CALLING_CODES[countryName] || "1";
 }
 
-// ─── In-Memory Dynamic Store with Persistence ───────────────────────────────
+// â”€â”€â”€ In-Memory Dynamic Store with Persistence â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class GlobalCityBusinessStore {
   private businessesById: Map<string, Business> = new Map();
@@ -132,7 +132,7 @@ class GlobalCityBusinessStore {
     return `${countryName.trim().toLowerCase()}::${cityName.trim().toLowerCase()}`;
   }
 
-  // ── Seed Curated Addis Ababa Actual Businesses ────────────────────────────
+  // â”€â”€ Seed Curated Addis Ababa Actual Businesses â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   private seedAddisAbaba() {
     const country = "Ethiopia";
     const city = "Addis Ababa";
@@ -307,7 +307,7 @@ class GlobalCityBusinessStore {
         yearEstablished: 2026,
         description:
           "Next-generation 14-story AI research park, robotics incubator, and green cloud datacenter. Slated for commercial tenant operations in late 2026 under municipal smart city initiative.",
-        shortDescription: "State-of-the-art AI incubator and robotics park — Official Grand Opening Q4 2026.",
+        shortDescription: "State-of-the-art AI incubator and robotics park â€” Official Grand Opening Q4 2026.",
         status: "open",
         isVerified: true,
         isApproved: true,
@@ -338,7 +338,7 @@ class GlobalCityBusinessStore {
         yearEstablished: 2027,
         description:
           "Multi-level underground retail hub, artisanal craft galleries, transit terminals, and cinema complex beneath the renovated Meskel Square amphitheater. Grand Opening early 2027.",
-        shortDescription: "Ultra-modern underground transit retail complex — Slated for Grand Launch March 2027.",
+        shortDescription: "Ultra-modern underground transit retail complex â€” Slated for Grand Launch March 2027.",
         status: "open",
         isVerified: true,
         isApproved: true,
@@ -369,7 +369,7 @@ class GlobalCityBusinessStore {
         yearEstablished: 2027,
         description:
           "Municipal green hydrogen refuelling and heavy-freight electric charging terminal for airport logistics and zero-emission delivery fleets.",
-        shortDescription: "Zero-emission commercial freight charging and hydrogen depot — Launching Q1 2027.",
+        shortDescription: "Zero-emission commercial freight charging and hydrogen depot â€” Launching Q1 2027.",
         status: "open",
         isVerified: true,
         isApproved: true,
@@ -384,7 +384,7 @@ class GlobalCityBusinessStore {
       },
     ];
 
-    // 🔔 Pending Confirmations Queue for Addis Ababa (Multi-Tier Governance)
+    // ðŸ”” Pending Confirmations Queue for Addis Ababa (Multi-Tier Governance)
     const addisConfirmationsQueue: Partial<Business>[] = [
       {
         id: "biz-aa-confirm-1",
@@ -404,7 +404,7 @@ class GlobalCityBusinessStore {
         yearEstablished: 2024,
         description:
           "5,000-seat premier banquet center and international expo hall. Submitted for municipal multi-tier registration endorsement.",
-        shortDescription: "International expo & banquet center — Awaiting City Admin Confirmation.",
+        shortDescription: "International expo & banquet center â€” Awaiting City Admin Confirmation.",
         status: "open",
         isVerified: false,
         isApproved: false,
@@ -435,7 +435,7 @@ class GlobalCityBusinessStore {
         yearEstablished: 2025,
         description:
           "Licensed digital cross-border remittance gateway and merchant QR payments switch. Pending City Admin multi-tier endorsement.",
-        shortDescription: "Cross-border digital remittance gateway — In Municipal Confirmation Queue.",
+        shortDescription: "Cross-border digital remittance gateway â€” In Municipal Confirmation Queue.",
         status: "open",
         isVerified: false,
         isApproved: false,
@@ -470,7 +470,7 @@ class GlobalCityBusinessStore {
         yearEstablished: 2024,
         description:
           "High-speed fiber co-working space, dedicated founder desks, podcast studio, and developer community cafe.",
-        shortDescription: "Modern founder co-working space — Trade license verification in progress.",
+        shortDescription: "Modern founder co-working space â€” Trade license verification in progress.",
         status: "open",
         isVerified: false,
         isApproved: false,
@@ -501,7 +501,7 @@ class GlobalCityBusinessStore {
         yearEstablished: 2023,
         description:
           "Handcrafted Ethiopian highland sheepskin and cowhide bags, jackets, and footwear. Awaiting storefront verification inspection.",
-        shortDescription: "Highland leather workshop and showroom — Inspection scheduled.",
+        shortDescription: "Highland leather workshop and showroom â€” Inspection scheduled.",
         status: "open",
         isVerified: false,
         isApproved: false,
@@ -742,7 +742,7 @@ class GlobalCityBusinessStore {
     this.initializedCities.add(key);
   }
 
-  // ── Dynamic City-Tailored Sector Generator for All 195 Countries ─────────
+  // â”€â”€ Dynamic City-Tailored Sector Generator for All 195 Countries â”€â”€â”€â”€â”€â”€â”€â”€â”€
   public buildDynamicSectorsForCity(cityName: string, countryName: string, subcities: string[]): CuratedSectorItem[] {
     const c1 = subcities[0] || `${cityName} Central`;
     const c2 = subcities[1] || `${cityName} Plaza`;
@@ -845,7 +845,7 @@ class GlobalCityBusinessStore {
         desc: `Automated molecular pathology laboratory undergoing final municipal clinical accreditation verification in ${cityName}.`
       },
 
-      // 🔔 Confirmations Queue (Multi-Tier Governance - pending_city)
+      // ðŸ”” Confirmations Queue (Multi-Tier Governance - pending_city)
       {
         name: `${cityName} International Summit & Expo Pavilion`,
         cat: "Hotels & Lodging",
@@ -925,7 +925,7 @@ class GlobalCityBusinessStore {
     ];
   }
 
-  // ── Deterministic City Population for ANY of the 195 Countries & Cities ────
+  // â”€â”€ Deterministic City Population for ANY of the 195 Countries & Cities â”€â”€â”€â”€
   public ensureCityInitialized(cityName: string, countryName: string) {
     const key = this.cityKey(cityName, countryName);
     if (this.initializedCities.has(key)) return;
@@ -1113,7 +1113,7 @@ class GlobalCityBusinessStore {
     this.seedShowcaseCityReviews(cityName, countryName, seededBizs);
   }
 
-  // ── Authentic Showcase Seed Reviews (Pioneer + All World Cities) ───────────
+  // â”€â”€ Authentic Showcase Seed Reviews (Pioneer + All World Cities) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Pioneer cities get hand-crafted historic reviews; all other 195-country cities
   // get deterministic, city-specific authentic reviews so every city has real data.
   private seedShowcaseCityReviews(cityName: string, countryName: string, preloadedBizs?: Business[]) {
@@ -1144,7 +1144,7 @@ class GlobalCityBusinessStore {
           countryName: "Ethiopia",
           userId: "usr-aa-01",
           userName: "Ato Dawit Tadesse",
-          userAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=AtoDawitTadesse&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "A cherished gem of Piazza heritage since 1905. The historic jazz nights, the high ceilings of Empress Taitu's salon, and the traditional coffee ceremony in the garden remain completely unmatched in Addis Ababa.",
           status: "published",
@@ -1162,7 +1162,7 @@ class GlobalCityBusinessStore {
           countryName: "Ethiopia",
           userId: "usr-aa-02",
           userName: "Meron Hailu",
-          userAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=MeronHailu&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "The authentic gold standard of Ethiopian standing espresso since 1953. Roasted daily Arabica beans and that timeless Piazza aroma. Nothing compares in all of Arada.",
           status: "published",
@@ -1185,7 +1185,7 @@ class GlobalCityBusinessStore {
           countryName: "Ethiopia",
           userId: "usr-aa-03",
           userName: "Yared Mekonnen",
-          userAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=YaredMekonnen&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Centennial brewing heritage right in Lideta since 1922. Fresh draught beer served in the historic courtyard tavern under the eucalyptus trees. Great gathering spot with colleagues.",
           status: "published",
@@ -1203,7 +1203,7 @@ class GlobalCityBusinessStore {
           countryName: "Ethiopia",
           userId: "usr-aa-04",
           userName: "Almaz Girma",
-          userAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=AlmazGirma&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Visited yesterday with overseas guests along Bole Africa Avenue. The Special Kitfo with Kocho, fresh Ayib, and authentic Agelgil service exceeded expectations. Swift hospitality.",
           status: "published",
@@ -1221,7 +1221,7 @@ class GlobalCityBusinessStore {
           countryName: "Ethiopia",
           userId: "usr-aa-audit-1",
           userName: "Municipal Consumer Protection Officer (Zewdu)",
-          userAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=MunicipalConsumerProtectionOfficer(Zewdu)&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Scheduled Municipal Mystery Customer & Safety Compliance Audit for late 2026. Pre-inspection criteria queued for Bole Sub-City commercial facilities.",
           status: "pending",
@@ -1249,7 +1249,7 @@ class GlobalCityBusinessStore {
           countryName: "Japan",
           userId: "usr-tokyo-01",
           userName: "Kenji Tanaka",
-          userAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=KenjiTanaka&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Generations of Edomae craftsmanship. Fresh tuna cuts sourced directly from Toyosu every dawn. A true staple of Chuo-ku since 2021.",
           status: "published",
@@ -1267,7 +1267,7 @@ class GlobalCityBusinessStore {
           countryName: "Japan",
           userId: "usr-tokyo-02",
           userName: "Yoko Watanabe",
-          userAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=YokoWatanabe&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "The legendary heart of Tokyo's electronics culture right outside the Electric Town exit. Unrivaled specialized components and hobby stores.",
           status: "published",
@@ -1285,7 +1285,7 @@ class GlobalCityBusinessStore {
           countryName: "Japan",
           userId: "usr-tokyo-audit-1",
           userName: "Tokyo Tourism Standards Inspector (Sato)",
-          userAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=TokyoTourismStandardsInspector(Sato)&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Scheduled Q4 2026 Tokyo Metropolitan Tourism & Hospitality Audit. Bilingual signage and omotenashi standards review queued.",
           status: "pending",
@@ -1313,7 +1313,7 @@ class GlobalCityBusinessStore {
           countryName: "France",
           userId: "usr-paris-01",
           userName: "Jean-Luc Moreau",
-          userAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=Jean-LucMoreau&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Pure traditional French sourdough and crisp croissants in the 4th arrondissement. Established neighborhood destination since 2022.",
           status: "published",
@@ -1331,7 +1331,7 @@ class GlobalCityBusinessStore {
           countryName: "France",
           userId: "usr-paris-02",
           userName: "Camille Lefebvre",
-          userAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=CamilleLefebvre&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Classic Parisian bistro cooking with seasonal game, steak au poivre, and Paris-Brest dessert. Top-tier hospitality and lively zinc bar.",
           status: "published",
@@ -1349,7 +1349,7 @@ class GlobalCityBusinessStore {
           countryName: "France",
           userId: "usr-paris-audit-1",
           userName: "Municipal Mystery Inspector (Julien)",
-          userAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=MunicipalMysteryInspector(Julien)&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Scheduled 2027 Paris City Commerce & Accessibility Standards Inspection for 4th Arrondissement establishments.",
           status: "pending",
@@ -1377,7 +1377,7 @@ class GlobalCityBusinessStore {
           countryName: "United Kingdom",
           userId: "usr-london-01",
           userName: "Oliver Davies",
-          userAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=OliverDavies&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Independent espresso bar with incredible heritage in Soho. Great ambiance, vintage lever machines, and loyal regulars since 2023.",
           status: "published",
@@ -1395,7 +1395,7 @@ class GlobalCityBusinessStore {
           countryName: "United Kingdom",
           userId: "usr-london-02",
           userName: "Sophie Martin",
-          userAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=SophieMartin&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Vibrant London food market stall. Unbeatable British farm cheeses, sourdough loaves, and warm hospitality under the railway arches.",
           status: "published",
@@ -1413,7 +1413,7 @@ class GlobalCityBusinessStore {
           countryName: "United Kingdom",
           userId: "usr-london-audit-1",
           userName: "UK Consumer Standards Officer (Charlotte)",
-          userAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=UKConsumerStandardsOfficer(Charlotte)&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Scheduled Q4 2026 Commercial Transparency & Weights Audit across Westminster high-street establishments.",
           status: "pending",
@@ -1441,7 +1441,7 @@ class GlobalCityBusinessStore {
           countryName: "United States",
           userId: "usr-ny-01",
           userName: "Michael Anderson",
-          userAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=MichaelAnderson&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Pastrami on rye legendary since 1920. Hand-carved, juicy, and an irreplaceable Manhattan institution. Visited regularly across multiple decades.",
           status: "published",
@@ -1459,7 +1459,7 @@ class GlobalCityBusinessStore {
           countryName: "United States",
           userId: "usr-ny-02",
           userName: "Emily Johnson",
-          userAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=EmilyJohnson&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Intimate acoustics, world-class musicians, and authentic NYC energy on MacDougal Street. Great drinks and historic basement atmosphere.",
           status: "published",
@@ -1477,7 +1477,7 @@ class GlobalCityBusinessStore {
           countryName: "United States",
           userId: "usr-ny-audit-1",
           userName: "NYC Health & Commerce Inspector (James)",
-          userAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=NYCHealth&CommerceInspector(James)&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Scheduled 2027 Municipal Health & Safety Code Audit for historic Manhattan food establishments.",
           status: "pending",
@@ -1505,7 +1505,7 @@ class GlobalCityBusinessStore {
           countryName: "Kenya",
           userId: "usr-nrb-01",
           userName: "Amina Mwangi",
-          userAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=AminaMwangi&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Grade AA single-origin Kenyan beans roasted to perfection in Westlands. Welcoming barista staff and exceptional pour-overs since 2023.",
           status: "published",
@@ -1523,7 +1523,7 @@ class GlobalCityBusinessStore {
           countryName: "Kenya",
           userId: "usr-nrb-02",
           userName: "Brian Kiprono",
-          userAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=BrianKiprono&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Hand-beaded jewellery, soapstone carvings, and authentic Kenyan fabrics. Fair trade transparent pricing directly empowering artisan cooperatives.",
           status: "published",
@@ -1541,7 +1541,7 @@ class GlobalCityBusinessStore {
           countryName: "Kenya",
           userId: "usr-nrb-audit-1",
           userName: "County Standards Inspector (Faith)",
-          userAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80",
+          userAvatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=CountyStandardsInspector(Faith)&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
           rating: 5,
           comment: "Scheduled Q1 2027 Nairobi City County Trade Fair & Hospitality Certification Review.",
           status: "pending",
@@ -1555,8 +1555,8 @@ class GlobalCityBusinessStore {
       return;
     }
 
-    // ── Dynamic authentic reviews for ALL remaining cities across 195 countries ──
-    // Each city gets its own city-specific, isolated reviews — never shared with any other city.
+    // â”€â”€ Dynamic authentic reviews for ALL remaining cities across 195 countries â”€â”€
+    // Each city gets its own city-specific, isolated reviews â€” never shared with any other city.
     // Uses preloaded businesses (passed from ensureCityInitialized) to avoid circular dependency.
 
     const bizs = preloadedBizs && preloadedBizs.length > 0 ? preloadedBizs : [];
@@ -1565,11 +1565,11 @@ class GlobalCityBusinessStore {
     const h = this.cityHash(cityName + countryName);
     const seededR = (salt: number) => this.seededRand(h, salt);
 
-    // ── Reviewer name pools per region ────────────────────────────────────────
+    // â”€â”€ Reviewer name pools per region â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const REVIEWER_NAMES: Record<string, string[][]> = {
       // Africa
       africa: [
-        ["Amara Diallo", "Fatou Keita", "Moussa Traoré", "Awa Coulibaly", "Ibrahim Bah"],
+        ["Amara Diallo", "Fatou Keita", "Moussa TraorÃ©", "Awa Coulibaly", "Ibrahim Bah"],
         ["Chioma Obi", "Emeka Nwachukwu", "Ngozi Adeyemi", "Bola Fashola", "Chidi Okeke"],
         ["Aisha Musa", "Yusuf Al-Amin", "Halima Ibrahim", "Omar Sharif", "Kadija Turay"],
         ["Lindiwe Dlamini", "Sipho Ndlovu", "Nokwanda Zulu", "Thabo Sithole", "Zanele Mokoena"],
@@ -1583,16 +1583,16 @@ class GlobalCityBusinessStore {
       ],
       // Europe
       europe: [
-        ["Anna Müller", "Hans Schmidt", "Lena Fischer", "Klaus Weber", "Petra Becker"],
-        ["Sophie Dupont", "Pierre Leclerc", "Marie Martin", "Jacques Bernard", "Élise Rousseau"],
+        ["Anna MÃ¼ller", "Hans Schmidt", "Lena Fischer", "Klaus Weber", "Petra Becker"],
+        ["Sophie Dupont", "Pierre Leclerc", "Marie Martin", "Jacques Bernard", "Ã‰lise Rousseau"],
         ["Marco Rossi", "Giulia Ricci", "Lorenzo Conti", "Francesca Ferrara", "Antonio Moretti"],
         ["Emma Wilson", "James Taylor", "Charlotte Brown", "Oliver Davies", "Amelia Harris"],
       ],
       // Americas
       americas: [
-        ["Carlos Rodríguez", "María González", "José López", "Ana Martínez", "Luis García"],
+        ["Carlos RodrÃ­guez", "MarÃ­a GonzÃ¡lez", "JosÃ© LÃ³pez", "Ana MartÃ­nez", "Luis GarcÃ­a"],
         ["James Anderson", "Emily Johnson", "Michael Brown", "Sarah Davis", "Robert Wilson"],
-        ["João Silva", "Ana Oliveira", "Pedro Santos", "Carla Costa", "Rafael Souza"],
+        ["JoÃ£o Silva", "Ana Oliveira", "Pedro Santos", "Carla Costa", "Rafael Souza"],
         ["Marie Tremblay", "Jean Leblanc", "Sophie Gagnon", "Pierre Fortin", "Isabelle Roy"],
       ],
       // Middle East
@@ -1603,12 +1603,12 @@ class GlobalCityBusinessStore {
       // Oceania
       oceania: [
         ["Jack Thompson", "Emma Walker", "Liam Martin", "Olivia Scott", "Noah Wilson"],
-        ["James Te Koha", "Aroha Ngata", "Tane Parata", "Mere Tūhoe", "Rawiri Waititi"],
+        ["James Te Koha", "Aroha Ngata", "Tane Parata", "Mere TÅ«hoe", "Rawiri Waititi"],
       ],
     };
 
     // Determine region from country
-    const africanCountries = ["ethiopia","kenya","nigeria","south africa","ghana","tanzania","uganda","rwanda","senegal","mali","guinea","cameroon","ivory coast","côte d'ivoire","mozambique","madagascar","zambia","zimbabwe","malawi","angola","namibia","botswana","djibouti","somalia","sudan","south sudan","eritrea","egypt","morocco","algeria","tunisia","libya","burkina faso","niger","chad","central african republic","democratic republic of the congo","republic of the congo","gabon","equatorial guinea","sao tome and principe","cape verde","comoros","seychelles","mauritius","reunion","mayotte","liberia","sierra leone","togo","benin","gambia","guinea-bissau","lesotho","eswatini","swaziland","burundi","south africa"];
+    const africanCountries = ["ethiopia","kenya","nigeria","south africa","ghana","tanzania","uganda","rwanda","senegal","mali","guinea","cameroon","ivory coast","cÃ´te d'ivoire","mozambique","madagascar","zambia","zimbabwe","malawi","angola","namibia","botswana","djibouti","somalia","sudan","south sudan","eritrea","egypt","morocco","algeria","tunisia","libya","burkina faso","niger","chad","central african republic","democratic republic of the congo","republic of the congo","gabon","equatorial guinea","sao tome and principe","cape verde","comoros","seychelles","mauritius","reunion","mayotte","liberia","sierra leone","togo","benin","gambia","guinea-bissau","lesotho","eswatini","swaziland","burundi","south africa"];
     const asianCountries = ["china","japan","india","south korea","indonesia","thailand","vietnam","philippines","malaysia","singapore","bangladesh","pakistan","sri lanka","nepal","myanmar","cambodia","laos","mongolia","taiwan","hong kong","macau","brunei","timor-leste","maldives","bhutan","afghanistan","uzbekistan","kazakhstan","kyrgyzstan","tajikistan","turkmenistan","azerbaijan","georgia","armenia"];
     const europeanCountries = ["germany","france","united kingdom","italy","spain","netherlands","belgium","switzerland","austria","sweden","norway","denmark","finland","poland","czech republic","slovakia","hungary","romania","bulgaria","croatia","serbia","slovenia","estonia","latvia","lithuania","portugal","greece","ukraine","belarus","moldova","luxembourg","liechtenstein","monaco","andorra","san marino","vatican city","malta","cyprus","iceland","ireland"];
     const middleEastCountries = ["saudi arabia","united arab emirates","qatar","kuwait","bahrain","oman","jordan","lebanon","syria","iraq","iran","israel","palestine","yemen","turkey"];
@@ -1631,38 +1631,38 @@ class GlobalCityBusinessStore {
 
     const getReviewer = (salt: number) => poolGroup[Math.floor(seededR(salt) * poolGroup.length)];
 
-    // ── Business references ───────────────────────────────────────────────────
+    // â”€â”€ Business references â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const heritageBiz = bizs.find((b) => b.yearEstablished && b.yearEstablished < 1980) || bizs[0];
     const recentBiz = bizs.find((b) => b.isVerified && b.approvalStatus === "approved" && b.yearEstablished && b.yearEstablished >= 2010) || bizs[1] || bizs[0];
     const futureBiz = bizs.find((b) => b.yearEstablished && b.yearEstablished >= 2026) || bizs[bizs.length - 1];
 
-    // ── Dynamic historical review comment templates ────────────────────────────
+    // â”€â”€ Dynamic historical review comment templates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const historicalComments = [
-      `An enduring cornerstone of ${cityName} commerce since its founding. The service quality and authentic local character here is something that has persisted across many years — a true community anchor.`,
+      `An enduring cornerstone of ${cityName} commerce since its founding. The service quality and authentic local character here is something that has persisted across many years â€” a true community anchor.`,
       `I've visited this establishment regularly since ${2021 + Math.floor(seededR(11) * 3)}. Consistently exceptional standards, genuine local expertise, and the kind of warmth that defines ${cityName}'s identity.`,
       `A historic institution in ${cityName}. The craftsmanship and dedication here reflect the best of ${countryName}'s commercial heritage. Every visit reinforces why this place has thrived for generations.`,
       `Outstanding legacy business serving ${cityName} with distinction. The authentic atmosphere, knowledgeable staff, and impeccable quality have made this a cherished community fixture since ${2021 + Math.floor(seededR(13) * 4)}.`,
       `Remarkable heritage establishment at the heart of ${cityName}. Generations of loyal patrons attest to the consistent excellence maintained here year after year.`,
     ];
 
-    // ── Dynamic recent review comment templates ────────────────────────────────
+    // â”€â”€ Dynamic recent review comment templates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const recentComments = [
       `Visited last week and was thoroughly impressed by the modern standards maintained here. The staff in ${cityName} are genuinely welcoming and the service exceeded all expectations for a 2026 experience.`,
       `Outstanding contemporary experience in ${cityName}. Clean, professional, technologically advanced, and deeply committed to customer satisfaction. Highly recommend to all residents and visitors.`,
-      `Exceptional current-day service in ${cityName}. Everything runs with impressive efficiency — booking, payment, and follow-up were seamless. A model modern business for ${countryName}.`,
+      `Exceptional current-day service in ${cityName}. Everything runs with impressive efficiency â€” booking, payment, and follow-up were seamless. A model modern business for ${countryName}.`,
       `Visited yesterday with colleagues from out of town. The quality, cleanliness, and professional approach here sets the gold standard for ${cityName} hospitality. Will definitely return.`,
-      `Modern, dynamic, and community-driven. This business exemplifies what ${cityName} commerce looks like in 2026 — forward-thinking yet deeply rooted in local values and traditions.`,
+      `Modern, dynamic, and community-driven. This business exemplifies what ${cityName} commerce looks like in 2026 â€” forward-thinking yet deeply rooted in local values and traditions.`,
     ];
 
-    // ── Dynamic audit comment templates ───────────────────────────────────────
+    // â”€â”€ Dynamic audit comment templates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const auditComments = [
       `Scheduled Municipal Mystery Customer & Regulatory Compliance Audit for Q4 2026. Pre-inspection criteria queued per ${cityName} Commerce Directorate guidelines.`,
-      `Upcoming ${cityName} City Commerce Standards Review — targeting service quality, accessibility compliance, and municipal trade license verification for 2026-2027 cycle.`,
+      `Upcoming ${cityName} City Commerce Standards Review â€” targeting service quality, accessibility compliance, and municipal trade license verification for 2026-2027 cycle.`,
       `${cityName} Consumer Protection Office scheduled inspection audit for transparency, pricing accuracy, and health & safety standards compliance.`,
     ];
 
-    // ── Historical years pool ──────────────────────────────────────────────────
-    const histYear = 2021 + Math.floor(seededR(20) * 4); // 2021–2024
+    // â”€â”€ Historical years pool â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const histYear = 2021 + Math.floor(seededR(20) * 4); // 2021â€“2024
     const histMonth = Math.floor(seededR(21) * 12) + 1;
     const histDay = Math.floor(seededR(22) * 28) + 1;
     const histDate = `${histYear}-${String(histMonth).padStart(2, "0")}-${String(histDay).padStart(2, "0")}T${String(8 + Math.floor(seededR(23) * 10)).padStart(2, "0")}:${String(Math.floor(seededR(24) * 60)).padStart(2, "0")}:00Z`;
@@ -1670,18 +1670,18 @@ class GlobalCityBusinessStore {
     const recentDay = Math.floor(seededR(30) * 20) + 1;
     const recentDate = `2026-${String(Math.floor(seededR(31) * 3) + 1).padStart(2, "0")}-${String(recentDay).padStart(2, "0")}T${String(9 + Math.floor(seededR(32) * 9)).padStart(2, "0")}:${String(Math.floor(seededR(33) * 60)).padStart(2, "0")}:00Z`;
 
-    const auditMonth = Math.floor(seededR(40) * 6) + 7; // July–Dec 2026
+    const auditMonth = Math.floor(seededR(40) * 6) + 7; // Julyâ€“Dec 2026
     const auditDate = `2026-${String(auditMonth).padStart(2, "0")}-${String(Math.floor(seededR(41) * 28) + 1).padStart(2, "0")}T10:00:00Z`;
 
     const histRating = Math.floor(seededR(50) * 2) + 4; // 4 or 5
     const recentRating = Math.floor(seededR(51) * 2) + 4; // 4 or 5
 
     const avatarSeeds = [1507003211169, 1534528741775, 1500648767791, 1544005313000, 1472099645785, 1535713875002];
-    const getAvatar = (salt: number) => `https://images.unsplash.com/photo-${avatarSeeds[Math.floor(seededR(salt) * avatarSeeds.length)]}?auto=format&fit=crop&w=150&q=80`;
+    const getAvatar = (salt: number) => `https://api.dicebear.com/9.x/avataaars/svg?seed=citizen_${salt}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
 
     const cleanCitySlug = cityName.toLowerCase().replace(/[^a-z0-9]/g, "-");
 
-    // ── Historical Review ──────────────────────────────────────────────────────
+    // â”€â”€ Historical Review â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const histMonthName = new Date(histDate).toLocaleDateString("en-US", { year: "numeric", month: "short" });
     this.reviewsList.push({
       id: `rev-${cleanCitySlug}-hist-${h.toString(36).slice(0, 6)}`,
@@ -1702,7 +1702,7 @@ class GlobalCityBusinessStore {
       dateFormatted: histMonthName,
     });
 
-    // ── Recent Live Review (2026) ─────────────────────────────────────────────
+    // â”€â”€ Recent Live Review (2026) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const recentDaysAgo = recentDay <= 7 ? `${recentDay} day${recentDay > 1 ? "s" : ""} ago` : new Date(recentDate).toLocaleDateString("en-US", { month: "short", day: "numeric" });
     this.reviewsList.push({
       id: `rev-${cleanCitySlug}-rec-${(h + 1).toString(36).slice(0, 6)}`,
@@ -1723,7 +1723,7 @@ class GlobalCityBusinessStore {
       dateFormatted: recentDaysAgo,
     });
 
-    // ── Scheduled Audit ───────────────────────────────────────────────────────
+    // â”€â”€ Scheduled Audit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const auditMonthName = new Date(auditDate).toLocaleDateString("en-US", { year: "numeric", month: "short" });
     this.reviewsList.push({
       id: `rev-${cleanCitySlug}-audit-${(h + 2).toString(36).slice(0, 6)}`,
@@ -1745,7 +1745,7 @@ class GlobalCityBusinessStore {
     });
   }
 
-  // ── Query Businesses Strictly Scoped to City ──────────────────────────────
+  // â”€â”€ Query Businesses Strictly Scoped to City â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   public getBusinessesForCity(cityName: string, countryName?: string): Business[] {
     this.ensureCityInitialized(cityName, countryName || "");
     const targetCity = cityName.trim().toLowerCase();
@@ -1759,7 +1759,7 @@ class GlobalCityBusinessStore {
     });
   }
 
-  // ── Query Businesses for Country Admin (Aggregates All Cities of Country) ──
+  // â”€â”€ Query Businesses for Country Admin (Aggregates All Cities of Country) â”€â”€
   public getBusinessesForCountry(countryName: string, cityName?: string): Business[] {
     const targetCountry = countryName.trim().toLowerCase();
     const targetCity = cityName && cityName !== "all" ? cityName.trim().toLowerCase() : null;
@@ -1787,7 +1787,7 @@ class GlobalCityBusinessStore {
     });
   }
 
-  // ── Query Businesses for Super Admin (Aggregates Across All Countries) ─────
+  // â”€â”€ Query Businesses for Super Admin (Aggregates Across All Countries) â”€â”€â”€â”€â”€
   public getAllBusinessesGlobal(countryName?: string, cityName?: string): Business[] {
     if (countryName && countryName !== "all") {
       return this.getBusinessesForCountry(countryName, cityName);
@@ -1812,7 +1812,7 @@ class GlobalCityBusinessStore {
     return Array.from(this.businessesById.values());
   }
 
-  // ── Register a New Actual Business (Old, Contemporary, or Future) ──────────
+  // â”€â”€ Register a New Actual Business (Old, Contemporary, or Future) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   public registerBusiness(bizData: Partial<Business>): Business {
     const cityName = bizData.cityName || "Addis Ababa";
     const countryName = bizData.countryName || "Ethiopia";
@@ -1879,7 +1879,7 @@ class GlobalCityBusinessStore {
     return this.businessesById.get(id);
   }
 
-  // ── Update Business Status (Approve, Verify, Suspend, Remediate, Claim) ───
+  // â”€â”€ Update Business Status (Approve, Verify, Suspend, Remediate, Claim) â”€â”€â”€
   public updateBusinessStatus(
     id: string,
     updates: Partial<Business>
@@ -1896,7 +1896,7 @@ class GlobalCityBusinessStore {
     return updated;
   }
 
-  // ── Claims Operations ─────────────────────────────────────────────────────
+  // â”€â”€ Claims Operations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   public getClaimsForCity(cityName: string, countryName: string): CityClaim[] {
     this.ensureCityInitialized(cityName, countryName);
     const targetCity = cityName.trim().toLowerCase();
@@ -1925,7 +1925,7 @@ class GlobalCityBusinessStore {
     return claim;
   }
 
-  // ── Municipal Reviews Operations for All Cities & Countries ───────────────
+  // â”€â”€ Municipal Reviews Operations for All Cities & Countries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   public getReviewsForCity(cityName: string, countryName: string): CityReviewItem[] {
     this.ensureCityInitialized(cityName, countryName);
@@ -2002,7 +2002,7 @@ class GlobalCityBusinessStore {
       countryName,
       userId: data.userId || `usr-${Date.now()}`,
       userName: data.userName || "Verified Citizen",
-      userAvatar: data.userAvatar || `https://images.unsplash.com/photo-${1534528741775 + (Math.abs(this.cityHash(data.userName || "citizen")) % 500)}?auto=format&fit=crop&w=120&q=80`,
+      userAvatar: data.userAvatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(data.userName || "citizen")}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`,
       rating: Number(data.rating) || 5,
       comment: data.comment || "Excellent service and trustworthy community establishment.",
       photos: data.photos || [],
@@ -2043,7 +2043,7 @@ class GlobalCityBusinessStore {
     return this.reviewsList.length < initialLen;
   }
 
-  // ── Accurate City Statistics for All 7 Queues ─────────────────────────────
+  // â”€â”€ Accurate City Statistics for All 7 Queues â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   public getStatsForCity(cityName: string, countryName: string): CityRegistryStats {
     const cityBusinesses = this.getBusinessesForCity(cityName, countryName);
     const claims = this.getClaimsForCity(cityName, countryName);
@@ -2090,9 +2090,9 @@ class GlobalCityBusinessStore {
     };
   }
 
-  // ── Municipal Category Taxonomy for All Cities Across 195 Countries ───────
+  // â”€â”€ Municipal Category Taxonomy for All Cities Across 195 Countries â”€â”€â”€â”€â”€â”€â”€
 
-  /** Deterministic numeric hash from a string seed — produces same number for same input */
+  /** Deterministic numeric hash from a string seed â€” produces same number for same input */
   private cityHash(seed: string): number {
     let h = 0;
     for (let i = 0; i < seed.length; i++) {
@@ -2124,7 +2124,7 @@ class GlobalCityBusinessStore {
     scopeType: "city" | "country"
   ): CityCategoryBreakdown[] {
 
-    // ── Sector definitions ─────────────────────────────────────────────────
+    // â”€â”€ Sector definitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const SECTOR_DEFS: {
       id: string; name: string; slug: string; icon: string; desc: string;
       baseWeight: number; // relative economic weight (higher = more dominant)
@@ -2145,7 +2145,7 @@ class GlobalCityBusinessStore {
       { id: "cat-manufacturing", name: "Manufacturing & Industrial",   slug: "manufacturing-industrial", icon: "Factory",        desc: "Textile mills, industrial assembly plants, processing facilities, and fabrication.",                           baseWeight: 3  },
     ];
 
-    // ── Continent / economic profile clusters ──────────────────────────────
+    // â”€â”€ Continent / economic profile clusters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const COUNTRY_PROFILES: Record<string, {
       cluster: "west_africa"|"east_africa"|"north_africa"|"southern_africa"|"middle_east"|"south_asia"|"east_asia"|"southeast_asia"|"central_asia"|"europe_west"|"europe_east"|"north_america"|"latin_america"|"oceania"|"caribbean";
       techBoost?: number; financeBoost?: number; tourismBoost?: number; industryBoost?: number; tradeBoost?: number;
@@ -2212,7 +2212,7 @@ class GlobalCityBusinessStore {
       caribbean:      { "Hotels & Lodging": 1.5, "Food & Dining": 1.4, "Arts & Culture": 1.3 },
     };
 
-    // ── Authentic local business name fragments per region ────────────────
+    // â”€â”€ Authentic local business name fragments per region â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const REGION_BIZ_NAMES: Record<string, Record<string, string[]>> = {
       east_africa:    {
         "Food & Dining":             ["Heritage Tej House & Tej Bar", "Acacia Garden Grill & Coffee", "Savanna Organic Roastery", "Lakeview Nyama Choma Terrace", "Spice Route Injera & Cuisine"],
@@ -2231,7 +2231,7 @@ class GlobalCityBusinessStore {
         "Beauty & Personal Care":    ["Zenith Beauty Spa & Lounge", "Glow Aesthetics Studio", "Urban Grooming Salon", "Serenity Wellness Center", "Prestige Hair & Nails"],
       },
       north_africa:   {
-        "Food & Dining":             ["Khan el-Khalili Heritage Café", "Nile Terrace Restaurant", "Atlas Couscous & Tagine House", "Casbah Mint Tea Lounge", "Medina Traditional Bistro"],
+        "Food & Dining":             ["Khan el-Khalili Heritage CafÃ©", "Nile Terrace Restaurant", "Atlas Couscous & Tagine House", "Casbah Mint Tea Lounge", "Medina Traditional Bistro"],
         "Shopping & Retail":         ["Gold Souk Grand Bazaar", "Spice Market Arcade", "Medina Arts & Antiques", "Heritage Carpet Emporium", "Modern Mall Hypermarket"],
         "Hotels & Lodging":          ["Semiramis Intercontinental Heritage", "Nile View Grand Hotel", "Riad Boutique Maison", "Atlas Mountain Lodge", "Casablanca Grand Suites"],
         "Health & Medical":          ["National Oncology & Cardiology Center", "Cleopatra Diagnostic Hospital", "Atlas Medical Clinic", "Sahara Dental & Wellness", "Mediterranean Health Hub"],
@@ -2264,19 +2264,19 @@ class GlobalCityBusinessStore {
       },
       europe_west:    {
         "Food & Dining":             ["Le Grand Brasserie Heritage", "Borough Market Artisan Kitchen", "Mercato Centrale Gourmet", "La Bodega Wine & Tapas", "Mitte Craft Beer Biergarten"],
-        "Shopping & Retail":         ["Galleria Vittorio Emanuele II", "Harrods Luxury Department Store", "Galleries Lafayette Fashion", "El Corte Inglés Department", "KaDeWe Grand Emporium"],
+        "Shopping & Retail":         ["Galleria Vittorio Emanuele II", "Harrods Luxury Department Store", "Galleries Lafayette Fashion", "El Corte InglÃ©s Department", "KaDeWe Grand Emporium"],
         "Hotels & Lodging":          ["Hotel de Crillon Heritage Palace", "Ritz Carlton London", "Four Seasons George V Paris", "Grand Hotel Europa", "Adlon Kempinski Grand Suite"],
-        "Health & Medical":          ["Charité University Hospital", "UCLH Centre for Specialist Medicine", "American Hospital Paris", "HM Hospitales Premium Clinic", "AZ Sint-Jan Bruges Medical"],
+        "Health & Medical":          ["CharitÃ© University Hospital", "UCLH Centre for Specialist Medicine", "American Hospital Paris", "HM Hospitales Premium Clinic", "AZ Sint-Jan Bruges Medical"],
         "Technology & Software":     ["Station F Innovation Campus", "Tech City London Hub", "Berlin Startup Campus", "Amsterdam Digital Labs", "Digital Hub Munich"],
         "Financial & Legal":         ["Deutsche Bank Commercial HQ", "Lloyd's of London Insurance", "BNP Paribas CIB Center", "Credit Suisse Advisory Zurich", "ING Bank Amsterdam HQ"],
         "Automotive & Transport":    ["BMW Welt Premium Showroom", "Mercedes-Benz Auto Center", "Audi City Premium Showroom", "Eurostar Rail Terminus", "FlixBus Green Mobility Hub"],
         "Manufacturing & Industrial":["Volkswagen Industrial Park", "Airbus Assembly Facility", "Siemens Manufacturing Complex", "Thyssenkrupp Steel Works", "BASF Chemical Innovation"],
         "Real Estate & Construction":["Jones Lang LaSalle Europe", "CBRE Premium Properties", "Savills West End Advisory", "Von Poll Real Estate", "Cushman & Wakefield Prime"],
-        "Education & Schools":       ["London School of Economics", "Sorbonne University Heritage", "Humboldt Universität Berlin", "TU München Engineering", "Amsterdam Business School"],
+        "Education & Schools":       ["London School of Economics", "Sorbonne University Heritage", "Humboldt UniversitÃ¤t Berlin", "TU MÃ¼nchen Engineering", "Amsterdam Business School"],
         "Logistics & Delivery":      ["DHL Express European Hub", "DPD Parcel Network Center", "DB Cargo Freight Terminal", "Euroports Container Hub", "TNT Last-Mile Distribution"],
-        "Arts & Culture":            ["Musée du Louvre Grand Gallery", "Tate Modern Contemporary", "Pergamon Museum Berlin", "Rijksmuseum Amsterdam", "Uffizi Gallery Florence"],
+        "Arts & Culture":            ["MusÃ©e du Louvre Grand Gallery", "Tate Modern Contemporary", "Pergamon Museum Berlin", "Rijksmuseum Amsterdam", "Uffizi Gallery Florence"],
         "Government & Public Services":["City Hall Municipal Services", "Land Registry Authority", "Public Health Authority Branch", "Urban Transport Authority", "Municipal Tax & Revenue Office"],
-        "Beauty & Personal Care":    ["L'Occitane Heritage Spa", "Guinot Prestige Beauty", "Cowshed Urban Spa London", "NIVEA Haus Flagship Hamburg", "Carita Institut de Beauté"],
+        "Beauty & Personal Care":    ["L'Occitane Heritage Spa", "Guinot Prestige Beauty", "Cowshed Urban Spa London", "NIVEA Haus Flagship Hamburg", "Carita Institut de BeautÃ©"],
       },
       north_america:  {
         "Food & Dining":             ["Nobu Japanese Fine Dining", "The French Laundry Heritage", "Brooklyn Artisan Smokehouse", "Blue Hill Farm-to-Table", "Eataly Mercato Grande"],
@@ -2328,7 +2328,7 @@ class GlobalCityBusinessStore {
       },
     };
 
-    // ── Incorporate real in-memory businesses for this city or country ────────
+    // â”€â”€ Incorporate real in-memory businesses for this city or country â”€â”€â”€â”€â”€â”€â”€â”€
     const realBizs = Array.from(this.businessesById.values()).filter((b) => {
       const bCountry = (b.countryName || (b as any).country || "").trim().toLowerCase();
       const bCity = (b.cityName || (b as any).city || "").trim().toLowerCase();
@@ -2370,7 +2370,7 @@ class GlobalCityBusinessStore {
       }
     }
 
-    // ── Build deterministic data ──────────────────────────────────────────
+    // â”€â”€ Build deterministic data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const seed = this.cityHash(`${geoLabel}::${countryName}`);
     const countryProfile = COUNTRY_PROFILES[countryName] || { cluster: "east_africa" };
     const cluster = countryProfile.cluster || "east_africa";
@@ -2392,7 +2392,7 @@ class GlobalCityBusinessStore {
       if ((sec.name === "Hotels & Lodging" || sec.name === "Arts & Culture") && countryProfile.tourismBoost) weight *= countryProfile.tourismBoost;
       if (sec.name === "Manufacturing & Industrial" && countryProfile.industryBoost) weight *= countryProfile.industryBoost;
       if (sec.name === "Shopping & Retail" && countryProfile.tradeBoost) weight *= countryProfile.tradeBoost;
-      // Add city-specific noise: ±30% variation deterministically
+      // Add city-specific noise: Â±30% variation deterministically
       const noise = 0.7 + (this.seededRand(seed, i) * 0.6);
       weight *= noise;
       return Math.round(weight * countMultiplier);
@@ -2516,7 +2516,7 @@ class GlobalCityBusinessStore {
       .sort((a, b) => b.businessCount - a.businessCount || a.name.localeCompare(b.name));
   }
 
-  // ── Category Petitions Store ──────────────────────────────────────────────
+  // â”€â”€ Category Petitions Store â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   private customPetitions: Map<string, CityCategoryPetition[]> = new Map();
 
   public registerPetition(petition: CityCategoryPetition, city?: string, country?: string): void {

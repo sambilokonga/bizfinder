@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import {
@@ -44,7 +44,7 @@ export function SecurityEventDetailModal({
   event,
   onStatusUpdated,
   onIpBlocked,
-  currentAdminName = "Alex Rivera (Super Admin)",
+  currentAdminName = "Cala Wakuma (Super Admin)",
 }: SecurityEventDetailModalProps) {
   const [isActionLoading, setIsActionLoading] = useState(false);
 

@@ -1,4 +1,4 @@
-import { connectToDatabase } from "@/lib/db/mongodb";
+﻿import { connectToDatabase } from "@/lib/db/mongodb";
 import { AnalyticsModel } from "@/lib/db/models/Analytics";
 import { GlobalVisitorModel } from "@/lib/db/models/GlobalVisitor";
 import { NotificationModel } from "@/lib/db/models/Notification";
@@ -81,7 +81,7 @@ function generateSeedGlobalVisitors(): GlobalUserSession[] {
   const actualDescriptions = [
     { name: "Dawit Hailu", purpose: "Diaspora Real Estate & Commercial Lease Inquiry", action: "call" as GlobalVisitorAction },
     { name: "Dr. Aisha Al-Mansoor", purpose: "Gulf Medical Tourism Partnership & Clinic Tour", action: "inquiry" as GlobalVisitorAction },
-    { name: "Marcus Holloway", purpose: "FinTech & Banking API Integration Discovery", action: "website" as GlobalVisitorAction },
+    { name: "Hadush Geush", purpose: "FinTech & Banking API Integration Discovery", action: "website" as GlobalVisitorAction },
     { name: "Sara Lindström", purpose: "Eco-Tourism & Cultural Coffee Ceremony Booking", action: "saved" as GlobalVisitorAction },
     { name: "Michael Chen", purpose: "Manufacturing Supply Chain Inquiry", action: "direction" as GlobalVisitorAction },
     { name: "Amina Farah", purpose: "Regional Trade Logistics & Warehousing Access", action: "view" as GlobalVisitorAction },

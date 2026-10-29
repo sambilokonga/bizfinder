@@ -1,4 +1,4 @@
-import { ISupportTicket } from "@/types/ticket";
+﻿import { ISupportTicket } from "@/types/ticket";
 
 export const SEED_TICKETS: ISupportTicket[] = [
   {
@@ -177,7 +177,7 @@ export const SEED_TICKETS: ISupportTicket[] = [
     userRole: "owner",
     businessId: "biz-5",
     businessName: "Bale Mountain Eco Tours",
-    assignedAdmin: "Alex Rivera (Super Admin)",
+    assignedAdmin: "Cala Wakuma (Super Admin)",
     assignedAdminId: "admin_super",
     tags: ["moderation", "dispute", "cctv"],
     messages: [
@@ -193,14 +193,14 @@ export const SEED_TICKETS: ISupportTicket[] = [
       {
         id: "msg-9005-2",
         senderId: "admin_super",
-        senderName: "Alex Rivera",
+        senderName: "Cala Wakuma",
         senderRole: "super_admin",
         message:
           "Thank you Kassahun. Our fraud heuristics confirmed all 4 accounts originated from the same foreign proxy IP. The reviews have been placed in quarantine pending permanent removal.",
         createdAt: "2026-09-04T17:30:00.000Z",
       },
     ],
-    lastReply: "Alex Rivera: Thank you Kassahun. Our fraud heuristics confirmed...",
+    lastReply: "Cala Wakuma: Thank you Kassahun. Our fraud heuristics confirmed...",
     lastReplyAt: "2026-09-04T17:30:00.000Z",
     city: "Robe",
     country: "Ethiopia",
@@ -468,7 +468,7 @@ export const SEED_TICKETS: ISupportTicket[] = [
     userRole: "owner",
     businessId: "biz-12",
     businessName: "Habesha National Grill",
-    assignedAdmin: "Alex Rivera (Super Admin)",
+    assignedAdmin: "Cala Wakuma (Super Admin)",
     assignedAdminId: "admin_super",
     tags: ["trademark", "legal", "compliance"],
     messages: [
@@ -484,14 +484,14 @@ export const SEED_TICKETS: ISupportTicket[] = [
       {
         id: "msg-9012-2",
         senderId: "admin_super",
-        senderName: "Alex Rivera",
+        senderName: "Cala Wakuma",
         senderRole: "super_admin",
         message:
           "Case referred to platform legal counsel. We have requested trademark registration documents from the infringing party with a 48-hour response window.",
         createdAt: "2026-08-30T12:00:00.000Z",
       },
     ],
-    lastReply: "Alex Rivera: Case referred to platform legal counsel. We have...",
+    lastReply: "Cala Wakuma: Case referred to platform legal counsel. We have...",
     lastReplyAt: "2026-08-30T12:00:00.000Z",
     city: "Dire Dawa",
     country: "Ethiopia",
@@ -880,7 +880,7 @@ export const SEED_TICKETS: ISupportTicket[] = [
     userRole: "owner",
     businessId: "biz-5",
     businessName: "Bale Mountain Eco Tours",
-    assignedAdmin: "Alex Rivera (Super Admin)",
+    assignedAdmin: "Cala Wakuma (Super Admin)",
     assignedAdminId: "admin_super",
     tags: ["appeal", "suspension", "urgent"],
     messages: [
@@ -896,14 +896,14 @@ export const SEED_TICKETS: ISupportTicket[] = [
       {
         id: "msg-9022-2",
         senderId: "admin_super",
-        senderName: "Alex Rivera",
+        senderName: "Cala Wakuma",
         senderRole: "super_admin",
         message:
           "Security logs reviewed. 2FA confirmed active. Listing status restored to Verified Active.",
         createdAt: "2026-08-20T17:15:00.000Z",
       },
     ],
-    lastReply: "Alex Rivera: Security logs reviewed. 2FA confirmed active. Listing...",
+    lastReply: "Cala Wakuma: Security logs reviewed. 2FA confirmed active. Listing...",
     lastReplyAt: "2026-08-20T17:15:00.000Z",
     city: "Robe",
     country: "Ethiopia",
@@ -1041,7 +1041,7 @@ export const SEED_TICKETS: ISupportTicket[] = [
     userEmail: "bereket@hawassa.bizfinder.et",
     userPhone: "+251 92 888 9900",
     userRole: "admin",
-    assignedAdmin: "Alex Rivera (Super Admin)",
+    assignedAdmin: "Cala Wakuma (Super Admin)",
     assignedAdminId: "admin_super",
     tags: ["geo", "hawassa", "permissions"],
     messages: [
@@ -1057,14 +1057,14 @@ export const SEED_TICKETS: ISupportTicket[] = [
       {
         id: "msg-9026-2",
         senderId: "admin_super",
-        senderName: "Alex Rivera",
+        senderName: "Cala Wakuma",
         senderRole: "super_admin",
         message:
           "Yes Bereket! City Admins possess full jurisdiction to approve and verify listings situated inside their municipality boundaries.",
         createdAt: "2026-08-16T16:20:00.000Z",
       },
     ],
-    lastReply: "Alex Rivera: Yes Bereket! City Admins possess full jurisdiction...",
+    lastReply: "Cala Wakuma: Yes Bereket! City Admins possess full jurisdiction...",
     lastReplyAt: "2026-08-16T16:20:00.000Z",
     city: "Hawassa",
     country: "Ethiopia",

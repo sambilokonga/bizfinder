@@ -21,6 +21,7 @@ import {
   Megaphone,
   KeyRound,
   Compass,
+  X,
 } from "lucide-react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -72,8 +73,11 @@ export function AdminProfileHeaderChip({
     currentUser?.email ||
     "admin@bizfinder.et";
 
-  // Avatar URL
-  const avatarUrl = user?.imageUrl || currentUser?.avatarUrl;
+  // Avatar URL — use provided avatarUrl, user imageUrl, or generate deterministic avatar
+  const avatarUrl =
+    currentUser?.avatarUrl ||
+    user?.imageUrl ||
+    `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(displayName)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
 
   // Single or double letter initials for avatar fallback
   const initials = displayName
@@ -169,11 +173,26 @@ export function AdminProfileHeaderChip({
 
       {/* ─── Functional Admin Profile Dossier Modal ─────────────────── */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-md sm:max-w-lg rounded-3xl p-0 overflow-hidden border border-border shadow-2xl bg-card">
+        <DialogContent
+          className="max-w-md sm:max-w-lg rounded-3xl p-0 overflow-hidden border border-border shadow-2xl bg-card"
+          hideCloseButton
+        >
           {/* Header Banner */}
-          <div className={`p-6 bg-gradient-to-r ${roleThemeGradient} text-white relative overflow-hidden`}>
+          <div className={`p-6 sm:p-7 pt-7 sm:pt-8 bg-gradient-to-r ${roleThemeGradient} text-white relative overflow-hidden`}>
             <div className="absolute top-0 right-0 w-44 h-44 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-            <div className="relative z-10 flex items-center gap-4">
+
+            {/* Top-Right Dedicated Close Button */}
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="absolute top-6 right-6 sm:top-7 sm:right-7 z-50 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/30 flex items-center justify-center transition-all shadow-lg focus:outline-none focus:ring-2 focus:ring-white/50 backdrop-blur-md"
+              title="Close Profile"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+
+            <div className="relative z-10 flex items-center gap-4 pr-14 sm:pr-16">
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
