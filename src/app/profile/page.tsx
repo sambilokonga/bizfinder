@@ -20,7 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useClerk } from "@clerk/nextjs";
 
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { useSavedBusinesses } from "@/hooks/useSavedBusinesses";
@@ -45,6 +45,7 @@ const DISTANCE_OPTIONS = ["1 km", "3 km", "5 km", "10 km", "25 km", "50 km"];
 
 export default function ProfilePage() {
   const { user } = useUser();
+  const { openUserProfile } = useClerk();
   const { totalSaved, favoritesList } = useSavedBusinesses();
 
   const [activeTab, setActiveTab] = useState<
@@ -99,11 +100,20 @@ export default function ProfilePage() {
                   `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(user?.fullName || user?.firstName || "BizUser")}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`
                 }
                 alt={user?.fullName || "Profile avatar"}
-                className="w-10 h-10 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-xl sm:rounded-2xl object-cover shadow-lg border border-border bg-slate-100 dark:bg-slate-800"
+                className="w-11 h-11 xs:w-13 xs:h-13 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-xl sm:rounded-2xl object-cover shadow-lg border border-border bg-slate-100 dark:bg-slate-800"
               />
-              <button className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 sm:w-6 sm:h-6 rounded-md bg-primary text-primary-foreground flex items-center justify-center shadow-md">
-                <Pencil className="w-2 h-2 sm:w-2.5 sm:h-2.5" />
-              </button>
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={() => openUserProfile?.()}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && openUserProfile?.()}
+                className="absolute -bottom-0.5 -right-0.5 w-[16px] h-[16px] xs:w-[17px] xs:h-[17px] sm:w-[19px] sm:h-[19px] md:w-[22px] md:h-[22px] rounded-full bg-primary text-primary-foreground flex items-center justify-center overflow-hidden shadow-sm ring-2 ring-background hover:bg-primary/90 hover:scale-105 active:scale-95 transition-all shrink-0 cursor-pointer"
+                style={{ lineHeight: 0, fontSize: 0, padding: 0 }}
+                title="Edit profile photo"
+                aria-label="Edit profile photo"
+              >
+                <Pencil className="w-[9px] h-[9px] xs:w-[9px] xs:h-[9px] sm:w-[10px] sm:h-[10px] md:w-[12px] md:h-[12px]" />
+              </span>
             </div>
 
             <div className="min-w-0 flex-1">

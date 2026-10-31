@@ -288,74 +288,79 @@ export function UploadBusinessModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[92vh] p-0 overflow-y-auto rounded-3xl bg-background border border-border/80 shadow-2xl">
-        <DialogHeader className="p-6 border-b border-border/60 bg-muted/20">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-                <FileSpreadsheet className="w-5 h-5" />
+      <DialogContent className="w-[94vw] max-w-3xl max-h-[92dvh] sm:max-h-[88dvh] flex flex-col gap-0 p-0 overflow-hidden rounded-2xl sm:rounded-3xl bg-background border border-border/80 shadow-2xl my-auto">
+        <DialogHeader className="p-4 xs:p-5 sm:p-6 border-b border-border/60 bg-muted/20 shrink-0 pr-12 sm:pr-16 text-left">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0 mt-0.5">
+                <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div>
-                <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-                  <span>Batch Upload Business Listings</span>
-                  <Badge className="bg-primary/10 text-primary border-primary/20 text-xs font-semibold">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 xs:gap-2 flex-wrap">
+                  <DialogTitle className="text-base sm:text-lg font-bold text-foreground leading-snug">
+                    Batch Upload Business Listings
+                  </DialogTitle>
+                  <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] sm:text-xs font-semibold whitespace-nowrap">
                     CSV • Excel • JSON
                   </Badge>
-                </DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                </div>
+                <DialogDescription className="text-[11px] sm:text-xs text-muted-foreground mt-1 leading-relaxed">
                   Upload multiple business listings with immediate confirmation alerts for Super Admin, Country Admin, and City Admin.
                 </DialogDescription>
               </div>
             </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadTemplate}
-              className="text-xs gap-1.5 font-semibold border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10"
-            >
-              <Download className="w-3.5 h-3.5" /> Sample Template
-            </Button>
+            <div className="flex items-center gap-2 self-start sm:self-center shrink-0 w-full sm:w-auto">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadTemplate}
+                className="text-xs gap-1.5 font-semibold border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 h-8 w-full sm:w-auto justify-center"
+              >
+                <Download className="w-3.5 h-3.5 shrink-0" />
+                <span>Sample Template</span>
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 
-        <div className="p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 xs:p-5 sm:p-6 space-y-4 sm:space-y-6">
           {uploadResult ? (
             /* ── SUCCESS RESULT SCREEN ── */
-            <div className="p-8 text-center space-y-4 rounded-3xl border border-emerald-500/30 bg-emerald-500/5">
-              <div className="w-14 h-14 mx-auto rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500">
-                <CheckCircle2 className="w-8 h-8" />
+            <div className="p-5 sm:p-8 text-center space-y-3.5 sm:space-y-4 rounded-2xl sm:rounded-3xl border border-emerald-500/30 bg-emerald-500/5">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500">
+                <CheckCircle2 className="w-6 h-6 sm:w-8 sm:h-8" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-lg font-black text-foreground">
+                <h3 className="text-base sm:text-lg font-black text-foreground">
                   {uploadResult.count} Businesses Uploaded Successfully!
                 </h3>
-                <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                <p className="text-[11px] sm:text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
                   All listings have been queued with status <strong>Pending Confirmation</strong>. Multi-tier confirmation notifications were dispatched:
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-left max-w-lg mx-auto pt-2">
-                <div className="p-3 rounded-xl border border-purple-500/30 bg-purple-500/10">
+                <div className="p-2.5 sm:p-3 rounded-xl border border-purple-500/30 bg-purple-500/10">
                   <div className="font-bold text-purple-600 dark:text-purple-400">👑 Super Admin</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">Global Confirmation Alert sent</div>
+                  <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5">Global Confirmation Alert sent</div>
                 </div>
-                <div className="p-3 rounded-xl border border-indigo-500/30 bg-indigo-500/10">
+                <div className="p-2.5 sm:p-3 rounded-xl border border-indigo-500/30 bg-indigo-500/10">
                   <div className="font-bold text-indigo-600 dark:text-indigo-400">🌍 Country Admin</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">National Verification Alert sent</div>
+                  <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5">National Verification Alert sent</div>
                 </div>
-                <div className="p-3 rounded-xl border border-sky-500/30 bg-sky-500/10">
+                <div className="p-2.5 sm:p-3 rounded-xl border border-sky-500/30 bg-sky-500/10">
                   <div className="font-bold text-sky-600 dark:text-sky-400">🏙️ City Admin</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">Municipal Review Alert sent</div>
+                  <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5">Municipal Review Alert sent</div>
                 </div>
               </div>
 
-              <div className="flex justify-center gap-3 pt-4">
-                <Button variant="outline" size="sm" onClick={handleReset} className="text-xs">
+              <div className="flex flex-col-reverse sm:flex-row justify-center gap-2 sm:gap-3 pt-3 sm:pt-4">
+                <Button variant="outline" size="sm" onClick={handleReset} className="text-xs h-8.5 sm:h-8 w-full sm:w-auto">
                   Upload More Files
                 </Button>
-                <Button size="sm" onClick={onClose} className="text-xs font-bold bg-primary text-primary-foreground">
+                <Button size="sm" onClick={onClose} className="text-xs font-bold bg-primary text-primary-foreground h-8.5 sm:h-8 w-full sm:w-auto">
                   Done & View Listings
                 </Button>
               </div>
@@ -365,7 +370,7 @@ export function UploadBusinessModal({
               {/* ── DRAG & DROP FILE ZONE ── */}
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="group border-2 border-dashed border-border/80 hover:border-primary/60 rounded-3xl p-8 text-center cursor-pointer transition-all duration-200 bg-muted/20 hover:bg-muted/40"
+                className="group border-2 border-dashed border-border/80 hover:border-primary/60 rounded-2xl sm:rounded-3xl p-5 sm:p-8 text-center cursor-pointer transition-all duration-200 bg-muted/20 hover:bg-muted/40"
               >
                 <input
                   ref={fileInputRef}
@@ -374,27 +379,27 @@ export function UploadBusinessModal({
                   className="hidden"
                   onChange={handleFileChange}
                 />
-                <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                  <Upload className="w-6 h-6" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2.5 sm:mb-3 rounded-xl sm:rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                  <Upload className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-bold text-foreground">
+                  <p className="text-xs sm:text-sm font-bold text-foreground break-words px-2">
                     {rawFile ? rawFile.name : "Click to select CSV or JSON file, or drag and drop"}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[11px] sm:text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
                     Supports up to 5,000 businesses per batch. Compatible with Excel CSV & Google Sheets export.
                   </p>
                 </div>
               </div>
 
               {/* ── MULTI-TIER CONFIRMATION BANNER ── */}
-              <div className="p-4 rounded-2xl border border-indigo-500/30 bg-indigo-500/5 flex items-start gap-3">
-                <ShieldCheck className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
-                <div className="text-xs space-y-1">
-                  <div className="font-bold text-foreground">
+              <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-indigo-500/30 bg-indigo-500/5 flex items-start gap-2.5 sm:gap-3">
+                <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500 shrink-0 mt-0.5" />
+                <div className="text-xs space-y-1 min-w-0 flex-1">
+                  <div className="font-bold text-foreground text-xs sm:text-xs">
                     Automatic Multi-Tier Confirmation Protocol
                   </div>
-                  <p className="text-muted-foreground leading-relaxed">
+                  <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
                     Once uploaded, each listing is automatically assigned to its city and country jurisdiction. Notification alerts are dispatched simultaneously to the <strong>Super Admin</strong>, <strong>Country Admin</strong>, and <strong>City Admin</strong> with 1-click confirmation tools.
                   </p>
                 </div>
@@ -402,9 +407,9 @@ export function UploadBusinessModal({
 
               {/* ── PARSED PREVIEW TABLE ── */}
               {parsedRows.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+                <div className="space-y-2.5 sm:space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5 sm:gap-2 flex-wrap">
                       <span>Parsed Preview ({parsedRows.length} rows)</span>
                       <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-500/30">
                         {validCount} Ready
@@ -416,86 +421,99 @@ export function UploadBusinessModal({
                       )}
                     </h4>
 
-                    <Button variant="ghost" size="sm" onClick={handleReset} className="h-7 text-xs text-muted-foreground">
+                    <Button variant="ghost" size="sm" onClick={handleReset} className="h-7 text-xs text-muted-foreground px-2">
                       <Trash2 className="w-3.5 h-3.5 mr-1" /> Clear
                     </Button>
                   </div>
 
-                  <div className="max-h-56 overflow-y-auto rounded-2xl border border-border/80 text-xs">
-                    <table className="w-full text-left border-collapse">
-                      <thead className="bg-muted/60 sticky top-0 border-b border-border/60 text-[11px] font-bold text-muted-foreground">
-                        <tr>
-                          <th className="p-2.5">Status</th>
-                          <th className="p-2.5">Business Name</th>
-                          <th className="p-2.5">Category</th>
-                          <th className="p-2.5">City / Location</th>
-                          <th className="p-2.5">Contact</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/40">
-                        {parsedRows.slice(0, 50).map((row, idx) => (
-                          <tr key={idx} className={row.isValid ? "hover:bg-muted/30" : "bg-rose-500/5 hover:bg-rose-500/10"}>
-                            <td className="p-2.5">
-                              {row.isValid ? (
-                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] py-0">
-                                  Valid
-                                </Badge>
-                              ) : (
-                                <Badge variant="destructive" className="text-[10px] py-0" title={row.errors.join(", ")}>
-                                  Error
-                                </Badge>
-                              )}
-                            </td>
-                            <td className="p-2.5 font-bold text-foreground">{row.name || "Untitled"}</td>
-                            <td className="p-2.5 text-muted-foreground">{row.categoryName}</td>
-                            <td className="p-2.5 text-muted-foreground">
-                              {row.cityName}, {row.countryName}
-                            </td>
-                            <td className="p-2.5 text-muted-foreground font-mono text-[11px]">
-                              {row.phone || row.email || "—"}
-                            </td>
+                  <div className="rounded-xl sm:rounded-2xl border border-border/80 overflow-hidden bg-card">
+                    <div className="max-h-56 overflow-auto text-xs">
+                      <table className="w-full min-w-[500px] text-left border-collapse">
+                        <thead className="bg-muted/60 sticky top-0 border-b border-border/60 text-[11px] font-bold text-muted-foreground">
+                          <tr>
+                            <th className="p-2.5">Status</th>
+                            <th className="p-2.5">Business Name</th>
+                            <th className="p-2.5">Category</th>
+                            <th className="p-2.5">City / Location</th>
+                            <th className="p-2.5">Contact</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-border/40">
+                          {parsedRows.slice(0, 50).map((row, idx) => (
+                            <tr key={idx} className={row.isValid ? "hover:bg-muted/30" : "bg-rose-500/5 hover:bg-rose-500/10"}>
+                              <td className="p-2.5">
+                                {row.isValid ? (
+                                  <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] py-0 whitespace-nowrap">
+                                    Valid
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="destructive" className="text-[10px] py-0 whitespace-nowrap" title={row.errors.join(", ")}>
+                                    Error
+                                  </Badge>
+                                )}
+                              </td>
+                              <td className="p-2.5 font-bold text-foreground">{row.name || "Untitled"}</td>
+                              <td className="p-2.5 text-muted-foreground">{row.categoryName}</td>
+                              <td className="p-2.5 text-muted-foreground">
+                                {row.cityName}, {row.countryName}
+                              </td>
+                              <td className="p-2.5 text-muted-foreground font-mono text-[11px]">
+                                {row.phone || row.email || "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
 
                   {parsedRows.length > 50 && (
-                    <p className="text-[11px] text-muted-foreground text-center">
+                    <p className="text-[10px] sm:text-[11px] text-muted-foreground text-center">
                       Showing first 50 rows of {parsedRows.length}. All valid rows will be uploaded.
                     </p>
                   )}
                 </div>
               )}
-
-              {/* ── FOOTER ACTIONS ── */}
-              <div className="flex items-center justify-between pt-4 border-t border-border">
-                <Button type="button" variant="ghost" size="sm" onClick={onClose} className="text-xs">
-                  Cancel
-                </Button>
-
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={isUploading || validCount === 0}
-                  onClick={handleUploadSubmit}
-                  className="font-bold text-xs gap-1.5 shadow-md bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-                >
-                  {isUploading ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Uploading ({uploadProgress}%)
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-3.5 h-3.5" />
-                      Import {validCount} Listing{validCount !== 1 ? "s" : ""} & Notify Admins
-                    </>
-                  )}
-                </Button>
-              </div>
             </>
           )}
         </div>
+
+        {/* Pinned Footer (Only shown when not on success screen) */}
+        {!uploadResult && (
+          <div className="p-3.5 sm:p-4 border-t border-border/60 bg-card shrink-0 flex flex-col-reverse xs:flex-row xs:items-center xs:justify-between gap-2.5 sm:gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="text-xs h-8.5 sm:h-8 w-full xs:w-auto"
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              disabled={isUploading || validCount === 0}
+              onClick={handleUploadSubmit}
+              className="font-bold text-xs gap-1.5 shadow-md bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white h-8.5 sm:h-8 w-full xs:w-auto justify-center"
+            >
+              {isUploading ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />
+                  <span>Uploading ({uploadProgress}%)</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">
+                    Import {validCount} Listing{validCount !== 1 ? "s" : ""} & Notify Admins
+                  </span>
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
