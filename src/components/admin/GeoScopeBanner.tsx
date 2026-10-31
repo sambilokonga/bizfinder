@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Globe,
   Building2,
@@ -10,6 +10,8 @@ import {
   Sparkles,
   SlidersHorizontal,
   MapPin,
+  Search,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,6 +67,77 @@ export function GeoScopeBanner({
         (c) => c.name.toLowerCase() === (assignedCountry || selectedCountry).toLowerCase()
       )
     : undefined;
+
+  // ── Searchable country combobox state ──────────────────────────────────────
+  const [countrySearch, setCountrySearch] = useState("");
+  const [isCountryOpen, setIsCountryOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const comboRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filteredCountries = countrySearch.trim()
+    ? COUNTRIES_WITH_CITIES.filter((c) =>
+        c.name.toLowerCase().startsWith(countrySearch.toLowerCase())
+      ).concat(
+        COUNTRIES_WITH_CITIES.filter(
+          (c) =>
+            !c.name.toLowerCase().startsWith(countrySearch.toLowerCase()) &&
+            c.name.toLowerCase().includes(countrySearch.toLowerCase())
+        )
+      )
+    : COUNTRIES_WITH_CITIES;
+
+  // Current display label for the trigger button
+  const selectedLabel =
+    selectedCountry === "all"
+      ? "🌐 All 195 Countries"
+      : `${COUNTRIES_WITH_CITIES.find((c) => c.name === selectedCountry)?.flag ?? ""} ${selectedCountry}`;
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (comboRef.current && !comboRef.current.contains(e.target as Node)) {
+        setIsCountryOpen(false);
+        setCountrySearch("");
+        setActiveIndex(-1);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const selectCountry = (name: string) => {
+    onCountryChange(name);
+    const cEntry = COUNTRIES_WITH_CITIES.find((c) => c.name === name);
+    const firstCity = cEntry?.cities[0] || "all";
+    onCityChange(isCityAdmin ? firstCity : "all");
+    setIsCountryOpen(false);
+    setCountrySearch("");
+    setActiveIndex(-1);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const listLen = (countrySearch ? 0 : 1) + filteredCountries.length; // +1 for "All" option
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, listLen - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && activeIndex >= 0) {
+      e.preventDefault();
+      if (!countrySearch && activeIndex === 0) {
+        selectCountry("all");
+      } else {
+        const idx = countrySearch ? activeIndex : activeIndex - 1;
+        if (filteredCountries[idx]) selectCountry(filteredCountries[idx].name);
+      }
+    } else if (e.key === "Escape") {
+      setIsCountryOpen(false);
+      setCountrySearch("");
+      setActiveIndex(-1);
+    }
+  };
 
   return (
     <div className="rounded-2xl sm:rounded-3xl border border-border bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-3 xs:p-3.5 sm:p-6 shadow-xl space-y-3 sm:space-y-4 overflow-hidden">
@@ -211,28 +284,98 @@ export function GeoScopeBanner({
                 <span className="text-[8px] xs:text-[9px] text-slate-400 font-semibold ml-0.5 hidden xs:inline">🔒 Locked</span>
               </div>
             ) : (
-              /* Super Admin — full 195-country dropdown */
-              <div className="relative min-w-0 w-full sm:w-auto inline-flex items-center">
-                <select
-                  value={selectedCountry}
-                  onChange={(e) => {
-                    onCountryChange(e.target.value);
-                    const cEntry = COUNTRIES_WITH_CITIES.find(
-                      (c) => c.name.toLowerCase() === e.target.value.toLowerCase()
-                    );
-                    const firstCity = cEntry?.cities[0] || "all";
-                    onCityChange(isCityAdmin ? firstCity : "all");
+              /* Super Admin — searchable 195-country combobox */
+              <div ref={comboRef} className="relative min-w-0 w-full sm:w-auto">
+                {/* Trigger button — shows selected value, opens dropdown on click */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCountryOpen((o) => !o);
+                    if (!isCountryOpen) setTimeout(() => inputRef.current?.focus(), 50);
                   }}
-                  className="h-7 sm:h-8 w-full min-w-0 sm:min-w-[190px] sm:max-w-[280px] rounded-lg sm:rounded-xl bg-slate-800/95 hover:bg-slate-800 border border-white/20 pl-2 xs:pl-2.5 pr-6 xs:pr-7 text-[10px] xs:text-[11px] sm:text-xs font-medium text-white focus:ring-2 focus:ring-indigo-400 focus:outline-none cursor-pointer appearance-none shadow-xs truncate transition-colors"
+                  className="h-7 sm:h-8 w-full sm:min-w-[190px] sm:max-w-[280px] flex items-center justify-between gap-1.5 rounded-lg sm:rounded-xl bg-slate-800/95 hover:bg-slate-800 border border-white/20 pl-2 xs:pl-2.5 pr-2 text-[10px] xs:text-[11px] sm:text-xs font-medium text-white focus:ring-2 focus:ring-indigo-400 focus:outline-none cursor-pointer transition-colors"
                 >
-                  <option value="all" className="bg-slate-900 text-white">🌐 All 195 Countries</option>
-                  {COUNTRIES_WITH_CITIES.map((c) => (
-                    <option key={c.name} value={c.name} className="bg-slate-900 text-white">
-                      {c.flag} {c.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-3 h-3 xs:w-3.5 xs:h-3.5 absolute right-2 text-slate-400 pointer-events-none" />
+                  <span className="truncate">{selectedLabel}</span>
+                  <ChevronDown className={`w-3 h-3 xs:w-3.5 xs:h-3.5 text-slate-400 shrink-0 transition-transform ${isCountryOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {/* Dropdown panel */}
+                {isCountryOpen && (
+                  <div className="absolute z-50 top-full mt-1 left-0 w-[240px] sm:w-[280px] rounded-xl bg-slate-900 border border-white/20 shadow-2xl shadow-black/60 overflow-hidden">
+                    {/* Search input */}
+                    <div className="flex items-center gap-1.5 px-2.5 py-2 border-b border-white/10">
+                      <Search className="w-3 h-3 text-slate-400 shrink-0" />
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={countrySearch}
+                        onChange={(e) => {
+                          setCountrySearch(e.target.value);
+                          setActiveIndex(-1);
+                        }}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Search country..."
+                        className="flex-1 bg-transparent text-[11px] sm:text-xs text-white placeholder:text-slate-500 outline-none"
+                        autoComplete="off"
+                      />
+                      {countrySearch && (
+                        <button
+                          type="button"
+                          onClick={() => { setCountrySearch(""); setActiveIndex(-1); inputRef.current?.focus(); }}
+                          className="text-slate-400 hover:text-white transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Country list */}
+                    <div className="max-h-52 overflow-y-auto overscroll-contain">
+                      {/* "All Countries" option — hidden when searching */}
+                      {!countrySearch && (
+                        <button
+                          type="button"
+                          onClick={() => selectCountry("all")}
+                          className={`w-full flex items-center gap-2 px-3 py-1.5 text-[11px] sm:text-xs text-left transition-colors ${
+                            activeIndex === 0
+                              ? "bg-indigo-500 text-white"
+                              : selectedCountry === "all"
+                              ? "bg-white/10 text-white"
+                              : "text-slate-300 hover:bg-white/5 hover:text-white"
+                          }`}
+                        >
+                          <span>🌐</span>
+                          <span>All 195 Countries</span>
+                        </button>
+                      )}
+
+                      {filteredCountries.length === 0 ? (
+                        <p className="text-center text-[11px] text-slate-500 py-4">No countries found</p>
+                      ) : (
+                        filteredCountries.map((c, idx) => {
+                          const listIdx = countrySearch ? idx : idx + 1;
+                          return (
+                            <button
+                              key={c.name}
+                              type="button"
+                              onClick={() => selectCountry(c.name)}
+                              className={`w-full flex items-center gap-2 px-3 py-1.5 text-[11px] sm:text-xs text-left transition-colors ${
+                                activeIndex === listIdx
+                                  ? "bg-indigo-500 text-white"
+                                  : selectedCountry === c.name
+                                  ? "bg-white/10 text-white"
+                                  : "text-slate-300 hover:bg-white/5 hover:text-white"
+                              }`}
+                            >
+                              <span>{c.flag}</span>
+                              <span className="truncate">{c.name}</span>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
