@@ -35,12 +35,14 @@ export interface IBusinessDoc extends Document {
   telephone?: string;
   mobile?: string;
   whatsapp?: string;
+  telegram?: string;
   email?: string;
   website?: string;
   // Social media
   facebookUrl?: string;
   instagramUrl?: string;
   tiktokUrl?: string;
+  telegramUrl?: string;
   // Business type
   businessType?: string;
   description: string;
@@ -248,12 +250,14 @@ const BusinessSchema = new Schema<IBusinessDoc>(
     telephone: { type: String },
     mobile: { type: String },
     whatsapp: { type: String },
+    telegram: { type: String },
     email: { type: String },
     website: { type: String },
     // Social media links
     facebookUrl: { type: String },
     instagramUrl: { type: String },
     tiktokUrl: { type: String },
+    telegramUrl: { type: String },
     // Business type / legal structure
     businessType: { type: String },
     description: { type: String, required: true },

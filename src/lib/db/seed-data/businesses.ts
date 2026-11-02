@@ -1,4 +1,4 @@
-﻿import { Business } from "@/types/business";
+import { Business } from "@/types/business";
 import { Review } from "@/types/review";
 
 export const SEED_BUSINESSES: Business[] = [
@@ -29,6 +29,10 @@ export const SEED_BUSINESSES: Business[] = [
     telephone: "+251 11 661 5454",
     mobile: "+251 91 123 4567",
     whatsapp: "+251911234567",
+    telegram: "@kategna_restaurant",
+    telegramUrl: "https://t.me/kategna_restaurant",
+    facebookUrl: "https://facebook.com/kategnaet",
+    instagramUrl: "https://instagram.com/kategna_restaurant",
     email: "info@kategnarestaurant.com",
     website: "https://kategna.example.com",
     description:
@@ -122,6 +126,8 @@ export const SEED_BUSINESSES: Business[] = [
     telephone: "+251 11 618 9090",
     mobile: "+251 92 333 4455",
     whatsapp: "+251923334455",
+    telegram: "@medhanialem_rx",
+    telegramUrl: "https://t.me/medhanialem_rx",
     email: "care@medhanialempharmacy.et",
     description:
       "Fully stocked 24/7 community pharmacy offering certified prescription drugs, diabetic supplies, over-the-counter medications, infant care, and blood pressure monitoring services.",

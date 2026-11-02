@@ -42,6 +42,8 @@ interface ParsedBusinessRow {
   districtName?: string;
   addressLine?: string;
   phone?: string;
+  whatsapp?: string;
+  telegram?: string;
   email?: string;
   website?: string;
   priceTier?: string;
@@ -135,6 +137,8 @@ export function UploadBusinessModal({
       const districtName = record.districtname || record.subcity || record.district || "";
       const addressLine = record.addressline || record.address || `${cityName}, ${countryName}`;
       const phone = record.phone || record.telephone || record.mobile || "";
+      const whatsapp = record.whatsapp || "";
+      const telegram = record.telegram || record.telegramurl || record.tg || "";
       const email = record.email || "";
       const website = record.website || record.url || "";
       const priceTier = record.pricetier || "$$";
@@ -154,6 +158,8 @@ export function UploadBusinessModal({
         districtName,
         addressLine,
         phone,
+        whatsapp,
+        telegram,
         email,
         website,
         priceTier,
@@ -198,6 +204,8 @@ export function UploadBusinessModal({
               districtName: item.districtName || item.subcity || "",
               addressLine: item.addressLine || `${item.cityName || "City"}, ${item.countryName || "Country"}`,
               phone: item.telephone || item.phone || "",
+              whatsapp: item.whatsapp || "",
+              telegram: item.telegram || item.telegramUrl || item.tg || "",
               email: item.email || "",
               website: item.website || "",
               priceTier: item.priceTier || "$$",

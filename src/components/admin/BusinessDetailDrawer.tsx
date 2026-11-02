@@ -33,6 +33,7 @@ import {
   ExternalLink,
   Edit,
   Trash2,
+  Send,
 } from "lucide-react";
 import { Business } from "@/types/business";
 import { toast } from "sonner";
@@ -209,6 +210,24 @@ export function BusinessDetailDrawer({
                       <div className="flex items-center gap-2 text-foreground">
                         <Phone className="w-4 h-4 text-green-600 shrink-0" />
                         <span>WhatsApp: +{business.whatsapp}</span>
+                      </div>
+                    )}
+                    {(business.telegram || (business as any).telegramUrl) && (
+                      <div className="flex items-center gap-2 text-foreground">
+                        <Send className="w-4 h-4 text-sky-500 shrink-0" />
+                        <a
+                          href={
+                            (business.telegram || (business as any).telegramUrl)?.startsWith("http")
+                              ? (business.telegram || (business as any).telegramUrl)
+                              : `https://t.me/${(business.telegram || (business as any).telegramUrl)?.replace(/^@/, "")}`
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary hover:underline flex items-center gap-1 truncate max-w-[200px]"
+                        >
+                          Telegram: {business.telegram || (business as any).telegramUrl}
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
                       </div>
                     )}
                     <div className="flex items-center gap-2 text-foreground">

@@ -205,6 +205,7 @@ export interface Business {
   telephone?: string;
   mobile?: string;
   whatsapp?: string;
+  telegram?: string;
   email?: string;
   website?: string;
 
@@ -212,6 +213,7 @@ export interface Business {
   facebookUrl?: string;
   instagramUrl?: string;
   tiktokUrl?: string;
+  telegramUrl?: string;
 
   // Business scale, type & specialties
   businessLevel?: "Small" | "Medium" | "Large" | "International";

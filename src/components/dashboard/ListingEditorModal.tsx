@@ -48,6 +48,7 @@ export function ListingEditorModal({
     addressLine: business.addressLine,
     telephone: business.telephone || "",
     whatsapp: business.whatsapp || "",
+    telegram: business.telegram || (business as any).telegramUrl || "",
     email: business.email || "",
     website: business.website || "",
     description: business.description,
@@ -73,6 +74,8 @@ export function ListingEditorModal({
       addressLine: formData.addressLine,
       telephone: formData.telephone,
       whatsapp: formData.whatsapp,
+      telegram: formData.telegram,
+      telegramUrl: formData.telegram,
       email: formData.email,
       website: formData.website,
       description: formData.description,
@@ -238,6 +241,20 @@ export function ListingEditorModal({
                       setFormData({ ...formData, whatsapp: e.target.value })
                     }
                     placeholder="251911000000"
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-foreground">
+                    Telegram Channel / Username
+                  </label>
+                  <Input
+                    value={formData.telegram}
+                    onChange={(e) =>
+                      setFormData({ ...formData, telegram: e.target.value })
+                    }
+                    placeholder="@yourbusiness or https://t.me/yourbusiness"
                     className="mt-1"
                   />
                 </div>

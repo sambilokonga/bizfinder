@@ -298,6 +298,7 @@ export function EmbeddedListingWizard({
   // Step 4: Contact Channels & Branches
   const [telephone, setTelephone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [telegram, setTelegram] = useState("");
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState("");
   const [facebookUrl, setFacebookUrl] = useState("");
@@ -795,7 +796,7 @@ export function EmbeddedListingWizard({
       subcityName: subcityName === "custom" ? customSubcity : subcityName,
       customCity, customSubcity, addressLine, latitude, longitude,
       buildingName, floorNumber,
-      telephone, whatsapp, email, website, facebookUrl, instagramUrl, tiktokUrl,
+      telephone, whatsapp, telegram, email, website, facebookUrl, instagramUrl, tiktokUrl,
       hasMultipleBranches, branches,
       logoUrl, coverUrl, videoUrl, videoTitle,
       servicesAndMenu, priceTier, weeklyHours,
@@ -845,6 +846,7 @@ export function EmbeddedListingWizard({
       if (d.floorNumber) setFloorNumber(d.floorNumber);
       if (d.telephone) setTelephone(d.telephone);
       if (d.whatsapp) setWhatsapp(d.whatsapp);
+      if (d.telegram) setTelegram(d.telegram);
       if (d.email) setEmail(d.email);
       if (d.website) setWebsite(d.website);
       if (d.facebookUrl) setFacebookUrl(d.facebookUrl);
@@ -955,6 +957,8 @@ export function EmbeddedListingWizard({
         longitude,
         telephone: telephone.trim() || undefined,
         whatsapp: whatsapp.trim() || undefined,
+        telegram: telegram.trim() || undefined,
+        telegramUrl: telegram.trim() || undefined,
         email: email.trim() || undefined,
         website: website.trim() || undefined,
         facebookUrl: facebookUrl.trim() || undefined,
@@ -1641,14 +1645,17 @@ export function EmbeddedListingWizard({
             )}
             {step === 4 && (
               <div className="space-y-5">
-                <StepHeader step={4} title="Contact Channels & Branches" subtitle="Provide direct inquiry lines, WhatsApp, email, and configure chain branches." />
+                <StepHeader step={4} title="Contact Channels & Branches" subtitle="Provide direct inquiry lines, WhatsApp, Telegram, email, and configure chain branches." />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <FormField label="Telephone Number" required>
                     <Input required value={telephone} onChange={(e) => setTelephone(e.target.value)} placeholder="+251 11 661 2345" className="bg-background border-border text-foreground font-mono" />
                   </FormField>
                   <FormField label="WhatsApp Business Number">
                     <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="+251 91 123 4567" className="bg-background border-border text-foreground font-mono" />
+                  </FormField>
+                  <FormField label="Telegram Channel / Direct Line">
+                    <Input value={telegram} onChange={(e) => setTelegram(e.target.value)} placeholder="@yourbusiness or https://t.me/yourbusiness" className="bg-background border-border text-foreground font-mono" />
                   </FormField>
                   <FormField label="Official Contact Email">
                     <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="info@grandhotel.com" className="bg-background border-border text-foreground" />
@@ -1665,7 +1672,7 @@ export function EmbeddedListingWizard({
                     <span>Social Media Profiles</span>
                   </div>
                   <p className="text-[11px] text-muted-foreground">Add your business social media pages to help customers connect and follow you.</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <FormField label="Facebook Page URL">
                       <Input
                         value={facebookUrl}
@@ -1687,6 +1694,14 @@ export function EmbeddedListingWizard({
                         value={tiktokUrl}
                         onChange={(e) => setTiktokUrl(e.target.value)}
                         placeholder="https://tiktok.com/@yourbusiness"
+                        className="bg-background border-border text-foreground font-mono text-xs"
+                      />
+                    </FormField>
+                    <FormField label="Telegram Channel / Profile Link">
+                      <Input
+                        value={telegram}
+                        onChange={(e) => setTelegram(e.target.value)}
+                        placeholder="https://t.me/yourbusiness"
                         className="bg-background border-border text-foreground font-mono text-xs"
                       />
                     </FormField>
@@ -2097,6 +2112,7 @@ export function EmbeddedListingWizard({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <ReviewField label="Telephone" value={telephone || "None"} mono bold />
                       <ReviewField label="WhatsApp" value={whatsapp || "None"} mono />
+                      {telegram && <ReviewField label="Telegram" value={telegram} mono />}
                       <ReviewField label="Email" value={email || "None"} />
                       <ReviewField label="Website" value={website || "None"} />
                       {facebookUrl && <ReviewField label="Facebook" value={facebookUrl} />}

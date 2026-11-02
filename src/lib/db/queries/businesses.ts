@@ -52,12 +52,14 @@ export function docToBusiness(doc: any): Business {
     telephone: obj.telephone ? String(obj.telephone) : undefined,
     mobile: obj.mobile ? String(obj.mobile) : undefined,
     whatsapp: obj.whatsapp ? String(obj.whatsapp) : undefined,
+    telegram: obj.telegram ? String(obj.telegram) : (obj.telegramUrl ? String(obj.telegramUrl) : undefined),
     email: obj.email ? String(obj.email) : undefined,
     website: obj.website ? String(obj.website) : undefined,
     // Social media
     facebookUrl: obj.facebookUrl ? String(obj.facebookUrl) : undefined,
     instagramUrl: obj.instagramUrl ? String(obj.instagramUrl) : undefined,
     tiktokUrl: obj.tiktokUrl ? String(obj.tiktokUrl) : undefined,
+    telegramUrl: obj.telegramUrl ? String(obj.telegramUrl) : (obj.telegram ? String(obj.telegram) : undefined),
     // Business classification
     businessType: obj.businessType ? (obj.businessType as import("@/types/business").BusinessType) : undefined,
     businessLevel: obj.businessLevel,
@@ -962,11 +964,13 @@ export async function createBusiness(
       telephone,
       mobile: rest.mobile,
       whatsapp: rest.whatsapp,
+      telegram: rest.telegram || rest.telegramUrl,
       email: rest.email,
       website: rest.website,
       facebookUrl: rest.facebookUrl,
       instagramUrl: rest.instagramUrl,
       tiktokUrl: rest.tiktokUrl,
+      telegramUrl: rest.telegramUrl || rest.telegram,
       businessType: rest.businessType,
       businessLevel: rest.businessLevel || "Small",
       servicesAndMenu: rest.servicesAndMenu,
@@ -1162,11 +1166,13 @@ export async function createBusiness(
     telephone: rest.telephone,
     mobile: rest.mobile,
     whatsapp: rest.whatsapp,
+    telegram: rest.telegram || rest.telegramUrl,
     email: rest.email,
     website: rest.website,
     facebookUrl: rest.facebookUrl,
     instagramUrl: rest.instagramUrl,
     tiktokUrl: rest.tiktokUrl,
+    telegramUrl: rest.telegramUrl || rest.telegram,
     businessType: rest.businessType,
     description: rest.description || `${rest.name} business profile`,
     shortDescription: rest.shortDescription,
@@ -1249,6 +1255,8 @@ export async function updateBusiness(
   await connectToDatabase();
   const { latitude, longitude, ...rest } = data;
   const update: Record<string, any> = { ...rest };
+  if (update.telegram && !update.telegramUrl) update.telegramUrl = update.telegram;
+  if (update.telegramUrl && !update.telegram) update.telegram = update.telegramUrl;
   if (latitude !== undefined && longitude !== undefined) {
     update.location = { type: "Point", coordinates: [longitude, latitude] };
   }

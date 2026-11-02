@@ -68,6 +68,12 @@ export async function POST(request: Request) {
         longitude: item.longitude ? Number(item.longitude) : 38.761253,
         telephone: item.telephone || item.phone || undefined,
         mobile: item.mobile || undefined,
+        whatsapp: item.whatsapp || undefined,
+        telegram: item.telegram || item.telegramUrl || item.tg || undefined,
+        telegramUrl: item.telegramUrl || item.telegram || item.tg || undefined,
+        facebookUrl: item.facebookUrl || undefined,
+        instagramUrl: item.instagramUrl || undefined,
+        tiktokUrl: item.tiktokUrl || undefined,
         email: item.email || undefined,
         website: item.website || undefined,
         description:

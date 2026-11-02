@@ -60,8 +60,43 @@ function normalizeUrl(url?: string): string {
   return `https://${trimmed}`;
 }
 
-function getSocialHandle(url?: string, platform?: "facebook" | "instagram" | "tiktok"): string {
+function getTelegramUrl(input?: string): string {
+  if (!input) return "";
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^t\.me\//i.test(trimmed)) return `https://${trimmed}`;
+  const handle = trimmed.replace(/^@/, "");
+  return `https://t.me/${handle}`;
+}
+
+function getTelegramHandle(input?: string): string {
+  if (!input) return "";
+  const cleaned = input
+    .trim()
+    .replace(/^https?:\/\/(www\.)?t\.me\//i, "")
+    .replace(/^t\.me\//i, "")
+    .replace(/^@/, "")
+    .replace(/\/$/, "");
+  if (!cleaned) return "Telegram Channel";
+  if (cleaned.startsWith("+")) return cleaned;
+  return `@${cleaned}`;
+}
+
+function extractTelegram(business?: Partial<Business> | any): string {
+  if (!business) return "";
+  return (
+    business.telegram ||
+    business.telegramUrl ||
+    business.socialMedia?.telegram ||
+    business.socialLinks?.telegram ||
+    ""
+  );
+}
+
+function getSocialHandle(url?: string, platform?: "facebook" | "instagram" | "tiktok" | "telegram"): string {
   if (!url) return "";
+  if (platform === "telegram") return getTelegramHandle(url);
   const cleaned = url.trim().replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
   if (platform === "facebook") {
     const handle = cleaned.replace(/^facebook\.com\/?/i, "");
@@ -511,6 +546,23 @@ export default function BusinessProfilePage({
                   >
                     <MessageSquare className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
                     WhatsApp
+                  </Button>
+                </a>
+              )}
+
+              {extractTelegram(business) && (
+                <a
+                  href={getTelegramUrl(extractTelegram(business))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="sm:w-auto"
+                >
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-auto gap-1 xs:gap-1.5 border-sky-500/40 text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/20 font-bold h-8 xs:h-8.5 sm:h-9.5 md:h-10 text-[11px] xs:text-xs sm:text-sm rounded-lg xs:rounded-xl px-2.5 xs:px-3 sm:px-4"
+                  >
+                    <Send className="w-3 h-3 xs:w-3.5 xs:h-3.5" />
+                    Telegram
                   </Button>
                 </a>
               )}
@@ -1061,6 +1113,20 @@ export default function BusinessProfilePage({
               </div>
             )}
 
+            {extractTelegram(business) && (
+              <div className="flex items-center gap-2 xs:gap-2.5 text-muted-foreground">
+                <Send className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-sky-500 shrink-0" />
+                <a
+                  href={getTelegramUrl(extractTelegram(business))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-sky-600 dark:hover:text-sky-400 font-medium"
+                >
+                  Telegram: {getTelegramHandle(extractTelegram(business))}
+                </a>
+              </div>
+            )}
+
             {business.email && (
               <div className="flex items-center gap-2 xs:gap-2.5 text-muted-foreground">
                 <Mail className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-indigo-500 shrink-0" />
@@ -1089,7 +1155,7 @@ export default function BusinessProfilePage({
           </div>
 
           {/* Social Media Card */}
-          {(business.facebookUrl || business.instagramUrl || business.tiktokUrl) && (
+          {(business.facebookUrl || business.instagramUrl || business.tiktokUrl || extractTelegram(business)) && (
             <div className="rounded-2xl xs:rounded-3xl border border-border bg-card p-3.5 xs:p-4 sm:p-5 sm:p-6 shadow-sm space-y-2.5 xs:space-y-3 text-xs">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="font-bold text-sm xs:text-base text-foreground">Social Media</h3>
@@ -1163,6 +1229,30 @@ export default function BusinessProfilePage({
                     </div>
                   </div>
                   <ExternalLink className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-muted-foreground group-hover:text-foreground shrink-0 ml-2" />
+                </a>
+              )}
+
+              {extractTelegram(business) && (
+                <a
+                  href={getTelegramUrl(extractTelegram(business))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-2.5 xs:p-3 rounded-xl xs:rounded-2xl bg-sky-50/50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900/40 hover:border-sky-300 dark:hover:border-sky-700 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-all group"
+                >
+                  <div className="flex items-center gap-2.5 xs:gap-3 min-w-0">
+                    <div className="w-7 h-7 xs:w-8 xs:h-8 rounded-lg xs:rounded-xl bg-[#0088cc]/10 dark:bg-[#0088cc]/20 flex items-center justify-center shrink-0">
+                      <svg viewBox="0 0 24 24" fill="#0088cc" className="w-3.5 h-3.5 xs:w-4 xs:h-4">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-foreground text-xs">Telegram</div>
+                      <div className="text-[10px] xs:text-[11px] text-muted-foreground truncate group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                        {getTelegramHandle(extractTelegram(business))}
+                      </div>
+                    </div>
+                  </div>
+                  <ExternalLink className="w-3 h-3 xs:w-3.5 xs:h-3.5 text-muted-foreground group-hover:text-sky-600 dark:group-hover:text-sky-400 shrink-0 ml-2" />
                 </a>
               )}
             </div>
